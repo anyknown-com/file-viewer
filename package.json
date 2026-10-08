@@ -37,15 +37,22 @@
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "check:entry": "tsdown",
-    "check": "turbo run typecheck lint fmt:check check:entry"
+    "check": "turbo run typecheck lint fmt:check check:entry",
+    "test": "vitest run --project jsdom",
+    "test:browser": "vitest run --project browser"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",
+    "@vitest/browser-playwright": "^5.0.3",
+    "jsdom": "^30.1.2",
     "oxfmt": "^0.72.0",
     "oxlint": "^1.87.0",
+    "playwright": "^1.64.0",
     "tsdown": "^0.23.0",
     "turbo": "^2.11.7",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vite": "^8.3.3",
+    "vitest": "^5.0.3"
   },
   "peerDependenciesMeta": {
     "react": {
