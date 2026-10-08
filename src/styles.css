@@ -128,3 +128,98 @@
     rotate: 360deg;
   }
 }
+
+.fv-tooltip-positioner {
+  z-index: var(--ak-z-index-tooltip);
+}
+
+.fv-tooltip {
+  padding: 4px 8px;
+  border: 1px solid var(--ak-border);
+  border-radius: var(--ak-corner-small);
+  background: var(--ak-surface-raised);
+  color: var(--ak-text);
+  box-shadow: var(--ak-shadow-float);
+  font-size: var(--ak-type-t1);
+  transition: opacity var(--ak-motion-quick) var(--ak-motion-ease-out);
+}
+
+.fv-tooltip[data-starting-style],
+.fv-tooltip[data-ending-style] {
+  opacity: 0;
+}
+
+.fv-menu-positioner {
+  z-index: var(--ak-z-index-popup);
+}
+
+.fv-menu {
+  min-width: 160px;
+  padding: var(--ak-space-xs);
+  border: 1px solid var(--ak-border);
+  border-radius: var(--ak-corner-float);
+  background: var(--ak-surface-raised);
+  box-shadow: var(--ak-shadow-float);
+  transition: opacity var(--ak-motion-quick) var(--ak-motion-ease-out);
+}
+
+.fv-menu[data-starting-style],
+.fv-menu[data-ending-style] {
+  opacity: 0;
+}
+
+.fv-menu-item {
+  display: flex;
+  align-items: center;
+  padding: var(--ak-space-xs) var(--ak-space-sm);
+  border-radius: var(--ak-corner-small);
+  font-size: var(--ak-type-t2);
+  cursor: default;
+  outline: none;
+}
+
+.fv-menu-item[data-highlighted] {
+  background: var(--ak-ink-n8);
+}
+
+.fv-menu-item[data-disabled] {
+  color: var(--ak-text-faint);
+}
+
+.fv-menu-item-danger {
+  color: var(--ak-danger);
+}
+
+.fv-slider-control {
+  display: flex;
+  align-items: center;
+  height: 20px;
+  width: 100%;
+  touch-action: none;
+}
+
+.fv-slider-track {
+  position: relative;
+  flex: 1;
+  height: 4px;
+  border-radius: var(--ak-radius-full);
+  background: var(--ak-ink-n14);
+}
+
+.fv-slider-indicator {
+  border-radius: inherit;
+  background: var(--ak-accent);
+}
+
+.fv-slider-thumb {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--ak-accent);
+  border-radius: var(--ak-radius-full);
+  background: var(--ak-surface);
+}
+
+.fv-slider-thumb:has(:focus-visible) {
+  outline: var(--ak-focus-ring-width) solid var(--ak-focus-ring);
+  outline-offset: 2px;
+}
