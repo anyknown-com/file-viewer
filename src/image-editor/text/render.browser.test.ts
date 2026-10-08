@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import type { LayerTextStyle } from "../../comp/index";
-import { canvasMeasure, ensureGeist } from "./fonts";
+import { canvasMeasure, cssFont, ensureGeist } from "./fonts";
 import { layoutText } from "./layout";
 import { renderText } from "./render";
 import { defaultTextStyle } from "./style";
@@ -74,10 +74,18 @@ describe("renderText", () => {
     const text = "مرحبا بالعالم";
     const out = renderText(style(text, { fontSize: 48 }));
     const ink = inkColumns(out, (i) => (out.data[i + 3] ?? 0) > 0);
-    const width = measure()(text, "Geist-Regular", 48, 0);
+    // Geist has no Arabic glyphs, so the browser draws this with a fallback font whose ink
+    // overhangs the advance width by a platform-dependent amount (≈7 px on Linux CI). Compare
+    // against the whole string's own ink bounds instead: drawing it per character would use
+    // isolated letter forms, whose ink is wider than the joined string's bounds.
+    const ctx = new OffscreenCanvas(1, 1).getContext("2d");
+    if (!ctx) throw new Error("no 2d context");
+    ctx.font = cssFont("Geist-Regular", 48);
+    const m = ctx.measureText(text);
+    const bounds = m.actualBoundingBoxLeft + m.actualBoundingBoxRight;
     expect(ink).not.toBeNull();
     const inkWidth = (ink?.[1] ?? 0) - (ink?.[0] ?? 0) + 1;
-    expect(Math.abs(inkWidth - width)).toBeLessThanOrEqual(2);
+    expect(Math.abs(inkWidth - bounds)).toBeLessThanOrEqual(2);
   });
 
   it("leaves pixels outside the text transparent", () => {
