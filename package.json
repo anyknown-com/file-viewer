@@ -41,7 +41,8 @@
     "test": "vitest run --project jsdom",
     "test:browser": "vitest run --project browser",
     "verify:pack": "pnpm build && node scripts/verify-pack.mjs",
-    "prepublishOnly": "pnpm check && pnpm test && pnpm test:browser && pnpm verify:pack && pnpm check:licenses"
+    "prepublishOnly": "pnpm check && pnpm test && pnpm test:browser && pnpm verify:pack && pnpm check:licenses",
+    "check:licenses": "node scripts/check-licenses.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",
