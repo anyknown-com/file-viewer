@@ -865,6 +865,90 @@
   inline-size: min(100%, 20rem);
 }
 
+.fv-audio-layer {
+  position: absolute;
+  inset: 0;
+  cursor: text;
+}
+
+.fv-audio-selection,
+.fv-audio-silence {
+  position: absolute;
+  inset-block: 0;
+  pointer-events: none;
+}
+
+.fv-audio-selection {
+  background: var(--ak-accent-subtle);
+}
+
+.fv-audio-silence {
+  background: var(--ak-danger-subtle);
+}
+
+.fv-audio-handle {
+  position: absolute;
+  inset-block: 0;
+  inline-size: 44px;
+  cursor: ew-resize;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.fv-audio-handle[data-edge="start"] {
+  left: -22px;
+}
+
+.fv-audio-handle[data-edge="end"] {
+  right: -22px;
+}
+
+.fv-audio-handle::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  left: 21px;
+  inline-size: 2px;
+  background: var(--ak-accent);
+}
+
+.fv-audio-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ak-space-xs);
+  padding: var(--ak-space-xs) var(--ak-space-sm);
+  border-block-start: 1px solid var(--ak-border);
+}
+
+.fv-audio-tool-history {
+  display: none;
+}
+
+@container (max-width: 639px) {
+  .fv-audio-tools {
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    overflow-x: auto;
+  }
+
+  .fv-audio-tools .fv-button {
+    flex: none;
+    inline-size: 44px;
+    block-size: 44px;
+    padding: 0;
+  }
+
+  .fv-audio-tool-label,
+  .fv-audio-top-history {
+    display: none;
+  }
+
+  .fv-audio-tool-history {
+    display: inline-flex;
+  }
+}
+
 /* == excalidraw (04) == */
 .fv-diagram-img {
   display: block;

@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { bytesSource } from "../contract/byte-source";
@@ -6,13 +6,27 @@ import type { EditorProps } from "../contract/editor";
 import { ViewerError } from "../contract/errors";
 import { en } from "../i18n/en";
 import { AudioEditor } from "./audio-editor";
+import { audioMessages } from "./messages";
 import { openTrack, type OpenedTrack } from "./open-track";
 import { scanPeaks } from "./scan";
+import type { WaveformProps } from "./waveform";
 
 vi.mock("./open-track");
 vi.mock("./scan");
 // jsdom has no canvas 2d context, ResizeObserver or layout; the canvases are covered by view.test.ts.
-vi.mock("./waveform", () => ({ Waveform: () => null }));
+// The stand-in sizes the view to 100 px per second and keeps the selection overlay.
+vi.mock("./waveform", () => ({
+  Waveform: (p: WaveformProps) => (
+    <div
+      ref={(el) => {
+        if (el && p.view.width === 0)
+          p.onViewChange({ start: 0, secondsPerPixel: 0.01, width: 1000 });
+      }}
+    >
+      {p.overlay}
+    </div>
+  ),
+}));
 vi.mock("./overview", () => ({ Overview: () => null }));
 
 let dispose: ReturnType<typeof vi.fn<() => void>>;
@@ -44,6 +58,20 @@ function setup(over: Partial<EditorProps> = {}) {
   };
   const view = render(<AudioEditor {...props} />);
   return { props, view, user: userEvent.setup() };
+}
+
+async function splitAt3(over: Partial<EditorProps> = {}) {
+  const ctx = setup({ onDirtyChange: vi.fn<(dirty: boolean) => void>(), ...over });
+  const layer = await vi.waitFor(() => {
+    const el = ctx.view.container.querySelector<HTMLElement>(".fv-audio-layer");
+    if (!el) throw new Error("no selection layer yet");
+    return el;
+  });
+  // A click (no movement) at x = 300 puts the playhead at 3 s.
+  fireEvent.pointerDown(layer, { pointerId: 1, clientX: 300, button: 0 });
+  fireEvent.pointerUp(layer, { pointerId: 1, clientX: 300 });
+  await ctx.user.click(screen.getByRole("button", { name: audioMessages.en["audio.split"] }));
+  return ctx;
 }
 
 describe("AudioEditor", () => {
@@ -89,5 +117,37 @@ describe("AudioEditor", () => {
     view.unmount();
     expect(signal.aborted).toBe(true);
     expect(dispose).toHaveBeenCalled();
+  });
+
+  describe("after an edit", () => {
+    it("reports dirty after a split", async () => {
+      const { props } = await splitAt3();
+      expect(props.onDirtyChange).toHaveBeenLastCalledWith(true);
+    });
+
+    it("asks before closing and closes only on discard", async () => {
+      const { props, user } = await splitAt3();
+      await user.click(screen.getByRole("button", { name: en["common.close"] }));
+      expect(await screen.findByText(en["discard.title"])).toBeTruthy();
+      expect(props.onClose).not.toHaveBeenCalled();
+      await user.click(screen.getByRole("button", { name: en["discard.confirm"] }));
+      expect(props.onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it("keeps editing closes the dialog without closing the editor", async () => {
+      const { props, user } = await splitAt3();
+      await user.click(screen.getByRole("button", { name: en["common.close"] }));
+      await user.click(await screen.findByRole("button", { name: en["discard.keep"] }));
+      await vi.waitFor(() => expect(screen.queryByText(en["discard.title"])).toBeNull());
+      expect(props.onClose).not.toHaveBeenCalled();
+    });
+
+    it("asks on Escape too", async () => {
+      const { props, user, view } = await splitAt3();
+      view.container.querySelector<HTMLElement>(".fv-audio")?.focus();
+      await user.keyboard("{Escape}");
+      expect(await screen.findByText(en["discard.title"])).toBeTruthy();
+      expect(props.onClose).not.toHaveBeenCalled();
+    });
   });
 });

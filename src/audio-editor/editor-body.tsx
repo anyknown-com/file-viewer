@@ -8,7 +8,7 @@ import { Button } from "../primitives/button";
 import { DiscardDialog } from "../primitives/dialog";
 import { CloseIcon } from "../primitives/glyphs";
 import { useRoot } from "../primitives/root-context";
-import { type AudioEdit, initialEdit, outputDuration } from "./edit";
+import { type AudioEdit, cut, initialEdit, keep, outputDuration, type Range, split } from "./edit";
 import { RedoIcon, UndoIcon } from "./glyphs";
 import {
   type History,
@@ -22,6 +22,8 @@ import { type OpenedTrack, openTrack } from "./open-track";
 import type { Peaks } from "./peaks";
 import { Overview } from "./overview";
 import { scanPeaks } from "./scan";
+import { SelectionLayer } from "./selection-layer";
+import { Tools } from "./tools";
 import { clampView, fitView, type View, zoom } from "./view";
 import { Waveform } from "./waveform";
 import { createZoomWindow } from "./zoom-window";
@@ -46,6 +48,15 @@ function zoomKey(key: string, view: View, duration: number, sampleRate: number):
   return null;
 }
 
+/** Delete / Backspace cut and T keeps the selection, S splits at the playhead; null for other keys. */
+function editKey(key: string, state: AudioEdit, sel: Range | null, playhead: number) {
+  const k = key.toLowerCase();
+  if ((k === "delete" || k === "backspace") && sel) return cut(state, sel);
+  if (k === "t" && sel) return keep(state, sel);
+  if (k === "s") return split(state, playhead);
+  return null;
+}
+
 type Action = HistoryAction | { type: "init"; edit: AudioEdit };
 
 function reducer(h: History | null, a: Action): History | null {
@@ -64,6 +75,8 @@ export function EditorBody(props: EditorProps): React.JSX.Element {
   const [history, dispatchRaw] = useReducer(reducer, null);
   const [discardOpen, setDiscardOpen] = useState(false);
   const [rawView, setView] = useState<View>({ start: 0, secondsPerPixel: 0, width: 0 });
+  const [selection, setSelection] = useState<Range | null>(null);
+  const [playhead, setPlayhead] = useState(0);
   const source = props.file.source;
 
   const rootRef = useCallback(
@@ -126,8 +139,18 @@ export function EditorBody(props: EditorProps): React.JSX.Element {
   const dispatch = (a: HistoryAction) => {
     if (!history) return;
     const next = historyReducer(history, a);
+    if (next === history) return;
     dispatchRaw(a);
     if (isDirty(next) !== dirty) props.onDirtyChange?.(isDirty(next));
+    const nextDuration = outputDuration(next.present);
+    if (nextDuration !== duration) {
+      // Cut / keep (or undoing them) moves everything after the edit: the old selection means nothing.
+      setSelection(null);
+      setPlayhead((p) => Math.min(p, nextDuration));
+    }
+  };
+  const apply = (next: AudioEdit) => {
+    if (history && next !== history.present) dispatch({ type: "apply", next });
   };
 
   const requestClose = () => {
@@ -146,7 +169,13 @@ export function EditorBody(props: EditorProps): React.JSX.Element {
       dispatch({ type: e.shiftKey ? "redo" : "undo" });
       return;
     }
-    if (e.metaKey || e.ctrlKey || e.altKey || !opened) return;
+    if (e.metaKey || e.ctrlKey || e.altKey || !opened || !history) return;
+    const edit = editKey(e.key, history.present, selection, playhead);
+    if (edit) {
+      e.preventDefault();
+      apply(edit);
+      return;
+    }
     const next = zoomKey(e.key, view, duration, opened.sampleRate);
     if (!next) return;
     e.preventDefault();
@@ -167,6 +196,7 @@ export function EditorBody(props: EditorProps): React.JSX.Element {
           <span className="fv-audio-name">{props.file.name}</span>
           <Button
             variant="ghost"
+            className="fv-audio-top-history"
             aria-label={t("audio.undo")}
             icon={<UndoIcon />}
             disabled={!history || history.past.length === 0}
@@ -174,6 +204,7 @@ export function EditorBody(props: EditorProps): React.JSX.Element {
           />
           <Button
             variant="ghost"
+            className="fv-audio-top-history"
             aria-label={t("audio.redo")}
             icon={<RedoIcon />}
             disabled={!history || history.future.length === 0}
@@ -206,7 +237,18 @@ export function EditorBody(props: EditorProps): React.JSX.Element {
                 sampleRate={opened.sampleRate}
                 zoomWindow={zoomWindow}
                 onViewChange={setView}
-                playhead={() => 0}
+                playhead={() => playhead}
+                overlay={
+                  <SelectionLayer
+                    view={view}
+                    state={history.present}
+                    selection={selection}
+                    playhead={playhead}
+                    silence={[]}
+                    onSelect={setSelection}
+                    onSeek={setPlayhead}
+                  />
+                }
               />
             </>
           )}
@@ -217,7 +259,18 @@ export function EditorBody(props: EditorProps): React.JSX.Element {
           )}
         </div>
         <div className="fv-audio-transport" />
-        <div className="fv-audio-tools" />
+        {history && (
+          <Tools
+            selection={selection}
+            playhead={playhead}
+            onApply={apply}
+            state={history.present}
+            canUndo={history.past.length > 0}
+            canRedo={history.future.length > 0}
+            onUndo={() => dispatch({ type: "undo" })}
+            onRedo={() => dispatch({ type: "redo" })}
+          />
+        )}
       </div>
       <DiscardDialog open={discardOpen} onOpenChange={setDiscardOpen} onDiscard={props.onClose} />
     </>
