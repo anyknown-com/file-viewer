@@ -113,10 +113,23 @@ function isObject(value: unknown): value is Record<string, unknown> {
 
 // HueSaturation.swift: `adjustments` and `bands` are `[ColorRange: V]`, encoded as an array that
 // alternates key and value; the values sit at odd indexes. LayerAdjustment.isValid checks every
-// RangeAdjustment's hue / saturation / lightness and every HueBand's four handles.
+// RangeAdjustment's hue / saturation / lightness and every HueBand's four handles. Decoding the
+// keys as `ColorRange` (a String enum) throws on any other raw value, so those are rejected too.
+const COLOR_RANGES = ["Master", "Reds", "Yellows", "Greens", "Cyans", "Blues", "Magentas"];
+
+function colorRangeKeyProblems(items: unknown[], field: string, out: string[]): void {
+  for (let i = 0; i < items.length; i += 2) {
+    if (typeof items[i] === "string" && !COLOR_RANGES.includes(items[i] as string)) {
+      out.push(`${field}[${i}] must be one of ${COLOR_RANGES.join(", ")}`);
+    }
+  }
+}
+
 function hsvProblems(a: LayerAdjustment, out: string[]): void {
   const hsv = a.hsvSettings;
   if (!hsv) return; // resolvedHSV is then built from hue / saturation / lightness, checked above
+  colorRangeKeyProblems(hsv.adjustments, "adjustment.hsvSettings.adjustments", out);
+  colorRangeKeyProblems(hsv.bands, "adjustment.hsvSettings.bands", out);
   for (let i = 1; i < hsv.adjustments.length; i += 2) {
     const v = hsv.adjustments[i];
     const field = `adjustment.hsvSettings.adjustments[${i}]`;

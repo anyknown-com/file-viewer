@@ -193,6 +193,12 @@ describe("adjustment layers (LayerAdjustment.isValid)", () => {
     expect(one(adjust(hsv([], ["Reds", { ...band, rangeEnd: "x" }])))).toContain("bands[1]");
   });
 
+  it("rejects color ranges Compositor cannot decode", () => {
+    const rangeValue = { hue: 0, saturation: 0, lightness: 0 };
+    expect(one(adjust(hsv(["Oranges", rangeValue])))).toContain("adjustments[0] must be one of");
+    expect(one(adjust(hsv([], ["reds", band])))).toContain("bands[0] must be one of");
+  });
+
   it("checks levels and curves", () => {
     expect(one(adjust(levels([identityRange, identityRange, identityRange])))).toContain(
       "adjustment.levels.ranges",
