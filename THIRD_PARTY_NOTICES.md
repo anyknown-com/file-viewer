@@ -82,6 +82,7 @@ SOFTWARE.
 - react-markdown 10.1.0, MIT, https://github.com/remarkjs/react-markdown
 - rehype-sanitize 6.0.0, MIT, https://github.com/rehypejs/rehype-sanitize
 - @excalidraw/excalidraw 0.18.1, MIT, https://github.com/excalidraw/excalidraw
+- @fontsource-variable/geist 5.3.0, OFL-1.1, font files, https://github.com/vercel/geist-font
 
 ## Bundled fonts
 
