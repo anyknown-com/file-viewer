@@ -21,7 +21,7 @@
   - `browser` 跑 `*.browser.test.ts(x)`，用 headless Chromium，給 WebGL2、WebCodecs、canvas 實測。
   
   01 在兩個 project 各放一個環境測試，證明環境真的是宣稱的那樣：CI 上拿不到 WebGL2，這裡就會紅，不必等到 06 / 10 才發現。
-- 檢查走 turbo，remote cache 照 ui：server 是 `turbo.anyknown.com`，一個 repo 一個 teamSlug，本 repo 用 `anyknown-file-viewer`。
+- 檢查走 turbo，remote cache 照 ui：server 是 `turbo.anyknown.com`，所有 repo 共用 team `anyknown` 與 ~/.anyknown/turbo-token（server 一個 token 只對一個 team）。
 - 發佈照 ui：
   - 打 tag `v*` 觸發 `release.yml`，tag 與 `package.json` 的版本不一樣就失敗；
   - 用 npm trusted publishing（OIDC），repo 不存 npm token；
@@ -190,7 +190,7 @@ blocker：無；model：sonnet。
      {
        "$schema": "https://turborepo.com/schema.json",
        "agentGuidance": false,
-       "remoteCache": { "apiUrl": "https://turbo.anyknown.com", "teamSlug": "anyknown-file-viewer" },
+       "remoteCache": { "apiUrl": "https://turbo.anyknown.com", "teamSlug": "anyknown" },
        "tasks": {
          "build": { "inputs": ["src/**", "!src/**/*.test.*", "tsconfig.json", "tsdown.config.ts"], "outputs": ["dist/**"] },
          "typecheck": { "inputs": ["src/**", "tsconfig.json", "tsconfig.comp.json", "vitest.config.ts", "tsdown.config.ts"] },

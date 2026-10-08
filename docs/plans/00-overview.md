@@ -337,7 +337,7 @@ file-viewer/
 - 宿主只吃 npm 發佈的版本；開發時用 `pnpm link` 試，不 commit。
 - third-party notices：`THIRD_PARTY_NOTICES.md` 放進發佈的 `files`。內容有兩段：抄進來的程式（Compositor @11d8d7a、opencut-classic @cf5e79e，附 MIT 全文與版權行），以及 runtime 依賴的清單；mediabunny 那一條寫確切版本、MPL-2.0、對應 tag 的原始碼網址。升 mediabunny 時同一個 commit 改這個檔。宿主自己的 notices（storage 規劃中的 `public/third-party-notices.txt`）再收錄本套件。
 - 程式規則：dynamic import 的目標檔不能叫 `index.*`（例如 `import("../video-editor/ui/video-editor")`，不是 `import("../video-editor/index")`）。宿主 bundler 用目標檔名當 chunk 名，會變成 `index-<hash>`，product 的 chunks-check 拒絕 `index-*`。`scripts/check-entry-deps.mjs` 會檢查 build 出來的 `dist/`（01 P02-1）。
-- CI（`ci.yml`，照 ui 用 turbo 遠端快取，teamSlug `anyknown-file-viewer`）：`pnpm check`（typecheck、lint、fmt:check、入口檢查）、`pnpm test`（jsdom），還有：
+- CI（`ci.yml`，照 ui 用 turbo 遠端快取，teamSlug `anyknown`（server 一個 token 對一個 team，共用 ~/.anyknown/turbo-token））：`pnpm check`（typecheck、lint、fmt:check、入口檢查）、`pnpm test`（jsdom），還有：
   - `pnpm test:browser`：browser 模式的 vitest（headless Chromium），給 GL、WebCodecs、canvas 的測試用；
   - `pnpm verify:pack`（`scripts/verify-pack.mjs`）：打包後從外面 resolve exports map 的每一條；
   - 入口檢查（`scripts/check-entry-deps.mjs`）：build 後的 `dist/index.js` 靜態 import 圖裡不能有 `@excalidraw/`、`mediabunny`、`react-markdown`、`remark-`、`rehype-`、`unified`、`fflate`，大小合計 ≤ 64 KiB；另外掃整個 `dist/`，`import()` 的相對路徑目標檔名不能是 `index.*` 或 `index-*`；

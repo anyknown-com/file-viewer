@@ -1,7 +1,7 @@
 {
   "$schema": "https://turborepo.com/schema.json",
   "agentGuidance": false,
-  "remoteCache": { "apiUrl": "https://turbo.anyknown.com", "teamSlug": "anyknown-file-viewer" },
+  "remoteCache": { "apiUrl": "https://turbo.anyknown.com", "teamSlug": "anyknown" },
   "tasks": {
     "build": {
       "inputs": ["src/**", "!src/**/*.test.*", "tsconfig.json", "tsdown.config.ts"],
