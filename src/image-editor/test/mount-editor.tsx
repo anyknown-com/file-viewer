@@ -1,36 +1,31 @@
-// Test helper (browser tests here and in 11–13): an EditorCanvas with a working EditorApi.
+// Test helper (browser tests here and in 11–13): the whole editor frame with a working EditorApi.
 import { useState } from "react";
 import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
-import type { ViewerError } from "../../contract/errors";
 import { ViewerRoot } from "../../primitives/root";
 import "../../styles.css";
 import type { Doc, EditorApi, LayerId } from "../api";
-import { EditorCanvas, type View } from "../canvas";
+import type { View } from "../canvas";
+import { registerCore } from "../core";
 import type { DocStore } from "../doc/store";
 import { internalsOf } from "../editor-api";
 import { setups } from "../registry";
-import { createUiSlot, UiOutlet, type UiSlot } from "../ui-slot";
+import { EditorShell } from "../ui/editor-shell";
+import { createUiSlot } from "../ui-slot";
 import { setupGl } from "./setup-gl";
 
 type RGBA = [number, number, number, number];
 
 /**
- * Mounts EditorCanvas and UiOutlet in a 320 × 240 ViewerRoot (locale "en") with the GL from
- * `setupGl` (each plain layer a solid color: `colors[id]` or one picked by its index). Then calls
- * every `setups()` function with the api and `.fv-root`; `unmount` calls their cleanups first.
+ * Registers the core items (idempotent; not installExtensions) and mounts a 1280 × 800 EditorShell
+ * in ViewerRoot (locale "en") with the GL from `setupGl`. Then calls every `setups()` function with
+ * the api and `.fv-root`; `unmount` calls their cleanups first.
  */
-export async function mountCanvas(
+export async function mountEditor(
   doc: Doc,
   colors?: Record<LayerId, RGBA>,
-  opts: { onError?(e: ViewerError): void } = {},
-): Promise<{
-  api: EditorApi;
-  store: DocStore;
-  canvas: HTMLCanvasElement;
-  ui: UiSlot;
-  unmount(): void;
-}> {
+): Promise<{ api: EditorApi; store: DocStore; unmount(): void }> {
+  registerCore();
   const canvas = document.createElement("canvas");
   const ui = createUiSlot();
   const { api, store } = setupGl(canvas, doc, ui, colors);
@@ -39,11 +34,19 @@ export async function mountCanvas(
   function Harness() {
     const [view, setView] = useState<View>({ zoom: 1, center: { x: width / 2, y: height / 2 } });
     return (
-      <ViewerRoot locale="en" onError={opts.onError}>
-        <div style={{ width: 320, height: 240 }}>
-          <EditorCanvas api={api} view={view} onViewChange={setView} />
+      <ViewerRoot locale="en">
+        <div style={{ width: 1280, height: 800 }}>
+          <EditorShell
+            api={api}
+            store={store}
+            ui={ui}
+            name="test.comp.zip"
+            view={view}
+            onViewChange={setView}
+            saveSlot={null}
+            onClose={() => {}}
+          />
         </div>
-        <UiOutlet slot={ui} />
       </ViewerRoot>
     );
   }
@@ -54,13 +57,11 @@ export async function mountCanvas(
   await new Promise((resolve) => requestAnimationFrame(resolve));
 
   const fvRoot = canvas.closest<HTMLElement>(".fv-root");
-  if (!fvRoot) throw new Error("EditorCanvas is not inside .fv-root.");
+  if (!fvRoot) throw new Error("EditorShell is not inside .fv-root.");
   const cleanups = setups().map((fn) => fn(api, fvRoot));
   return {
     api,
     store,
-    canvas,
-    ui,
     unmount() {
       for (const cleanup of cleanups) cleanup?.();
       root.unmount();

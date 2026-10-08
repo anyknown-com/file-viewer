@@ -9,7 +9,7 @@ import type { TextureStore } from "./engine/textures";
 import { pixelBudget } from "./limits";
 import { selectionProvider, tools } from "./registry";
 import type { UiSlot } from "./ui-slot";
-import type { createWorkerRunner } from "./worker/run-in-worker";
+import type { WorkerRunner } from "./worker/run-in-worker";
 
 export type EditorDeps = {
   gl: WebGL2RenderingContext;
@@ -17,16 +17,26 @@ export type EditorDeps = {
   textures: TextureStore;
   renderer: Renderer;
   pixels: Pixels;
-  worker: ReturnType<typeof createWorkerRunner>;
+  worker: WorkerRunner;
   session: { get(): Session; set(p: Partial<Session>): void };
   ui: UiSlot;
   requestRender(): void;
 };
 
-/** What EditorCanvas needs beyond EditorApi: the renderer and a hook called on requestRender. */
+/**
+ * What the editor's own UI needs beyond EditorApi: the renderer and a hook called on
+ * requestRender (EditorCanvas), the store (undo / redo), session changes and pixel versions
+ * (the layer panel), and the worker (unmount).
+ */
 export type EditorInternals = {
   renderer: Renderer;
   onFrame(fn: (() => void) | null): void;
+  store: DocStore;
+  worker: WorkerRunner;
+  /** For useSyncExternalStore with api.session: called after every setSession. */
+  subscribeSession(fn: () => void): () => void;
+  /** Bumped on every write to the layer's image or mask texture. */
+  pixelVersion(id: LayerId): number;
 };
 
 const internals = new WeakMap<EditorApi, EditorInternals>();
@@ -51,6 +61,7 @@ function markGpu(doc: Doc, touched: Iterable<{ layer: LayerId; target: "image" |
 export function createEditorApi(deps: EditorDeps): EditorApi {
   const { gl, store, textures, renderer, pixels, worker, session, ui } = deps;
   let frame: (() => void) | null = null;
+  const sessionListeners = new Set<() => void>();
   const requestRender = () => {
     deps.requestRender();
     frame?.();
@@ -68,6 +79,7 @@ export function createEditorApi(deps: EditorDeps): EditorApi {
           ?.onDeactivate?.(api);
       }
       session.set(patch);
+      for (const fn of sessionListeners) fn();
       requestRender();
     },
     dispatch(command, label) {
@@ -134,6 +146,13 @@ export function createEditorApi(deps: EditorDeps): EditorApi {
     onFrame(fn) {
       frame = fn;
     },
+    store,
+    worker,
+    subscribeSession(fn) {
+      sessionListeners.add(fn);
+      return () => sessionListeners.delete(fn);
+    },
+    pixelVersion: (id) => textures.version(id),
   });
   return api;
 }

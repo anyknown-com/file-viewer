@@ -1,4 +1,5 @@
 import { registerAdjust } from "./adjust/install";
+import { registerCore } from "./core";
 import { registerTextShapes } from "./text/register";
 import { registerSelectPaint } from "./tools/register";
 
@@ -9,6 +10,7 @@ let installed = false;
 export function installExtensions(): void {
   if (installed) return;
   installed = true;
+  registerCore();
   registerSelectPaint();
   registerAdjust();
   registerTextShapes();

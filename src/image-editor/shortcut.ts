@@ -16,7 +16,7 @@ export function parseShortcut(s: string): Shortcut {
   };
 }
 
-function isMac(): boolean {
+export function isMac(): boolean {
   return typeof navigator !== "undefined" && navigator.platform.includes("Mac");
 }
 
@@ -33,4 +33,12 @@ export function matchShortcut(s: string, e: KeyboardEvent): boolean {
     e.altKey === want.alt &&
     e.shiftKey === want.shift
   );
+}
+
+// What a menu shows for `s`: ⌘⇧Z on macOS, Ctrl+Shift+Z elsewhere.
+export function shortcutLabel(s: string): string {
+  const { key, mod, alt, shift } = parseShortcut(s);
+  const name = key.length === 1 ? key : key[0] + key.slice(1).toLowerCase();
+  if (isMac()) return `${mod ? "⌘" : ""}${alt ? "⌥" : ""}${shift ? "⇧" : ""}${name}`;
+  return [mod && "Ctrl", alt && "Alt", shift && "Shift", name].filter(Boolean).join("+");
 }

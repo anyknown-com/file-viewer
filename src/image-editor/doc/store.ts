@@ -11,6 +11,8 @@ export type DocStore = {
   commit(label: MessageKey, doc: Doc, tiles: PixelTile[], resizes?: readonly LayerResize[]): void;
   undo(): ReturnType<History["undo"]>;
   redo(): ReturnType<History["redo"]>;
+  canUndo(): boolean;
+  canRedo(): boolean;
   /** The current position differs from the one last marked saved. */
   dirty(): boolean;
   /** `at` is the position the save captured (default: now), so edits made while saving stay unsaved. */
@@ -66,6 +68,8 @@ export function createDocStore(initial: Doc): DocStore {
       }
       return result;
     },
+    canUndo: () => history.canUndo(),
+    canRedo: () => history.canRedo(),
     dirty: () => history.position() !== saved,
     markSaved(at = history.position()) {
       saved = at;

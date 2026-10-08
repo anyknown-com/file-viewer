@@ -8,12 +8,23 @@ import { overlays, tools } from "./registry";
 
 export type View = { zoom: number; center: Point };
 
-type Props = { api: EditorApi; view: View; onViewChange(view: View): void };
-type Live = { view: View; onViewChange(view: View): void; schedule: (() => void) | null };
+type RenderResult = { unsupported: boolean };
+type Props = {
+  api: EditorApi;
+  view: View;
+  onViewChange(view: View): void;
+  /** After every frame: whether the document uses an adjustment or effect that is not registered. */
+  onRender?(result: RenderResult): void;
+};
+type Live = {
+  view: View;
+  onViewChange(view: View): void;
+  onRender?(result: RenderResult): void;
+  schedule: (() => void) | null;
+};
 
 const MIN_ZOOM = 1 / 64;
 const MAX_ZOOM = 64;
-const FILL = { position: "absolute", inset: 0, width: "100%", height: "100%" } as const;
 
 const clampZoom = (z: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
 const apply = (m: Mat2D, x: number, y: number): Point => ({
@@ -47,7 +58,7 @@ function zoomAt(view: View, size: Size, at: Point, zoom: number): View {
 function attach(container: HTMLDivElement, overlay: HTMLCanvasElement, api: EditorApi, live: Live) {
   const gl = api.gl;
   const glCanvas = gl.canvas as HTMLCanvasElement;
-  Object.assign(glCanvas.style, FILL);
+  glCanvas.classList.add("fv-ie-gl");
   container.insertBefore(glCanvas, overlay);
   const { renderer } = internalsOf(api);
   const ctx = overlay.getContext("2d");
@@ -100,12 +111,20 @@ function attach(container: HTMLDivElement, overlay: HTMLCanvasElement, api: Edit
     const vt = toViewTransform(live.view, size, ratio);
     const topLeft = apply(vt.screenToDoc, 0, 0);
     const docRect = { ...topLeft, width: size.width / vt.zoom, height: size.height / vt.zoom };
-    renderer.render(
+    // The document's rectangle on screen, for the checkerboard behind the GL canvas (styles.css).
+    const corner = apply(vt.docToScreen, 0, 0);
+    const { width: docW, height: docH } = api.doc().manifest;
+    container.style.setProperty("--fv-ie-doc-x", `${corner.x}px`);
+    container.style.setProperty("--fv-ie-doc-y", `${corner.y}px`);
+    container.style.setProperty("--fv-ie-doc-w", `${docW * vt.zoom}px`);
+    container.style.setProperty("--fv-ie-doc-h", `${docH * vt.zoom}px`);
+    const result = renderer.render(
       api.doc(),
       api.session(),
       { framebuffer: null, width: w, height: h, docRect },
       { forExport: false },
     );
+    live.onRender?.(result);
     if (ctx) paint(ctx, vt, time);
     if (overlays().some((o) => o.animated?.(api) === true)) schedule();
   }
@@ -211,16 +230,17 @@ function attach(container: HTMLDivElement, overlay: HTMLCanvasElement, api: Edit
 }
 
 /** The GL canvas (`api.gl.canvas`) and the overlay, filling the parent; `view` is controlled. */
-export function EditorCanvas({ api, view, onViewChange }: Props): React.JSX.Element {
-  const live = useRef<Live>({ view, onViewChange, schedule: null });
+export function EditorCanvas({ api, view, onViewChange, onRender }: Props): React.JSX.Element {
+  const live = useRef<Live>({ view, onViewChange, onRender, schedule: null });
   const sync = useCallback(
     (overlay: HTMLCanvasElement | null) => {
       if (!overlay) return;
       live.current.view = view;
       live.current.onViewChange = onViewChange;
+      live.current.onRender = onRender;
       live.current.schedule?.();
     },
-    [view, onViewChange],
+    [view, onViewChange, onRender],
   );
   const mount = useCallback(
     (container: HTMLDivElement | null) => {
@@ -231,18 +251,8 @@ export function EditorCanvas({ api, view, onViewChange }: Props): React.JSX.Elem
     [api],
   );
   return (
-    <div
-      className="fv-ie-canvas"
-      ref={mount}
-      style={{
-        position: "relative",
-        width: "100%",
-        height: "100%",
-        overflow: "hidden",
-        touchAction: "none",
-      }}
-    >
-      <canvas className="fv-ie-overlay" ref={sync} style={FILL} />
+    <div className="fv-ie-canvas" ref={mount}>
+      <canvas className="fv-ie-overlay" ref={sync} />
     </div>
   );
 }
