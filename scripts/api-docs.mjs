@@ -38,7 +38,7 @@ function membersOf(type, symbolType, checker, location, publicNames) {
   const members = [];
   for (const prop of type.getProperties()) {
     const decl = prop.declarations?.[0];
-    if (decl == null || !isOurs(decl)) continue;
+    if (decl === null || decl === undefined || !isOurs(decl)) continue;
     const tags = tagsOf(prop, checker);
     members.push({
       name: prop.getName(),
@@ -54,7 +54,7 @@ function membersOf(type, symbolType, checker, location, publicNames) {
 
 function isPublicInstanceProperty(prop) {
   const decl = prop.declarations?.[0];
-  if (decl == null || !isOurs(decl)) return false;
+  if (decl === null || decl === undefined || !isOurs(decl)) return false;
   if (!(ts.isPropertyDeclaration(decl) || ts.isParameter(decl) || ts.isGetAccessor(decl)))
     return false;
   const flags = ts.getCombinedModifierFlags(decl);
@@ -69,7 +69,7 @@ function describeExport(exported, checker, publicNames) {
   const target =
     exported.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(exported) : exported;
   const declaration = target.declarations?.[0];
-  if (declaration == null) return undefined;
+  if (declaration === null || declaration === undefined) return undefined;
   const tags = tagsOf(target, checker);
   const base = {
     name,
@@ -152,7 +152,14 @@ async function messageRows() {
   for (const file of files) {
     const mod = await tsImport(pathToFileURL(file).href, import.meta.url);
     for (const [name, table] of Object.entries(mod)) {
-      if (!name.endsWith("Messages") || table?.en == null || table?.["zh-TW"] == null) continue;
+      if (
+        !name.endsWith("Messages") ||
+        table?.en === null ||
+        table?.en === undefined ||
+        table?.["zh-TW"] === null ||
+        table?.["zh-TW"] === undefined
+      )
+        continue;
       for (const key of Object.keys(table.en)) {
         rows.push({ key, en: table.en[key], "zh-TW": table["zh-TW"][key] });
       }
@@ -163,7 +170,9 @@ async function messageRows() {
 
 export async function apiDocs() {
   const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
-  const subpaths = Object.keys(pkg.exports).filter((s) => entryFile(s) != null);
+  const subpaths = Object.keys(pkg.exports).filter(
+    (s) => entryFile(s) !== null && entryFile(s) !== undefined,
+  );
   const program = createProgram(root, subpaths.map(entryFile));
   const checker = program.getTypeChecker();
   const modules = subpaths.map((subpath) => {
@@ -181,7 +190,7 @@ export async function apiDocs() {
     file: relative(root, file),
     exports: exports
       .map((s) => describeExport(s, checker, publicNames))
-      .filter((e) => e != null)
+      .filter((e) => e !== null && e !== undefined)
       .sort((a, b) => a.name.localeCompare(b.name)),
   }));
   return { generatedFrom: "package.json#exports", entries, messages: await messageRows() };

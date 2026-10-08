@@ -48,9 +48,10 @@ export function literalOf(node, checker) {
 export function destructuringDefaults(fn, checker) {
   const defaults = {};
   const param = fn?.parameters[0];
-  if (param == null || !ts.isObjectBindingPattern(param.name)) return defaults;
+  if (param === null || param === undefined || !ts.isObjectBindingPattern(param.name))
+    return defaults;
   for (const element of param.name.elements) {
-    if (element.initializer == null) continue;
+    if (element.initializer === null || element.initializer === undefined) continue;
     const key = element.propertyName ?? element.name;
     if (ts.isIdentifier(key)) defaults[key.text] = literalOf(element.initializer, checker);
   }
@@ -67,7 +68,7 @@ export function typeText(prop, checker, location, publicNames) {
     decl && (ts.isPropertySignature(decl) || ts.isPropertyDeclaration(decl)) && decl.type
       ? decl.type.getText().replace(/\s+/g, " ")
       : undefined;
-  if (written != null) {
+  if (written !== null && written !== undefined) {
     const names = written.match(/\b[A-Z]\w*/g) ?? [];
     const known = (n) => publicNames.has(n) || GLOBAL_TYPES.has(n);
     if (!written.includes("typeof") && names.every(known)) return written;

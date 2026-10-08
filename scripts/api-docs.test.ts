@@ -57,10 +57,8 @@ describe("apiDocs", () => {
     expect(new Set(keys).size).toBe(keys.length);
     expect(keys.some((k) => k.startsWith("common."))).toBe(true);
     expect(keys).toContain("error.too_large");
-    for (const row of api.messages) {
-      expect(row.en, row.key).not.toBe("");
-      expect(row["zh-TW"], row.key).not.toBe("");
-    }
+    const empty = api.messages.filter((r) => r.en === "" || r["zh-TW"] === "").map((r) => r.key);
+    expect(empty).toEqual([]);
   });
 
   it("has the same keys in en and zh-TW for every table", async () => {
