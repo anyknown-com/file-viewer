@@ -42,6 +42,7 @@ SOFTWARE.
 - Repository: https://github.com/OpenCut-app/opencut-classic
 - Commit: cf5e79e919144200294fb9fed22a222592a0aeea
 - Copied paths: `apps/web/src/commands/base-command.ts`, `apps/web/src/commands/batch-command.ts` (ported to `src/video-editor/model/commands.ts`)
+- Copied paths: `apps/web/src/services/video-cache/service.ts` (ported to `src/video-editor/engine/frame-cache.ts`)
 - License: MIT
 
 ```
