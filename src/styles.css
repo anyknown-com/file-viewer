@@ -1056,6 +1056,33 @@ button.fv-diagram {
   margin: auto;
 }
 
+.fv-diagram-editor {
+  display: flex;
+  flex-direction: column;
+  block-size: 100%;
+}
+
+.fv-editor-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--ak-space-sm);
+  padding: var(--ak-space-xs) var(--ak-space-sm);
+  border-block-end: 1px solid var(--ak-border);
+}
+
+.fv-editor-error {
+  flex: 1;
+  min-inline-size: 0;
+  margin: 0;
+  color: var(--ak-danger);
+  font-size: var(--ak-type-t2);
+}
+
+.fv-diagram-editor-canvas {
+  flex: 1;
+  min-block-size: 0;
+}
+
 /* == video-editor (07) == */
 
 .fv-ve-root {

@@ -464,3 +464,7 @@ phase 結尾 verify：`pnpm test src/markdown src/excalidraw src/viewer src/i18n
 - 程式碼語法上色（00 §5）。
 - Excalidraw 素材庫（「瀏覽素材庫」會開外站分頁，CSP 擋住頁面內的載入；不處理，同 storage 11 §3）。
 - 字型目錄改成 optional（目前會跟著發佈，約 13 MB）：等有宿主在意安裝體積再說。
+- 已知問題：嚴格 CSP 下，Excalidraw 會在 console 留下兩種 CSP violation，功能都不受影響，但宿主的 console 會看到錯誤：
+  - esm.sh 字型的 `font-src`（候選網址一定會加上 esm.sh，實際沒有發出請求）；
+  - woff2 解壓用到的 `eval` 被擋，退回嵌入整個字型。
+  之後研究能不能從 Excalidraw 的設定關掉這兩條路徑。
