@@ -36,6 +36,8 @@ export class Player {
   #generation = 0;
   #nodes = new Set<AudioBufferSourceNode>();
   #raf = 0;
+  /** Stops playback at the end without waiting for a frame; rAF stalls in hidden or busy tabs. */
+  #endTimer: ReturnType<typeof setTimeout> | undefined;
   #drawing = false;
   #drawAgain = false;
 
@@ -85,6 +87,7 @@ export class Player {
     this.#time = this.#clock();
     this.#playing = false;
     cancelAnimationFrame(this.#raf);
+    clearTimeout(this.#endTimer);
     this.#stopAudio();
     this.#o.onTime(this.#time);
   }
@@ -152,7 +155,20 @@ export class Player {
     this.#clockStart = this.#audio!.currentTime;
     this.#timeStart = this.#time;
     this.#scheduledUntil = this.#time;
+    this.#armEnd();
   }
+
+  #armEnd = (): void => {
+    clearTimeout(this.#endTimer);
+    if (!this.#playing) return;
+    const left = projectDuration(this.#o.getProject()) - this.#clock();
+    if (left <= 0) {
+      this.pause();
+      this.redraw();
+      return;
+    }
+    this.#endTimer = setTimeout(this.#armEnd, ticksToSeconds(left) * 1000);
+  };
 
   #tick = (): void => {
     if (!this.#playing) return;

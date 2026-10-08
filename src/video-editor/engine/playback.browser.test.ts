@@ -98,6 +98,15 @@ describe("Player", () => {
     expect(player.time).toBe(end);
   });
 
+  it("stops at the end when no animation frame arrives", async () => {
+    vi.stubGlobal("requestAnimationFrame", () => 0);
+    const end = projectDuration(project);
+    player.seek(end - secondsToTicks(0.2));
+    await play();
+    await vi.waitFor(() => expect(player.playing).toBe(false), { timeout: 2000 });
+    expect(player.time).toBe(end);
+  });
+
   it("closes the AudioContext on cleanup", async () => {
     detach();
     await vi.waitFor(() => expect(contexts[0]!.state).toBe("closed"));
