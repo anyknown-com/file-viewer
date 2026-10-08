@@ -91,6 +91,7 @@ export function Playground({
               file={opened.ref}
               locale={locale}
               theme={theme}
+              excalidraw={{ assetPath: "/excalidraw-assets/" }}
               onSave={save}
               onDirtyChange={setDirty}
             />

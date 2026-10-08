@@ -56,6 +56,12 @@ describe("connect.md", () => {
     }
   });
 
+  it("explains the Excalidraw fonts", () => {
+    for (const s of ["dist/excalidraw-assets", "assetPath", "esm.sh"]) {
+      expect(connect).toContain(s);
+    }
+  });
+
   it("explains the PDF iframe rule", () => {
     for (const s of ["<iframe>", "<embed>", "frame-src blob:", "object-src 'none'"]) {
       expect(csp).toContain(s);

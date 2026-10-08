@@ -69,6 +69,61 @@ import "@fontsource-variable/noto-sans-tc";
 
 This is what this website does. The fonts are bundled and served from your own origin, so the policy above does not change.
 
+### Excalidraw fonts
+
+Diagrams (`.excalidraw` files and `excalidraw` fences in Markdown) need Excalidraw's fonts. Copy `node_modules/@anyknown/file-viewer/dist/excalidraw-assets/` (it holds `fonts/`) into a static directory on your own origin, for example `public/excalidraw-assets/`, and pass that directory's URL to `FileViewer`:
+
+```tsx
+<FileViewer file={file} excalidraw={{ assetPath: "/excalidraw-assets/" }} />
+```
+
+Without `assetPath`, Excalidraw loads its fonts from `esm.sh`. The policy above blocks that request and the browser reports a violation.
+
 ## Vite
 
-Version 0.1 needs no Vite configuration. The editors and Markdown become separate chunks, which load the first time they are used.
+Version 0.1 only needs the Excalidraw fonts copied. This website does it with a small plugin, `site/excalidraw-assets.ts`:
+
+```ts
+// Vite plugin: serves and copies the Excalidraw fonts so the page never asks esm.sh for them.
+import { cpSync, createReadStream, existsSync, statSync } from "node:fs";
+import { extname, join, normalize } from "node:path";
+import type { Plugin } from "vite";
+
+const PREFIX = "/excalidraw-assets/fonts/";
+const TYPES: Record<string, string> = { ".woff2": "font/woff2", ".woff": "font/woff" };
+
+export function copyExcalidrawAssets(from: string, to: string): void {
+  cpSync(from, to, { recursive: true });
+}
+
+export function excalidrawAssets(): Plugin {
+  let root = "";
+  let outDir = "";
+  return {
+    name: "excalidraw-assets",
+    configResolved(config) {
+      root = config.root;
+      outDir = join(config.root, config.build.outDir);
+    },
+    configureServer(server) {
+      const fonts = join(root, "..", "node_modules/@excalidraw/excalidraw/dist/prod/fonts");
+      server.middlewares.use((req, res, next) => {
+        const url = (req.url ?? "").split("?")[0] ?? "";
+        if (!url.startsWith(PREFIX)) return next();
+        const file = normalize(join(fonts, url.slice(PREFIX.length)));
+        if (!file.startsWith(fonts) || !existsSync(file) || !statSync(file).isFile()) return next();
+        res.setHeader("content-type", TYPES[extname(file)] ?? "application/octet-stream");
+        createReadStream(file).pipe(res);
+      });
+    },
+    closeBundle() {
+      copyExcalidrawAssets(
+        join(root, "..", "dist/excalidraw-assets"),
+        join(outDir, "excalidraw-assets"),
+      );
+    },
+  };
+}
+```
+
+The editors and Markdown become separate chunks, which load the first time they are used.

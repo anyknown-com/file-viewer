@@ -1,0 +1,14 @@
+# Notes
+
+file-viewer renders Markdown in this tab. Nothing is uploaded.
+
+| Format | Viewer | Editor |
+| --- | --- | --- |
+| Markdown | yes | yes |
+| Diagram | yes | yes |
+
+Click the diagram to edit it:
+
+```excalidraw
+{"type":"excalidraw","version":2,"source":"file-viewer","elements":[{"id":"a","type":"rectangle","x":0,"y":0,"width":140,"height":70,"roundness":{"type":3}},{"id":"at","type":"text","x":30,"y":22,"width":80,"height":25,"text":"Open","fontSize":20,"fontFamily":5},{"id":"b","type":"rectangle","x":200,"y":0,"width":140,"height":70,"roundness":{"type":3}},{"id":"bt","type":"text","x":230,"y":22,"width":80,"height":25,"text":"Save","fontSize":20,"fontFamily":5},{"id":"ab","type":"arrow","x":140,"y":35,"width":60,"height":0,"points":[[0,0],[60,0]],"endArrowhead":"arrow","startBinding":{"elementId":"a","focus":0,"gap":1},"endBinding":{"elementId":"b","focus":0,"gap":1}}],"appState":{"viewBackgroundColor":"#ffffff"},"files":{}}
+```

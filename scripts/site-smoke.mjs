@@ -7,6 +7,11 @@ import { join } from "node:path";
 import { chromium } from "playwright";
 import { preview } from "vite";
 
+// Excalidraw 0.18.1 reports two harmless violations (nothing is fetched): font-src for its esm.sh
+// fallback font URLs and script-src eval from its woff2 decoder. See scripts/csp-smoke.mjs.
+const fallback = "https://esm.sh/@excalidraw/excalidraw@0.18.1/dist/prod/fonts/";
+const known = (v) => v === "script-src eval" || v.startsWith(`font-src ${fallback}`);
+
 const samples = JSON.parse(readFileSync("site/public/samples/samples.json", "utf8"));
 
 const server = process.argv[2] ? null : await preview({ configFile: "site/vite.config.ts" });
@@ -24,7 +29,12 @@ try {
     });
   });
   let requests = [];
-  page.on("request", (r) => requests.push({ method: r.method(), url: r.url() }));
+  // A request the CSP blocks never leaves the browser (Excalidraw tries esm.sh font URLs that the
+  // CSP stops), so only finished requests and non-CSP failures count.
+  page.on("requestfinished", (r) => requests.push({ method: r.method(), url: r.url() }));
+  page.on("requestfailed", (r) => {
+    if (r.failure()?.errorText !== "csp") requests.push({ method: r.method(), url: r.url() });
+  });
 
   // Only same-origin GETs under the given path prefixes are allowed. The viewer's own object URLs
   // (blob:<origin>/<uuid>) show up as requests too; they read memory in this tab, not the network.
@@ -51,7 +61,7 @@ try {
     } catch {
       failures.push(`${sample.file}: .fv-root ${sample.expect} did not appear`);
     }
-    checkRequests(sample.file, ["/samples/", "/assets/"]);
+    checkRequests(sample.file, ["/samples/", "/assets/", "/excalidraw-assets/"]);
   }
 
   const local = join(mkdtempSync(join(tmpdir(), "fv-smoke-")), "local.txt");
@@ -63,9 +73,10 @@ try {
   } catch {
     failures.push("local.txt: .fv-root pre with its text did not appear");
   }
-  checkRequests("local.txt", ["/assets/"]);
+  checkRequests("local.txt", ["/assets/", "/excalidraw-assets/"]);
 
   for (const violation of await page.evaluate(() => window.__csp)) {
+    if (known(violation)) continue;
     failures.push(`csp violation: ${violation}`);
   }
 } finally {

@@ -2,6 +2,7 @@ import react from "@vitejs/plugin-react";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
+import { excalidrawAssets } from "./excalidraw-assets";
 import { distAliases, readExports, srcAliases } from "./package-aliases";
 import { parseHeaders } from "./read-headers";
 
@@ -9,7 +10,7 @@ const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 
 export default defineConfig(({ command }) => ({
   root: fileURLToPath(new URL(".", import.meta.url)),
-  plugins: [react()],
+  plugins: [react(), excalidrawAssets()],
   resolve: {
     alias:
       command === "build" ? distAliases(repoRoot, readExports(repoRoot)) : srcAliases(repoRoot),
