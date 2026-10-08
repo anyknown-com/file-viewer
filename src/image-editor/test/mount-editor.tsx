@@ -17,13 +17,15 @@ import { setupGl } from "./setup-gl";
 type RGBA = [number, number, number, number];
 
 /**
- * Registers the core items (idempotent; not installExtensions) and mounts a 1280 × 800 EditorShell
- * in ViewerRoot (locale "en") with the GL from `setupGl`. Then calls every `setups()` function with
- * the api and `.fv-root`; `unmount` calls their cleanups first.
+ * Registers the core items (idempotent; not installExtensions) and mounts an EditorShell of `size`
+ * (1280 × 800 by default) in ViewerRoot (locale "en") with the GL from `setupGl`. Then calls every
+ * `setups()` function with the api and `.fv-root`; `unmount` calls their cleanups first. Tests that
+ * never look at the canvas pass a narrow size: on software GL each frame costs time per pixel.
  */
 export async function mountEditor(
   doc: Doc,
   colors?: Record<LayerId, RGBA>,
+  size: { width: number; height: number } = { width: 1280, height: 800 },
 ): Promise<{ api: EditorApi; store: DocStore; unmount(): void }> {
   registerCore();
   const canvas = document.createElement("canvas");
@@ -35,7 +37,7 @@ export async function mountEditor(
     const [view, setView] = useState<View>({ zoom: 1, center: { x: width / 2, y: height / 2 } });
     return (
       <ViewerRoot locale="en">
-        <div style={{ width: 1280, height: 800 }}>
+        <div style={size}>
           <EditorShell
             api={api}
             store={store}

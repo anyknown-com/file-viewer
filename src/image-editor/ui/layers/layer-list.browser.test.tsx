@@ -32,7 +32,10 @@ let m: { api: EditorApi; store: DocStore; unmount(): void };
 // In-page events: driven clicks wait on actionability, which stalls while other test files share the
 // browser. No pointer-events check: Base UI's select popup has none while it opens.
 let user: UserEvent;
-const mount = async (d: Doc = doc()) => (m = await mountEditor(d));
+// Narrow: these tests use the layer panel only, and every frame of a wide canvas is slow on CI's
+// software GL.
+const mount = async (d: Doc = doc()) =>
+  (m = await mountEditor(d, undefined, { width: 520, height: 800 }));
 
 beforeAll(async () => {
   await page.viewport(1400, 900);
