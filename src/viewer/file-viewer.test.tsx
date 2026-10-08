@@ -155,6 +155,8 @@ describe("FileViewer", () => {
   });
 
   it("renders markdown", async () => {
+    // Load the lazy body first: its cold import alone can outlast waitFor's 1s on a busy CI runner.
+    await import("./markdown-body");
     const { container } = render(<FileViewer file={{ name: "notes.md", source: enc("# hi") }} />);
     await waitFor(() => expect(container.querySelector("h1")!.textContent).toBe("hi"));
   });
