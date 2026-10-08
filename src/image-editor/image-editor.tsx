@@ -22,6 +22,8 @@ import { OpenFailure } from "./open/open-failure";
 import { openImage } from "./open/open-image";
 import { openProject } from "./open/open-project";
 import { setups } from "./registry";
+import { createSaver, type Saver } from "./save/save";
+import { SaveButtons } from "./save/save-buttons";
 import { fitToWindow } from "./tools/zoom-tool";
 import { EditorShell } from "./ui/editor-shell";
 import { EditorStatus } from "./ui/status";
@@ -31,7 +33,7 @@ import { createWorkerRunner } from "./worker/run-in-worker";
 
 const NARROW_PX = 768;
 
-type Ready = { api: EditorApi; store: DocStore; ui: UiSlot };
+type Ready = { api: EditorApi; store: DocStore; ui: UiSlot; saver: Saver };
 type Phase =
   | { kind: "loading" }
   | { kind: "failed"; key: MessageKey; vars?: Vars }
@@ -51,6 +53,7 @@ function editorFor(
   textures: ReturnType<typeof createTextureStore>,
   worker: ReturnType<typeof createWorkerRunner>,
   doc: Doc,
+  latest: { current: Latest },
 ): Ready {
   const store = createDocStore(doc);
   const ui = createUiSlot();
@@ -72,7 +75,18 @@ function editorFor(
     ui,
     requestRender: () => {},
   });
-  return { api, store, ui };
+  const saver = createSaver({
+    api,
+    store,
+    file: latest.current.props.file,
+    onSave: (request) => latest.current.props.onSave(request),
+    get maxOutputBytes() {
+      return latest.current.props.maxOutputBytes;
+    },
+    report: (e) => latest.current.report(e),
+    notify: (key, vars) => ui.note(key, vars),
+  });
+  return { api, store, ui, saver };
 }
 
 /** Zooms out to fit once the canvas has its size, when the document is larger than the window. */
@@ -117,7 +131,7 @@ function EditorSession(props: {
           ? openProject(editor.file, limits, { textures, maxTexture, runner }, abort.signal)
           : openImage(editor.file, limits, textures, abort.signal);
       const show = (doc: Doc) => {
-        const ready = editorFor(gl, floatTargets, textures, runner, doc);
+        const ready = editorFor(gl, floatTargets, textures, runner, doc, latest);
         let dirty = ready.store.dirty();
         cleanups.push(
           ready.store.subscribe(() => {
@@ -171,7 +185,7 @@ function EditorSession(props: {
         name={latest.current.props.file.name}
         view={view}
         onViewChange={setView}
-        saveSlot={null}
+        saveSlot={<SaveButtons api={phase.api} saver={phase.saver} />}
         onClose={() => (phase.store.dirty() ? setDiscard(true) : close())}
       />
     );

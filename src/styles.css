@@ -1956,6 +1956,19 @@ button.fv-diagram {
   color: var(--ak-danger);
 }
 
+.fv-ie-export {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ak-space-sm);
+  margin-block-start: var(--ak-space-sm);
+}
+
+.fv-ie-save-hint {
+  margin: var(--ak-space-xs) 0 0;
+  color: var(--ak-text-muted);
+  font-size: var(--ak-type-t2);
+}
+
 /* image-adjust */
 .fv-ie-adj-panel {
   display: flex;

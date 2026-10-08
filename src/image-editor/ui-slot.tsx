@@ -17,6 +17,7 @@ type Notice = { key: MessageKey; vars?: Vars };
 export type UiSlot = {
   open(render: (close: () => void) => ReactNode): () => void; // render runs once, on open
   error(e: ViewerError, key?: MessageKey, vars?: Vars): void; // queued until attach
+  note(key: MessageKey, vars?: Vars): void; // a notice that reports nothing (save and export)
   dismiss(): void;
   attach(root: Attached | null): void;
   t(key: MessageKey, vars?: Vars): string;
@@ -52,6 +53,10 @@ export function createUiSlot(): UiSlot {
       current = { key: key ?? (`error.${e.code}` as MessageKey), vars };
       if (root) root.report(e);
       else queue.push(e);
+      notify();
+    },
+    note(key, vars) {
+      current = { key, vars };
       notify();
     },
     dismiss() {

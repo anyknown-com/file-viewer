@@ -23,6 +23,8 @@ import { transformTool } from "./tools/transform-tool";
 import { actualSize, fitToWindow, zoomBy, zoomTool } from "./tools/zoom-tool";
 import { openCanvasSizeDialog } from "./ui/canvas-size-dialog";
 import { openImageSizeDialog } from "./ui/image-size-dialog";
+import { openExportDialog } from "./save/export-dialog";
+import { saverOf } from "./save/save";
 
 const hasActive = (api: EditorApi): boolean => activeLayer(api) !== undefined;
 
@@ -165,4 +167,24 @@ export function registerCore(): void {
   ] as const;
   for (const [id, label, shortcut, fn] of view)
     registerMenuItem({ id, menu: "hidden", label, shortcut, run: fn });
+  const save = [
+    ["file.save", "image.topbar.save", "Mod+S", (api: EditorApi) => saverOf(api)?.save()],
+    [
+      "file.saveAs",
+      "image.topbar.saveAs",
+      "Mod+Shift+S",
+      (api: EditorApi) => saverOf(api)?.saveAs(),
+    ],
+    [
+      "file.export",
+      "image.topbar.export",
+      "Mod+Alt+Shift+S",
+      (api: EditorApi) => {
+        const saver = saverOf(api);
+        if (saver) openExportDialog(api, saver);
+      },
+    ],
+  ] as const;
+  for (const [id, label, shortcut, fn] of save)
+    registerMenuItem({ id, menu: "hidden", label, shortcut, run: (api) => void fn(api) });
 }

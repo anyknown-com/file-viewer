@@ -11,7 +11,7 @@ import type { DocStore } from "../doc/store";
 import { internalsOf } from "../editor-api";
 import { setups } from "../registry";
 import { EditorShell } from "../ui/editor-shell";
-import { createUiSlot } from "../ui-slot";
+import { createUiSlot, type UiSlot } from "../ui-slot";
 import { setupGl } from "./setup-gl";
 
 type RGBA = [number, number, number, number];
@@ -26,7 +26,7 @@ export async function mountEditor(
   doc: Doc,
   colors?: Record<LayerId, RGBA>,
   size: { width: number; height: number } = { width: 1280, height: 800 },
-): Promise<{ api: EditorApi; store: DocStore; unmount(): void }> {
+): Promise<{ api: EditorApi; store: DocStore; ui: UiSlot; unmount(): void }> {
   registerCore();
   const canvas = document.createElement("canvas");
   const ui = createUiSlot();
@@ -64,6 +64,7 @@ export async function mountEditor(
   return {
     api,
     store,
+    ui,
     unmount() {
       for (const cleanup of cleanups) cleanup?.();
       root.unmount();
