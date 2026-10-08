@@ -53,6 +53,9 @@ export default defineConfig({
                   "--enable-unsafe-swiftshader",
                   "--use-angle=swiftshader",
                   "--disable-gpu-compositing",
+                  // Heap checks (audio export) measure live memory: gc() first, exact numbers.
+                  "--js-flags=--expose-gc",
+                  "--enable-precise-memory-info",
                 ],
               },
             }),

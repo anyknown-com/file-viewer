@@ -14,8 +14,12 @@ vi.mock("./formats", { spy: true });
 const RATE = 48000;
 const WAV: OutputChoice = { format: "wav", bitrate: null };
 const signal = () => new AbortController().signal;
-const memory = () =>
-  (performance as Performance & { memory?: { usedJSHeapSize: number } }).memory?.usedJSHeapSize;
+/** Live heap after a full GC (vitest.config.ts exposes gc), so garbage not yet collected is not counted. */
+const memory = () => {
+  (globalThis as { gc?: () => void }).gc?.();
+  return (performance as Performance & { memory?: { usedJSHeapSize: number } }).memory
+    ?.usedJSHeapSize;
+};
 const tone = (t: number) => 0.5 * Math.sin(2 * Math.PI * 440 * t);
 
 const opened: OpenedTrack[] = [];
