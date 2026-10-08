@@ -12,7 +12,7 @@
     - `pdf-frame.test.tsx`「keeps the page it shows when the same attachment is read again」：同一個檔重新 render，不重讀、不重建 objectURL。
     - `asset-body.test.tsx`「previews the next pdf after one it could not read」：前一個檔讀失敗，換下一個檔還是正常顯示。
 - 「是同一個檔」以 `file.source` 的物件身分判斷，不看 `FileRef` 物件本身。宿主常在 render 裡寫 `file={{ name, mime, source }}`，這樣每次 render 都是新的 `FileRef`，但 `source` 沒變，就不重讀。宿主要換檔，就給新的 `ByteSource`。
-- PDF 的 iframe **不加 `sandbox`**。storage 09 加了 `sandbox=""`，但 Chromium 在有 sandbox 的 iframe 裡不顯示 PDF。2026-10-08 用 headless Chrome 實測：同一個 `application/pdf` 的 blob URL，`sandbox=""` 的 iframe 只出現「破掉的檔案」圖示，沒有 sandbox 的那個正常開出 PDF viewer。所以 storage 現在的 PDF 預覽在 Chrome 上是壞的，H1 換上本元件就會修好。product 的 `PdfFrame` 本來就沒有 sandbox。安全靠兩件事：
+- PDF 的 iframe **不加 `sandbox`**。Chromium 在有 sandbox 的 iframe 裡不顯示 PDF。2026-10-08 用 headless Chrome 實測：同一個 `application/pdf` 的 blob URL，`sandbox=""` 的 iframe 只出現「破掉的檔案」圖示，沒有 sandbox 的那個正常開出 PDF viewer。安全靠兩件事：
   1. 交給 iframe 的 Blob 一律建成 `type: "application/pdf"`，不用宿主給的 mime。這樣瀏覽器一定用 PDF viewer 打開，不會把內容當成同源的 HTML 執行。
   2. 宿主的 CSP 只開 `frame-src blob:`（00-overview §3）。
 - SVG 只放進 `<img>`，所以檔案裡的 script 不會執行。上傳的檔常常沒有 mime，而 Blob 沒有 `image/svg+xml` 型別時 `<img>` 畫不出 SVG，所以 Blob 型別用 `mimeOf(file)`（`src/contract/kinds.ts`，副檔名優先，`.svg` 得到 `image/svg+xml`）。
@@ -55,7 +55,7 @@
 - 編輯器登錄表，新檔 `src/viewer/editors.ts`（第 8 步，空表）：
   ```ts
   export type EditorRegistry = Partial<Record<EditKind, ComponentType<EditorProps>>>;
-  export const editors: EditorRegistry = {}; // 04 / 07 / 08 / v0.3 發版 commit 各加一行：<kind>: lazy(() => import("../<dir>/index").then((m) => ({ default: m.<Editor> })))
+  export const editors: EditorRegistry = {}; // 04 / 07 / 08 / v0.3 發版 commit 各加一行：<kind>: lazy(() => import("../<dir>/<定義元件的檔>").then((m) => ({ default: m.<Editor> })))；目標檔不能叫 index.*（00-overview §7）
   ```
 - body 的介面，`src/viewer/bodies.tsx`（第 5 步）。04 P01-4 換掉 markdown、P02-3 換掉 excalidraw 那兩行，10 第 9 步加 `comp`：
   ```ts
@@ -89,7 +89,7 @@
   - `Button(props: ComponentProps<"button"> & { variant?; icon? })`（`src/primitives/button.tsx`）、`Spinner(props: { label: string })`（`src/primitives/spinner.tsx`）、`FileIcon`、`AlertIcon`（`src/primitives/glyphs.tsx`，`(props: { size?: "sm" | "md" | "lg"; label?: string })`）。
   - 型別（`import type`）：`ByteSource`、`FileRef`（`src/contract/byte-source.ts`）；`ViewKind`、`EditKind`（`src/contract/formats.ts`）；`FileInfo`、`KindResult`（`src/contract/kinds.ts`）；`Limits`（`src/contract/limits.ts`）；`SaveHandler`（`src/contract/save.ts`）；`ViewerErrorCode`（`src/contract/errors.ts`）；`CommonProps`、`FileViewerProps`、`AssetProvider`（`src/contract/props.ts`）。
 - 宿主要做的事（寫進宿主自己的 plan，不在這份 plan 的 step 裡）：
-  - H1（storage 22 Phase 1）：`preview.tsx` 的 `Body` 換成 `<FileViewer theme="dark" messages={{ "viewer.loading": t("preview.decrypting") }} …>`。`previewKind` 改用 `kindOf`。編輯中藏起 ← →。拿掉 PDF 的 `sandbox=""`（本元件已處理）。
+  - H1（storage 22 Phase 1）：`preview.tsx` 的 `Body` 換成 `<FileViewer theme="dark" messages={{ "viewer.loading": t("preview.decrypting") }} …>`。`previewKind` 改用 `kindOf`。編輯中藏起 ← →。
   - H2（product）：`AssetBody` 換成 `FileViewer`。容器要給高度（原本 image 與 pdf 是 `70vh`）。`PdfFrame` / `NoPreview` 和它們的測試一起刪掉（行為已由本 plan 的測試接手）。
 
 
@@ -143,9 +143,15 @@ blocker：02 完成。model：sonnet。步驟編號從 2 開始：原本的第 1
    - 型別：
      ```ts
      export type Loaded = { blob: Blob; url: string | null; text: string | null };
-     export async function load(view: ViewKind, file: FileRef, signal: AbortSignal): Promise<Loaded>;
+     export const LIMIT_KEY: Record<Exclude<ViewKind, "comp">, keyof Limits> = {
+       image: "previewBytes", video: "previewBytes", audio: "previewBytes", pdf: "previewBytes",
+       text: "textBytes", markdown: "docBytes", excalidraw: "docBytes",
+     }; // "comp" 不在表裡：預覽不檢查 projectBytes
+     export async function load(view: ViewKind | "comp", file: FileRef, signal: AbortSignal, limits: Limits): Promise<Loaded>;
      ```
    - 流程：
+     0. `view === "comp"`（`ViewKind` 在 10 第 9 步才加 `"comp"`，這裡先用字串比對）：不讀檔、不檢查大小，直接回 `{ blob: new Blob([]), url: null, text: null }`。body 從 `BodyProps.file.source` 拿 `ByteSource`，自己用 09 的 `readHead` 只讀檔頭。規則：`.comp.zip` 預覽不整檔讀進記憶體；`Limits.projectBytes` 只在進入編輯時檢查（02 的 `editKindOf`、10 的開檔），預覽不檢查。
+     0b. 其他 kind：`file.source.size > limits[LIMIT_KEY[view]]` 時丟 `new ViewerError("too_large")`，不讀檔。`resolve`（第 2 步）已經用 `kindOf` 擋過；這裡是 `load` 自己的保險。
      1. `blob = await readBlob(file.source, { type: view === "pdf" ? "application/pdf" : mimeOf(file), signal })`。`mimeOf` 依副檔名優先，所以沒有 mime 的 `.svg` 得到 `image/svg+xml`；pdf 一律用 `application/pdf`，不用宿主給的 mime（判斷段第一個 PDF 條件）。
      2. `view` 是 `"text"`、`"markdown"` 或 `"excalidraw"` 時，`text = await blob.text()`，`url = null`。
      3. 其他種類時，先 `signal.throwIfAborted()`，再 `url = URL.createObjectURL(blob)`，`text = null`。
@@ -153,8 +159,8 @@ blocker：02 完成。model：sonnet。步驟編號從 2 開始：原本的第 1
      - `signal.aborted` 或 `isAbortError(err)` 時，原樣 rethrow。
      - 錯誤已經是 `ViewerError` 時，原樣 rethrow（`readBlob` 已把讀錯包成 `read_failed`）。
      - 其他錯誤（例如 `blob.text()` 失敗）丟 `toViewerError(err, "read_failed")`。
-   - 匯入：`readBlob` 從 `src/contract/byte-source.ts`；`mimeOf` 從 `src/contract/kinds.ts`；`ViewerError`、`toViewerError`、`isAbortError` 從 `src/contract/errors.ts`；`FileRef` 用 `import type` 從 `src/contract/byte-source.ts`；`ViewKind` 用 `import type` 從 `src/contract/formats.ts`。
-   - 測試 `src/viewer/load.test.ts`（`vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:x")`；source 用 `bytesSource(new TextEncoder().encode(…))`，`src/contract/byte-source.ts`）：
+   - 匯入：`readBlob` 從 `src/contract/byte-source.ts`；`mimeOf` 從 `src/contract/kinds.ts`；`ViewerError`、`toViewerError`、`isAbortError` 從 `src/contract/errors.ts`；`FileRef` 用 `import type` 從 `src/contract/byte-source.ts`；`ViewKind` 用 `import type` 從 `src/contract/formats.ts`；`Limits` 用 `import type` 從 `src/contract/limits.ts`。
+   - 測試 `src/viewer/load.test.ts`（每個案例的 `limits` 傳 `DEFAULT_LIMITS`，`src/contract/limits.ts`；`vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:x")`；source 用 `bytesSource(new TextEncoder().encode(…))`，`src/contract/byte-source.ts`）：
      - `text` 種類，內容是 UTF-8 的 `"héllo 你好"`：`text` 正確，`url` 是 null，`createObjectURL` 沒被呼叫。
      - `markdown` 與 `excalidraw` 種類：也回 `text`。
      - `image` 種類，檔名 `a.png`：`url === "blob:x"`，`text` 是 null，`createObjectURL` 收到的 Blob 的 `type` 是 `image/png`。
@@ -163,6 +169,8 @@ blocker：02 完成。model：sonnet。步驟編號從 2 開始：原本的第 1
      - source 的 `read` reject 一般的 `Error("404")`：`load` reject 的是 `ViewerError`，`code` 是 `read_failed`。
      - source 的 `read` reject `new ViewerError("decode_failed")`：原樣 rethrow（同一個物件）。
      - 開始前就 abort（`AbortController` 先 `abort()`）：reject，`createObjectURL` 沒被呼叫。
+     - 上限依 kind:`size` 是 `previewBytes + 1` 的 `image`、`textBytes + 1` 的 `text`、`docBytes + 1` 的 `markdown`:全部 reject `ViewerError`、`code` 是 `too_large`,`read` 沒被呼叫;`size` 剛好等於上限的 `image`:不丟 `too_large`。
+     - `"comp"`(型別用 `"comp" as ViewKind` 轉):source 是 `{ size: DEFAULT_LIMITS.projectBytes * 2, read: vi.fn() }`,`limits` 傳 `{ ...DEFAULT_LIMITS, projectBytes: 10 }`:resolve 成功、不丟 `too_large`;`read` 沒被呼叫(`readBlob` 沒被呼叫);`createObjectURL` 沒被呼叫;結果 `url` 與 `text` 都是 null、`blob.size` 是 0。
    - verify：`pnpm test src/viewer/load.test.ts && pnpm check`
    - commit：`feat(viewer-core): load a file as an object URL or as text`
 
@@ -174,7 +182,7 @@ blocker：Phase 01。model：sonnet。
 
 4. **狀態面板、i18n key、錯誤碼、樣式**。
    - `src/contract/errors.ts` 的 `ViewerErrorCode` 加 `"render_failed"`。
-   - `src/i18n/en.ts` 加 `"error.render_failed": "Something went wrong while showing this file."`；`src/i18n/zh-tw.ts` 加 `"error.render_failed": "顯示這個檔案時出了問題。"`。（`en` 用 `satisfies … Record<\`error.${ViewerErrorCode}\`, string>`，漏加會是型別錯誤。）02 的 `src/i18n/messages.test.ts` 若有逐一列出 `ViewerErrorCode` 的案例，把 `render_failed` 加進去。
+   - `src/i18n/en.ts` 加 `"error.render_failed": "Something went wrong while showing this file."`；`src/i18n/zh-tw.ts` 加 `"error.render_failed": "顯示這個檔案時出了問題。"`。（`en` 用 `satisfies … Record<\`error.${ViewerErrorCode}\`, string>`，漏加會是型別錯誤。）02 的 `src/i18n/messages.test.ts` 最後一案列了九個 `ViewerErrorCode` 字串，這裡加上 `"render_failed"` 變成十個。
    - 新檔 `src/viewer/messages.ts`：`export type ViewerKey = "viewer.loading" | "viewer.downloadHint" | "viewer.back"`；`export type ViewerMessages = Record<ViewerKey, string>`；`export const viewerMessages: MessageTable<ViewerKey> = { en: {…}, "zh-TW": {…} }`，字串照「契約」i18n 表。`MessageTable` 用 `import type` 從 `src/i18n/messages.ts`。
    - `src/i18n/messages.ts` 的 `Messages` 加 `& ViewerMessages`（`import type { ViewerMessages } from "../viewer/messages"`）。
    - 新檔 `src/viewer/status.tsx`：
@@ -261,7 +269,7 @@ blocker：Phase 01。model：sonnet。
      - `fail = (e) => { setState({ status: "error", error: e }); report(e); }`
      - 載入寫在 `useCallback` 的 ref callback 裡，掛在外層 `<div className="fv-stage">`。依賴是 `[file.source, file.name, file.mime, view, report]`；ref callback 不能用到 `file` 物件本身，要在 callback 裡用這三個欄位重組 `FileRef`。流程：
        1. 建 `AbortController`。
-       2. `load(view, file, signal)`（`src/viewer/load.ts`）。成功時，如果已經 abort，就 revoke 剛拿到的 url（url 不是 null 時）；否則記下 url 並 `setState(ready)`。失敗時，如果已經 abort，就什麼都不做；否則呼叫 `fail(err)`（`err` 用 `toViewerError(err, "read_failed")` 確保是 `ViewerError`）。
+       2. `load(view, file, signal, limitsRef.current)`（`src/viewer/load.ts`；`limits` 是 `useRoot().limits`，已解析好的 `Limits`，`ViewPane` 像 `FileViewer` 的 `onError` 那樣把它存進 ref，不放進 ref callback 的依賴）。成功時，如果已經 abort，就 revoke 剛拿到的 url（url 不是 null 時）；否則記下 url 並 `setState(ready)`。失敗時，如果已經 abort，就什麼都不做；否則呼叫 `fail(err)`（`err` 用 `toViewerError(err, "read_failed")` 確保是 `ViewerError`）。
        3. cleanup（ref callback 回傳的函式）：`abort()`，有 url 就 `URL.revokeObjectURL(url)`。
      - 畫面：`loading` 時畫 `<Status kind="loading" />`；`error` 時畫 `<Status kind={error.code} />`；`ready` 時畫 `bodies[view]`（`src/viewer/bodies.tsx`，傳 `file`、`loaded`、`fail`、`viewer`），外面包 `<Suspense fallback={<Status kind="loading" />}>`。
      - 匯入：`load`、`Loaded` 從 `src/viewer/load.ts`；`Status` 從 `src/viewer/status.tsx`；`toViewerError`、`ViewerError` 從 `src/contract/errors.ts`；型別（`ByteSource`、`FileRef`、`ViewKind`、`FileViewerProps`）照第 5 步的路徑。
@@ -275,7 +283,7 @@ blocker：Phase 01。model：sonnet。
        - `r.status === "view"` 時，畫 `<Boundary report={report} fallback={(e) => <div className="fv-stage"><Status kind={e.code} /></div>}>` 包住 `<ViewPane key={\`${sourceKey(file.source)}:${r.view}\`} file={file} view={r.view} viewer={props.viewer} report={report} />`。
        - `too_large` 或 `unsupported` 時，畫 `<div className="fv-stage"><Status kind={r.status} /></div>`。
      - 這一步還沒有頂列與「編輯」，第 9 步才加。
-   - `src/index.ts` 加 `export { FileViewer } from "./viewer/file-viewer";`。如果 02 已經放了 `FileViewer` 的佔位匯出（`rg -n "FileViewer" src/index.ts`），換成這一行。
+   - `src/index.ts` 加 `export { FileViewer } from "./viewer/file-viewer";`。
    - 測試 `src/viewer/file-viewer.test.tsx`（`afterEach(cleanup)`）。source 用 `bytesSource`（`src/contract/byte-source.ts`），要數 `read` 次數時 `vi.spyOn(source, "read")`；大小很大又不能被讀的 source 用 `{ size, read: vi.fn() }`；`URL.createObjectURL` / `revokeObjectURL` 用 `vi.spyOn` mock：
      - `a.txt` 內容 `"hello"`：先出現 `getByRole("status", { name: "Loading…" })`，之後 `<pre>` 的內容是 `hello`。
      - `a.png`：`img.src` 是 mock 回的 `blob:…`，`alt` 是 `a.png`；unmount 後 `revokeObjectURL` 收到同一個 url。
@@ -312,7 +320,7 @@ phase 結尾的 verify：`pnpm test && pnpm test:browser src/viewer && pnpm chec
 blocker：Phase 02。model：opus。
 
 8. **`EditorProps`、登錄表、`EditPane`、`kindOf` 只回有登錄的編輯器**。
-   - 新檔 `src/contract/editor.ts`：`EditorProps` 照本檔「契約」的型別原文寫。`src/index.ts` 加 `export type { EditorProps } from "./contract/editor";`。`rg -n "export type EditorProps" src/contract/props.ts` 如果有結果（02 的舊版），刪掉那一段，用到的地方改從 `src/contract/editor.ts` import。
+   - 新檔 `src/contract/editor.ts`：`EditorProps` 照本檔「契約」的型別原文寫。`src/index.ts` 加 `export type { EditorProps } from "./contract/editor";`。
    - `src/contract/props.ts` 的 `FileViewerProps` 加 `onEditingChange?: (editing: boolean) => void;`，註解照「契約」寫。
    - 新檔 `src/viewer/editors.ts`：
      ```ts
@@ -322,8 +330,8 @@ blocker：Phase 02。model：opus。
      export type EditorRegistry = Partial<Record<EditKind, ComponentType<EditorProps>>>;
      export const editors: EditorRegistry = {};
      ```
-     檔頭註解：「04 / 07 / 08 在這裡加一行 `<kind>: lazy(() => import("../<dir>/index").then((m) => ({ default: m.<Editor> })))`，`image` 由 v0.3 發版 commit 加。只能用 dynamic import，`scripts/check-entry-deps.mjs` 會擋靜態 import。」
-   - 改 `src/contract/kinds.ts` 的 `kindOf`：`edit` 先照 `editKindOf(file, resolveLimits(limits))` 算，再 `editors[kind] ? kind : null`（`editors` 從 `src/viewer/editors.ts` import；`resolveLimits` 從 `src/contract/limits.ts`）。這是 contract 指向 viewer 的唯一一條依賴（00-overview §3）。`rg -n "SHIPPED_EDITORS" src` 如果有結果（02 的舊版），整個刪掉（包括 `src/contract/shipped-editors.ts`），並把 `src/contract/kinds.test.ts` 裡的 `SHIPPED_EDITORS.has(e)` 換成 `editors[e] !== undefined`。
+     檔頭註解：「04 / 07 / 08 在這裡加一行 `<kind>: lazy(() => import("../<dir>/<定義元件的檔>").then((m) => ({ default: m.<Editor> })))`，`image` 由 v0.3 發版 commit 加。只能用 dynamic import，`scripts/check-entry-deps.mjs` 會擋靜態 import；目標檔不能叫 `index.*`（宿主的 chunk 名取自目標檔名，product 的 chunks-check 拒絕 `index-*`），`check-entry-deps.mjs` 也會擋。」
+   - 改 `src/contract/kinds.ts` 的 `kindOf`：`edit` 先照 `editKindOf(file, resolveLimits(limits))` 算，再 `editors[kind] ? kind : null`（`editors` 從 `src/viewer/editors.ts` import；`resolveLimits` 從 `src/contract/limits.ts`）。這是 contract 指向 viewer 的唯一一條依賴（00-overview §3）。
    - 新檔 `src/contract/kinds-editors.test.ts`：
      - 檔頭 `vi.mock("../viewer/editors", () => ({ editors: {} }))`（空表）：`d.excalidraw`（1 KiB）、`a.png`、`clip.mp4`、`a.mp3`、`x.comp.zip` 的 `kindOf(...).edit` 全部是 `null`，`view` 不受影響（`a.png` 的 `view` 還是 `"image"`）。
      - 另一個檔 `src/contract/kinds-editors-registered.test.ts`，檔頭 `vi.mock("../viewer/editors", () => ({ editors: { excalidraw: () => null } }))`：`d.excalidraw` 的 `edit` 是 `"excalidraw"`；`a.png` 的 `edit` 仍是 `null`。

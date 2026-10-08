@@ -10,7 +10,7 @@
 - **不用 StyleX、不用 `@anyknown/ui` 的 JS。** 站的外框是 plain CSS + `--ak-*`，跟 storage 這類非 StyleX 宿主的接法一樣；互動元件用 `@base-ui/react`（本套件的 dependency）。站上文字是英文（外部開發者）；playground 的幾句操作字有 en 與 zh-TW，跟著頁首的「元件語言」切換。
 - **Markdown 指南用 `react-markdown` + `remark-gfm` 直接排**（跟 04 選的同一組套件），不用 04 的 `MarkdownView`：05 不必等 04，而且指南是我們自己寫的內容，不需要 `resolveImage`。
 - **API 表從 TypeScript 原始碼生成**，照 ui 的 `api-docs.mjs`，但範圍從「元件的 props」擴成每個 subpath 的每個 export（元件、函式、class、型別、常數）加上 `Messages` 的 en / zh-TW 對照。測試要求每個 export 與每個欄位都有 JSDoc；這條是給 02–13 的契約（見契約段）。
-- **「接上你的 app」只寫已經發佈的東西。** v0.1 的 Vite 不需要任何設定；Excalidraw 字型的複製在 Phase 04 跟 site 自己的做法同一個 commit 寫進去。00-overview §4 的 `optimizeDeps.exclude` 由 10 image-editor 在加入 worker 的同一個 commit 寫進 `docs/guides/connect.md` 與 `site/vite.config.ts`：排除一個套件也會讓它的 CJS 依賴不被預先打包，沒有 worker 時提早要求宿主加這條只有壞處。
+- **「接上你的 app」只寫已經發佈的東西。** v0.1 的 Vite 不需要任何設定；Excalidraw 字型的複製在 Phase 04 跟 site 自己的做法同一個 commit 寫進去。00-overview §4 的 `optimizeDeps.exclude` **只由 10 image-editor 第 12 步處理**（寫進 `docs/guides/connect.md` 與 `site/vite.config.ts`），本 plan 與其他 plan 都不寫、不預留：排除一個套件也會讓它的 CJS 依賴不被預先打包，沒有 worker 時提早要求宿主加這條只有壞處。
 - **之後要改成一般使用者工具時不用重做（CEO 尚未決定，00-overview §8 第 2 題）。** 結構上先做好四件事，現在就有用、不是預留：
   1. `site/playground/` 是自足的 app：對外只有 `Playground({ locale, theme })` 一個元件，只 import `@anyknown/file-viewer`、`@base-ui/react` 與自己目錄裡的檔，不 import `site/docs/`、`site/site.tsx`、`site/prefs.ts`（測試掃 import 擋住）。之後要做獨立工具頁，就是另一個 HTML 入口掛同一個 `Playground`，或把首頁的 docs 外框拿掉。
   2. 檔案進出集中在 `site/playground/host.ts`（`File` → `FileRef`、`SaveRequest` → 下載）。之後要「存回原檔」（File System Access API）、多檔分頁，只改這一檔與 playground 的 state。
@@ -33,13 +33,13 @@
   - 從 `@anyknown/file-viewer`（`src/index.ts`，§4 的 `.`）：`FileViewer(props: FileViewerProps)`（`src/viewer/file-viewer.tsx`，03）、`blobSource(blob: Blob): ByteSource`（`src/contract/byte-source.ts`，02）、`kindOf(file: { name: string; mime?: string; size: number }, limits?: Partial<Limits>): KindResult`（`src/contract/kinds.ts`，02）、型別 `FileRef`、`SaveRequest`（`{ blob; mime; ext; mode; suggestedName }`）、`ViewKind`、`Locale`（`"en" | "zh-TW"`）、`Theme`、`ViewerErrorCode`、`ByteSource`（簽名都在 00-overview §3）。
   - `FileViewerProps` 的欄位：`file`、`locale`、`theme`、`onSave`、`onDirtyChange`、`excalidraw?: { assetPath?: string }`（Phase 04 用）、`editor?: { assets?: AssetProvider }`（07 第 20 步才加進 playground）。
   - 字串表：`src/i18n/en.ts`（匯出 `en`）、`src/i18n/zh-tw.ts`（匯出 `zhTW`）、`src/i18n/messages.ts`（`commonMessages`）、各區域 `src/<dir>/messages.ts` 的 `<area>Messages`（00-overview §9.2 表）。檔名是小寫 `zh-tw.ts`。
-  - 本 plan 擁有、別的 plan 增補（§9.8）：`docs/guides/connect.md`、`docs/guides/guides.json`（第 6、8 步；04 → Phase 04 增補字型與 `assetPath`，10 第 12 步增補 WebGL2 與 `optimizeDeps.exclude`）；`site/vite.config.ts`、`site/public/_headers`（第 1、4 步；`optimizeDeps.exclude` 歸 10 第 12 步，本 plan 不寫）；`site/playground/`（第 2 步；07 第 20 步加 `editor.assets`）。
+  - 本 plan 擁有、別的 plan 增補（§9.8）：`docs/guides/connect.md`、`docs/guides/guides.json`（第 6、8 步；04 → Phase 04 增補字型與 `assetPath`，07 第 20 步增補「影片編輯器」一段，10 第 12 步增補 WebGL2 與 `optimizeDeps.exclude`）；`site/vite.config.ts`、`site/public/_headers`（第 1、4 步；`optimizeDeps.exclude` 歸 10 第 12 步，本 plan 不寫）；`site/playground/`（第 2 步；07 第 20 步加 `editor.assets`）。
 
 ## 形式
 
 - 頁首一列：左邊字標「file-viewer」（連 `#/`）；中間「Playground」「Getting started」「Connect your app」「API」；右邊主題三選一（System / Light / Dark，`aria-pressed` 按鈕組）、「Component language」選單（English / 繁體中文）、GitHub 連結。窄螢幕時導覽換到第二列、可橫向捲動。
 - 首頁：playground 佔滿內容寬。空的時候是一塊虛線框的投放區，中間一行大字「Drop a file to open it」、一行小字「It stays in this tab. Nothing is uploaded.」、一顆「Choose a file」，下面一排範例按鈕（Image、SVG、Video、Audio、PDF、Text、JSON；Phase 04 加 Markdown、Diagram）。拖檔經過時框變實線、底色換 `--ak-accent-subtle`。觸控裝置（`pointer: coarse`）不顯示「Drop」字樣，只剩按鈕。
-- 打開之後：上方一條工具列「檔名 · 大小 · 在這個分頁打開，沒有上傳」、右邊「Choose a file」與「Close」；下面 `FileViewer` 高 `min(75vh, 900px)`。整個 playground 都接受拖檔，換檔時若有未存的修改，跳 Base UI AlertDialog「Discard your changes?」（「Keep editing」/「Discard」）。編輯後按存檔：瀏覽器下載 `suggestedName`；`replace` 模式另外把畫面換成剛存的版本。
+- 打開之後：上方一條工具列「檔名 · 大小 · 在這個分頁打開，沒有上傳」、右邊「Choose a file」與「Close」；下面 `FileViewer` 高 `min(75vh, 900px)`。整個 playground 都接受拖檔，換檔時若有未存的修改，跳 02 的 `ConfirmDialog`「Discard your changes?」（「Keep editing」/「Discard」）。編輯後按存檔：瀏覽器下載 `suggestedName`；`replace` 模式另外把畫面換成剛存的版本。
 - playground 下方：安裝指令 `pnpm add @anyknown/file-viewer @anyknown/ui` 一個 code block，與「Getting started」「Connect your app」「API」三個連結。
 - 指南頁：左側指南清單、右側 Markdown 正文（最寬 72ch）。API 頁：每個 subpath 一節，節首是 `import { … } from "@anyknown/file-viewer/<subpath>"`；每個 export 一張卡：等寬字的簽名、說明、欄位表（Name、Type、Default、Description，必填欄位名後加「required」標記）；最後一節是 Messages 對照表（Key、English、繁體中文）。
 
@@ -144,5 +144,5 @@ blocker：04 markdown-excalidraw 全部、Phase 03；model：sonnet。
 - 存回原檔（File System Access API）、一次開多個檔的分頁。
 - 指南的程式碼上色。
 - webpack / Next.js 的接法頁（等有宿主用它們）。
-- `optimizeDeps.exclude` 那段：10 image-editor 加 worker 時寫（見判斷）。
+- `optimizeDeps.exclude` 那段：只由 10 image-editor 第 12 步寫（見判斷），本 plan 不寫。
 - 影音編輯器（v0.2）、影像編輯器（v0.3）的範例檔：07 / 08 / 10 各自在 `samples.json` 加列。

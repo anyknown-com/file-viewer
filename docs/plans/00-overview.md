@@ -1,7 +1,7 @@
 # Anyknown file-viewer — 瀏覽器內的檔案檢視與編輯元件（總覽）
 
 > 狀態：設計（2026-10-08）。repo 還沒建；01–13 已寫成 plan，都還沒動工。storage 的 11、13–15、17–20 也都還沒動工，內容整批搬進本系列（§6），storage 那邊只留宿主整合。
-> **跨 plan 的名字以本檔為準。** 符號、檔案路徑、簽名、誰在哪一步建立，看 §9「跨 plan 介面表」。plan 裡寫的跟 §9 不同時，照 §9 做。§10 列出 01–13 各自要對齊的地方，全部對齊後刪掉 §10。
+> **跨 plan 的名字以本檔為準。** 符號、檔案路徑、簽名、誰在哪一步建立，看 §9「跨 plan 介面表」。plan 裡寫的跟 §9 不同時，照 §9 做。
 > 依賴：`@anyknown/ui` 的 `tokens.css`（只用 `--ak-*` CSS 變數）；不依賴 storage、product 任何程式。
 > 一句話：一個 React 元件庫 `@anyknown/file-viewer`（public repo `anyknown-com/file-viewer`，MIT），丟進一份 bytes 就能在瀏覽器裡看圖、影片、音訊、PDF、文字、Markdown、Excalidraw 圖，並在同一個元件裡編輯；存檔時交回一個 `Blob`。不連任何伺服器，所以可以直接放在端對端加密的產品裡。
 > 原則：每份 plan 只做一件事、可獨立驗收；元件只認 bytes 和回呼，下載、解密、上傳、垃圾桶、toast 都歸宿主；重的套件按需載入，入口不含它們。
@@ -185,7 +185,7 @@ export class ProjectError extends Error { readonly code: ProjectErrorCode; reado
 規則：
 
 - 版面：`FileViewer` 撐滿宿主給的容器，不自己開 modal。lightbox、Dialog、上一個 / 下一個、下載按鈕都在宿主（storage 的 `Dialog`、product 的 `AssetLightbox`）。editor 的內部對話框（「放棄修改？」、匯出設定）由本套件用 Base UI 開，popup 一律 portal 到 `ViewerRoot` 裡的 `.fv-portal`。
-- **編輯器開關只有一個地方：`src/viewer/editors.ts` 的 `editors`。** 每份 editor plan 交付時在這裡加一行 `<kind>: lazy(() => import("../<dir>/index").then((m) => ({ default: m.<Editor> })))`。`kindOf` 的 `edit` 先照 02 的 `editKindOf` 算，再看 `editors[kind]` 有沒有登錄，沒有就回 `null`；`FileViewer` 的「編輯」鈕也只看同一張表。沒有其他旗標（不設 `SHIPPED_EDITORS`、`IMAGE_EDITOR_ENABLED`、`editorLoaders`）。
+- **編輯器開關只有一個地方：`src/viewer/editors.ts` 的 `editors`。** 每份 editor plan 交付時在這裡加一行 `<kind>: lazy(() => import("../<dir>/<定義元件的檔>").then((m) => ({ default: m.<Editor> })))`。`kindOf` 的 `edit` 先照 02 的 `editKindOf` 算，再看 `editors[kind]` 有沒有登錄，沒有就回 `null`；`FileViewer` 的「編輯」鈕也只看同一張表。沒有其他旗標（不設 `SHIPPED_EDITORS`、`IMAGE_EDITOR_ENABLED`、`editorLoaders`）。
   - 04 登錄 `excalidraw`（`.excalidraw` 檔）。`markdown` 不登錄：v0.1 不編輯 `.md` 文字，所以 `kindOf` 對 `.md` 回 `edit: null`、頂列沒有「編輯」；文件裡的圖由 markdown body 自己開編輯器（點圖）。
   - 07 登錄 `video`，08 登錄 `audio`。
   - `image` 由 v0.3 發版的 commit（主 agent，11、12、13 都驗收之後）登錄。在那之前 `./image-editor` 照常可以從 subpath 直接用，`.comp.zip` 也照常有檔頭預覽（`ViewKind` 的 `"comp"` 不受開關影響）。
@@ -218,8 +218,8 @@ exports（`sideEffects` 只列 CSS）。01 只建 `.` 與 `./styles.css`；其�
 | --- | --- | --- | --- |
 | `.` | `FileViewer`、`kindOf`、`mimeOf`、`blobSource`、`bytesSource`、`ViewerError`、`DEFAULT_LIMITS`、§3 的型別 | 入口；不 import 任何重依賴 | 01 P01-1 建空的；02 P03-4 填契約；03 第 6、8 步加 `FileViewer`、`EditorProps`；04 P01-2 加 `ImageResolution`、`ImageResolver` |
 | `./styles.css` | 本套件全部 `fv-*` class（一個 plain CSS 檔，只用 `--ak-*`；每份 plan 在檔尾加一段 `/* == <area> (NN) == */`） | 宿主在 `tokens.css` 之後 import 一次 | 01 P01-1 建；02 P03-3 起各 plan 增補 |
-| `./markdown` | `MarkdownView`、`findFences` / `maskFences` / `replaceFence`、`Fence`、`MarkdownCopy`、`markdownCopy` | 第一次開 `.md` | 04 P01-1 |
-| `./excalidraw` | `DiagramImage`、`DiagramEditor`（含 Excalidraw 的 CSS）、`parseScene`、`setAssetPath` | 第一張圖要畫時 | 04 P02-2 |
+| `./markdown` | `MarkdownView`、`findFences` / `maskFences` / `replaceFence`、`Fence` | 第一次開 `.md` | 04 P01-1 |
+| `./excalidraw` | `DiagramImage`、`DiagramEditor`（含 Excalidraw 的 CSS）、`ExcalidrawFileEditor`、`parseScene`、`setAssetPath` | 第一張圖要畫時 | 04 P02-2 |
 | `./video-editor` | `VideoEditor`、`VideoEditorProps`（= `EditorProps`）；mediabunny 由 bundler 拆成共用 chunk | 按「編輯」時 | 07 第 11 步 |
 | `./audio-editor` | `AudioEditor`、`AudioEditorProps`（= `EditorProps`） | 按「編輯」時 | 08 P03-1 |
 | `./image-editor` | `ImageEditor`、`ImageEditorProps`（= `EditorProps`）；GL 引擎、同源 module worker | 按「編輯」時 | 10 第 7 步 |
@@ -229,17 +229,17 @@ exports（`sideEffects` 只列 CSS）。01 只建 `.` 與 `./styles.css`；其�
 
 依賴：
 
-- peerDependencies：`react` / `react-dom` ^19、`@anyknown/ui` >=0.11.0（只用 `tokens.css`）。02 加。
+- peerDependencies：`react` / `react-dom` ^19、`@anyknown/ui` >=0.11.0（只用 `tokens.css`）。02 加版本範圍；三個都是 optional peer（`peerDependenciesMeta`，01 寫在 `package.json` 的初版），因為只用 `./comp` 的人（例如 product 的 docs 工具）不需要 React。
 - dependencies：
   - `@base-ui/react` ^1.8.0（02）；
   - `react-markdown` ^10.1.0、`remark-gfm` ^4.0.1、`rehype-sanitize` ^6.0.0、`unified` ^11.0.5、`remark-parse` ^11.0.0（04）；
   - `@excalidraw/excalidraw` 0.18.1，確切版本（04）；
   - `mediabunny` 1.61.1，確切版本（06）；
   - `fflate` ^0.8.3、`zod` ^4.4.3（09）；
-  - `@fontsource-variable/geist` 5.3.0（OFL-1.1，影片編輯器的文字與影像編輯器的文字圖層共用；07 第 8 步加，13 第 2 步 用同一個版本，已存在就不動）。
+  - `@fontsource-variable/geist` 5.3.0，確切版本，用 `pnpm add --save-exact @fontsource-variable/geist@5.3.0`（OFL-1.1，影片編輯器的文字與影像編輯器的文字圖層共用；07 第 8 步加，13 第 2 步用同一個版本，已存在就不動）。
 - 加 production 依賴的那個 commit 同時改 `THIRD_PARTY_NOTICES.md`，`pnpm check:licenses` 才會綠。CI 的入口檢查（§7）保證 `.` 不會靜態 import 到重依賴。
 
-宿主的 Vite 設定：image editor 的 worker 用 `new Worker(new URL(…, import.meta.url), { type: "module" })`，Vite 預先打包 `node_modules` 時會找不到這種寫法的 worker 檔，所以宿主要在 `optimizeDeps.exclude` 加 `@anyknown/file-viewer`。這條只有 image editor 需要，所以由 10 第 12 步在 `docs/guides/connect.md` 與 `site/vite.config.ts` 寫上。v0.1、v0.2 的宿主不需要任何 Vite 設定：排除一個套件也會讓它的 CJS 依賴不被預先打包，提早要求只有壞處。storage 的整合（H1 Phase 3）照做。
+宿主的 Vite 設定：image editor 的 worker 用 `new Worker(new URL(…, import.meta.url), { type: "module" })`，Vite 預先打包 `node_modules` 時會找不到這種寫法的 worker 檔，所以宿主要在 `optimizeDeps.exclude` 加 `@anyknown/file-viewer`。這條只有 image editor 需要，所以**只由 10 第 12 步處理**（其他 plan 不寫、不預留），10 第 12 步在 `docs/guides/connect.md` 與 `site/vite.config.ts` 寫上。v0.1、v0.2 的宿主不需要任何 Vite 設定：排除一個套件也會讓它的 CJS 依賴不被預先打包，提早要求只有壞處。storage 的整合（H1 Phase 3）照做。
 
 ## 5. 格式範圍與分期
 
@@ -272,7 +272,9 @@ v0.3：圖層式影像編輯器與 `.comp.zip`（storage 13、17–20 的範圍�
                              └── 09 comp-format ── 10 image-editor ──┬── 11 / 12 / 13 ── v0.3 ── H1 Phase 3
 ```
 
-步驟的寫法：01、02、04、06、08、09、11 的步驟每個 phase 從 1 起算，本檔寫成 `P02-3`（Phase 02 第 3 步）；03、05、07、10、12、13 的步驟整份連續編號，本檔寫成「第 8 步」。編號指 2026-10-08 寫成時的編號；§10 要刪步驟的 plan 刪完後重編，§9 的參照跟著改。
+步驟的寫法：01、02、04、06、08、09、11 的步驟每個 phase 從 1 起算，本檔寫成 `P02-3`（Phase 02 第 3 步）；03、05、07、10、12、13 的步驟整份連續編號，本檔寫成「第 8 步」。編號指 2026-10-08 寫成時的編號；之後哪份 plan 增刪步驟，同一個 commit 改 §9 的參照。
+
+宿主 plan 的位置：H1 = `/Users/solemnis/Documents/anyknown-com/storage/docs/plans/22-file-viewer-host.md`（storage repo）；H2 = `/Users/solemnis/Documents/anyknown-com/product/docs/plans/file-viewer-host.md`（product repo）。
 
 | #  | Plan | 一句話 | 依賴 | 從 storage 搬來 |
 | --- | --- | --- | --- | --- |
@@ -289,7 +291,7 @@ v0.3：圖層式影像編輯器與 `.comp.zip`（storage 13、17–20 的範圍�
 | 11 | image-select-paint | 選取、魔術棒、筆刷、仿製、修復、內容感知填色、漸層 | 10 第 1–3 步 | **storage 18** |
 | 12 | image-adjustments-effects | 12 種調整圖層（8 種建 LUT texture、4 種自己的 pass）、6 種圖層效果 | 10 第 1–3 步、09；Phase 03 另等 10 第 4 步（圖層面板） | **storage 19** |
 | 13 | image-text-shapes | 文字圖層、形狀圖層 | 10 第 1–3 步、09；Phase 03 另等 10 第 4 步（圖層面板） | **storage 20** |
-| H1 | storage `docs/plans/22-file-viewer-host.md`（**屬 storage repo**） | Phase 1：`preview.tsx` 的 Body 換成 `FileViewer`、`saveText`、主題與 `--ak-*` 對應、字型目錄、third-party notices。Phase 2：SDK `files.reader` 與 Blob 上傳不整包讀、`vaultSource`、`maxOutputBytes`、`AssetProvider`。Phase 3：`saveFile` / `editedName` 撞名、影像編輯入口、Vite `optimizeDeps.exclude`。並把 storage 11、13–15、17–20 標成「已搬到 file-viewer」 | v0.1 / v0.2 / v0.3；replace 存檔前要 storage 16 trash 先上線 | 11、13–15 的宿主段 |
+| H1 | storage `docs/plans/22-file-viewer-host.md`（**屬 storage repo**） | Phase 1（22 §4）：`vaultSource`、`preview.tsx` 的 Body 換成 `FileViewer`、存檔（`saveFile` 的 `replace`）與垃圾桶守門、`uniqueName` 撞名命名、主題與 `--ak-*` 對應、字型目錄、third-party notices。Phase 2（22 §5）：SDK `files.reader` 與 Blob 上傳不整包讀、`vaultSource` 改隨機讀、`maxOutputBytes`、`AssetProvider`、`export` 存檔（影音輸出，撞名走 Phase 1 的 `uniqueName`）。Phase 3（22 §6）：升版、Vite `optimizeDeps.exclude`、遮蔽說明的保留天數、影像編輯入口。並把 storage 11、13–15、17–20 標成「已搬到 file-viewer」 | v0.1 / v0.2 / v0.3；replace 存檔前要 storage 16 trash 先上線 | 11、13–15 的宿主段 |
 | H2 | product `docs/plans/file-viewer-host.md`（**屬 product repo**） | `AssetBody` 的分派換成 `FileViewer`（`blobSource(await asset.blob())`），`PdfFrame` / `NoPreview` 刪掉，`AssetLightbox` 的外框與下載留著；`resolveImage` 照 `fenceImages` 的規則；`ai-readable-docs` 的影像專案條目改指 `@anyknown/file-viewer/comp` | v0.1 | — |
 
 執行方式：
@@ -334,10 +336,11 @@ file-viewer/
 - 版本：semver。首發 0.0.1 只是佔名、沒有 API，在本機手動發（npm 只能給已經存在的套件綁 trusted publisher，照 ui 的經驗，01 P04-2）。第一個能用的版本是 0.1.0，之後一律由 tag `v*` 觸發 `release.yml`，tag 和 `package.json` 不一致就失敗。npm trusted publishing（OIDC），repo 不存 npm token。`CHANGELOG.md` 用 Keep a Changelog。
 - 宿主只吃 npm 發佈的版本；開發時用 `pnpm link` 試，不 commit。
 - third-party notices：`THIRD_PARTY_NOTICES.md` 放進發佈的 `files`。內容有兩段：抄進來的程式（Compositor @11d8d7a、opencut-classic @cf5e79e，附 MIT 全文與版權行），以及 runtime 依賴的清單；mediabunny 那一條寫確切版本、MPL-2.0、對應 tag 的原始碼網址。升 mediabunny 時同一個 commit 改這個檔。宿主自己的 notices（storage 規劃中的 `public/third-party-notices.txt`）再收錄本套件。
+- 程式規則：dynamic import 的目標檔不能叫 `index.*`（例如 `import("../video-editor/ui/video-editor")`，不是 `import("../video-editor/index")`）。宿主 bundler 用目標檔名當 chunk 名，會變成 `index-<hash>`，product 的 chunks-check 拒絕 `index-*`。`scripts/check-entry-deps.mjs` 會檢查 build 出來的 `dist/`（01 P02-1）。
 - CI（`ci.yml`，照 ui 用 turbo 遠端快取，teamSlug `anyknown-file-viewer`）：`pnpm check`（typecheck、lint、fmt:check、入口檢查）、`pnpm test`（jsdom），還有：
   - `pnpm test:browser`：browser 模式的 vitest（headless Chromium），給 GL、WebCodecs、canvas 的測試用；
   - `pnpm verify:pack`（`scripts/verify-pack.mjs`）：打包後從外面 resolve exports map 的每一條；
-  - 入口檢查（`scripts/check-entry-deps.mjs`）：build 後的 `dist/index.js` 靜態 import 圖裡不能有 `@excalidraw/`、`mediabunny`、`react-markdown`、`remark-`、`rehype-`、`unified`、`fflate`，大小合計 ≤ 64 KiB；
+  - 入口檢查（`scripts/check-entry-deps.mjs`）：build 後的 `dist/index.js` 靜態 import 圖裡不能有 `@excalidraw/`、`mediabunny`、`react-markdown`、`remark-`、`rehype-`、`unified`、`fflate`，大小合計 ≤ 64 KiB；另外掃整個 `dist/`，`import()` 的相對路徑目標檔名不能是 `index.*` 或 `index-*`；
   - 授權檢查（`scripts/check-licenses.mjs`）：production 依賴只准 MIT、ISC、BSD-2-Clause、BSD-3-Clause、Apache-2.0、0BSD；例外兩條：`mediabunny` 可以是 MPL-2.0，名稱以 `@fontsource/` 或 `@fontsource-variable/` 開頭的字型套件可以是 OFL-1.1（01 P02-3 一次寫好，07、13 不改這支 script）。出現 GPL / LGPL / Unknown 就失敗；`dependencies` 裡每個套件名都必須出現在 `THIRD_PARTY_NOTICES.md`；
   - lint 規則：`src/**` 不准 import `@anyknown/*`（不 import storage、product，也不 import ui 的任何 JS）。package 邊界是主要證明，lint 只是第二道。
 - 授權：`LICENSE` 是 MIT，版權行照 ui 目前的寫法（見 §8 第 1 題）。
@@ -402,7 +405,7 @@ file-viewer/
 | `image.adjust.*`、`image.effects.*` | `src/image-editor/adjust/messages.ts` | `adjustMessages` | 12 第 1 步起 |
 | `image.text.*`、`image.shape.*` | `src/image-editor/text/messages.ts` | `textShapeMessages` | 13 第 1 步起 |
 
-一個檔超過 300 行就把兩種語言拆成同目錄的 `messages-en.ts`、`messages-zh-tw.ts`，表名不變。06 不加 key（錯誤都用 `error.<code>`）。
+一個檔超過 300 行就把兩種語言拆成同目錄的 `messages-en.ts`、`messages-zh-tw.ts`，表名不變。**每個區域的 `messages.ts` 都會保留**：拆檔之後它只負責組合並匯出該區域的表（`<area>Messages`），不會消失或改名。05 第 9 步的 `scripts/api-docs.mjs` 就是用 glob 讀 `src/**/messages.ts` 的 `*Messages` export 來產生 Messages 表，依賴這個保證。06 不加 key（錯誤都用 `error.<code>`）。
 
 ### 9.3 基本元件（`src/primitives/`，全部由 02 提供）
 
@@ -415,29 +418,29 @@ file-viewer/
 | `Button`、`ButtonVariant` | `button.tsx` | `Button(props: ComponentProps<"button"> & { variant?: "primary" \| "secondary" \| "ghost" \| "danger"; icon?: ReactNode })`；只有圖示時必須給 `aria-label` | P04-1 | 03、04、07、08、10–13 |
 | `Spinner` | `spinner.tsx` | `Spinner(props: { label: string })` | P04-1 | 03、04、10 |
 | `Tooltip` | `tooltip.tsx` | `Tooltip(props: { content: string; delay?: number; children: ReactElement })` | P04-2 | 07、08、10 |
-| `Menu`、`MenuItem` | `menu.tsx` | `MenuItem = { id; label; onSelect(): void; disabled?; danger? }`；`Menu(props: { trigger: ReactElement; items: readonly MenuItem[] })` | P04-2 | 07（比例選單）、12（新增調整圖層） |
+| `Menu`、`MenuItem` | `menu.tsx` | `MenuItem = { id; label; onSelect(): void; disabled?; danger? }`；`Menu(props: { trigger: ReactElement; items: readonly MenuItem[] })` | P04-2 | 07（比例選單）、10（圖層面板的「新增」下拉；12 的項目經 `registerMenuItem({ menu: "layer-new" })` 進來） |
 | `Slider` | `slider.tsx` | `Slider(props: { label; value; min; max; step?; disabled?; onValueChange(v: number): void; onValueCommitted?(v: number): void })` | P04-2 | 07、08、10、11、12 |
-| `Dialog` | `dialog.tsx` | `Dialog(props: { open; onOpenChange(open: boolean): void; title: string; description?: string; children?: ReactNode; footer?: ReactNode })` | P04-3 | 07、08、10（輸出 / 匯出對話框） |
-| `ConfirmDialog` | `dialog.tsx` | `ConfirmDialog(props: { open; onOpenChange; title; description; confirmLabel; cancelLabel; danger?: boolean; onConfirm(): void })`；底下是 Base UI `AlertDialog`。各 plan 寫的「AlertDialog」都是它 | P04-3 | 07（輸出中關閉）、08（輸出中關閉）、10（存檔選擇以外的確認）、11（遮蔽）、13（缺字型） |
+| `Dialog` | `dialog.tsx` | `Dialog(props: { open; onOpenChange(open: boolean): void; title: string; description?: string; children?: ReactNode; footer?: ReactNode })` | P04-3 | 07、08、10（輸出 / 匯出對話框）、11（擴張 / 收縮 / 羽化、填色、遮蔽，經 `api.openDialog`） |
+| `ConfirmDialog` | `dialog.tsx` | `ConfirmDialog(props: { open; onOpenChange; title; description; confirmLabel; cancelLabel; danger?: boolean; onConfirm(): void })`；底下是 Base UI `AlertDialog`。各 plan 寫的「AlertDialog」都是它 | P04-3 | 07（輸出中關閉）、08（輸出中關閉）、10（存檔選擇以外的確認）、11（點陣化文字 / 形狀圖層）、13（缺字型） |
 | `DiscardDialog` | `dialog.tsx` | `DiscardDialog(props: { open; onOpenChange; onDiscard(): void })`；字串固定用 `discard.*` | P04-3 | 04、07、08、10 |
-| `Popover` | `popover.tsx` | `Popover(props: { trigger: ReactElement; label: string; children: ReactNode })`；`label` 是 trigger 的 `aria-label` | P04-4（新增） | 08（音量、正規化、去掉靜音）、11（顏色挑選器） |
-| `ToggleGroup` | `toggle-group.tsx` | `ToggleGroup<T extends string>(props: { label: string; value: T; options: readonly { value: T; label: string; icon?: ReactNode }[]; onChange(v: T): void })` | P04-4（新增） | 10（裁切比例、匯出格式）、11（選取運算模式） |
+| `Popover` | `popover.tsx` | `Popover(props: { trigger: ReactElement; label: string; children: ReactNode; onOpenChange?(open: boolean): void })`；`label` 是 trigger 的 `aria-label`；`onOpenChange` 在每次開、關時呼叫（Base UI 的 `Popover.Root` 本來就支援） | P04-4（新增） | 08（音量、正規化、去掉靜音）、11（顏色挑選器） |
+| `ToggleGroup` | `toggle-group.tsx` | `ToggleGroup<T extends string>(props: { label: string; value: T; options: readonly { value: T; label: string; icon?: ReactNode }[]; onChange(v: T): void })` | P04-4（新增） | 10（裁切比例、匯出格式）、11（選取運算模式、取樣、漸層、遮蔽樣式）、13（文字對齊、形狀種類） |
 | `RadioGroup` | `radio-group.tsx` | `RadioGroup<T extends string>(props: { label: string; value: T; options: readonly { value: T; label: string; description?: string; disabled?: boolean }[]; onChange(v: T): void })` | P04-4（新增） | 07（輸出畫質）、08（輸出格式與位元率） |
-| `Switch` | `switch.tsx` | `Switch(props: { label: string; checked: boolean; onCheckedChange(checked: boolean): void; disabled?: boolean })` | P04-4（新增） | 12（調整面板） |
+| `Switch` | `switch.tsx` | `Switch(props: { label: string; checked: boolean; onCheckedChange(checked: boolean): void; disabled?: boolean })` | P04-4（新增） | 11（魔術棒、仿製）、12（調整與效果面板）、13（自動行距） |
 | `Progress` | `progress.tsx` | `Progress(props: { label: string; value: number \| null })`；0–1，`null` = 不定進度（線性、不回彈） | P04-4（新增） | 07（素材載入、輸出）、08（掃峰值、輸出）、11（長時間的 worker 工作） |
-| `Select` | `select.tsx` | `Select<T extends string>(props: { label: string; value: T; groups: readonly (readonly { value: T; label: string }[])[]; onChange(v: T): void })`；組間畫分隔線 | P04-5（新增） | 10（混合模式）、12（通道、色域） |
-| `NumberField` | `number-field.tsx` | `NumberField(props: { label: string; value: number; min?: number; max?: number; step?: number; onChange(v: number): void; onCommit?(v: number): void })`；標籤可拖曳（Base UI `ScrubArea`） | P04-5（新增） | 10（變形、不透明度）、11（筆刷、容許值） |
-| `ContextMenu` | `context-menu.tsx` | `ContextMenu(props: { items: readonly MenuItem[]; children: ReactElement })` | P04-5（新增） | 10（圖層右鍵；11–13 的項目經 `registerMenuItem({ menu: "layer-context" })` 進來） |
-| `Menubar` | `menubar.tsx` | `Menubar(props: { menus: readonly { id: string; label: string; items: readonly (MenuItem & { shortcut?: string })[] }[] })` | P04-5（新增） | 10（選單列；11、12 的項目經 `registerMenuItem` 進來） |
+| `Select` | `select.tsx` | `Select<T extends string>(props: { label: string; value: T; groups: readonly (readonly { value: T; label: string }[])[]; onChange(v: T): void })`；組間畫分隔線 | P04-5（新增） | 10（混合模式）、12（通道、色域、筆畫位置）、13（字重） |
+| `NumberField` | `number-field.tsx` | `NumberField(props: { label: string; value: number; min?: number; max?: number; step?: number; onChange(v: number): void; onCommit?(v: number): void })`；標籤可拖曳（Base UI `ScrubArea`） | P04-5（新增） | 10（變形、不透明度）、11（筆刷、容許值、選取的數值）、13（字級、字距、行距、圓角、線寬） |
+| `ContextMenu` | `context-menu.tsx` | `ContextMenu(props: { items: readonly MenuItem[]; children: ReactElement })` | P04-5（新增） | 10（圖層右鍵；12 的項目經 `registerMenuItem({ menu: "layer-context" })` 進來） |
+| `Menubar` | `menubar.tsx` | `Menubar(props: { menus: readonly { id: string; label: string; items: readonly (MenuItem & { shortcut?: string })[] }[] })` | P04-5（新增） | 10（選單列；11 的項目經 `registerMenuItem` 進來） |
 
 ### 9.4 viewer（`src/viewer/`）
 
 | 符號 | 檔案路徑 | 簽名 | 擁有 | 使用 |
 | --- | --- | --- | --- | --- |
 | `FileViewer` | `src/viewer/file-viewer.tsx` | `FileViewer(props: FileViewerProps): JSX.Element` | 03 第 6 步；編輯模式第 9 步 | 05、H1、H2 |
-| `editors`、`EditorRegistry` | `src/viewer/editors.ts` | `EditorRegistry = Partial<Record<EditKind, ComponentType<EditorProps>>>`；每行 `<kind>: lazy(() => import("../<dir>/index").then((m) => ({ default: m.<Editor> })))` | 03 第 8 步（空表） | `kindOf`（03 第 8 步接上）；04 P03-2 加 `excalidraw`（`ExcalidrawFileEditor`）；07 第 11 步加 `video`（`VideoEditor`）；08 P03-1 加 `audio`（`AudioEditor`）；v0.3 發版 commit 加 `image`（`ImageEditor`） |
+| `editors`、`EditorRegistry` | `src/viewer/editors.ts` | `EditorRegistry = Partial<Record<EditKind, ComponentType<EditorProps>>>`；每行 `<kind>: lazy(() => import("../<dir>/<定義元件的檔>").then((m) => ({ default: m.<Editor> })))`；目標檔不能叫 `index.*`（§7），例如 `excalidraw` → `../excalidraw/file-editor`、`video` → `../video-editor/ui/video-editor`、`audio` → `../audio-editor/audio-editor`、`image` → `../image-editor/image-editor` | 03 第 8 步（空表） | `kindOf`（03 第 8 步接上）；04 P03-2 加 `excalidraw`（`ExcalidrawFileEditor`，檔 `src/excalidraw/file-editor.tsx`）；07 第 11 步加 `video`（`VideoEditor`）；08 P03-1 加 `audio`（`AudioEditor`）；v0.3 發版 commit 加 `image`（`ImageEditor`） |
 | `bodies`、`BodyProps` | `src/viewer/bodies.tsx` | `bodies: Record<ViewKind, ComponentType<BodyProps>>`；`BodyProps = { file: FileRef; loaded: Loaded; fail(e: ViewerError): void; viewer: FileViewerProps }` | 03 第 5 步 | 04 P01-4 換 `markdown`、P02-3 換 `excalidraw`；10 第 9 步加 `comp`（`lazy(() => import("../image-editor/comp-preview"))`） |
-| `Loaded`、`load` | `src/viewer/load.ts` | `Loaded = { blob: Blob; url: string \| null; text: string \| null }`；`load(view, file, signal)` 用 `readBlob`，`type` 是 `view === "pdf" ? "application/pdf" : mimeOf(file)` | 03 第 3 步 | 04、10 的 body |
+| `Loaded`、`load` | `src/viewer/load.ts` | `Loaded = { blob: Blob; url: string \| null; text: string \| null }`；`load(view, file, signal, limits)` 用 `readBlob`，`type` 是 `view === "pdf" ? "application/pdf" : mimeOf(file)`；大小依 kind 檢查（previewBytes / textBytes / docBytes）。`view === "comp"` 不讀檔、不檢查大小，回空的 `Loaded`，body 用 `BodyProps.file.source` 自己 `readHead`；`Limits.projectBytes` 只在進入編輯時檢查，預覽不檢查 | 03 第 3 步 | 04、10 的 body |
 
 ### 9.5 媒體層（`src/media/`，06）
 
@@ -466,22 +469,41 @@ file-viewer/
 
 ### 9.7 影像編輯器的擴充介面（`src/image-editor/`，10）
 
-11–13 只透過這些介面接進 10，不改 10 的其他檔。全部在 10 的第 1–3 步定下，之後只加不改。
+11–13 只透過這些介面接進 10：import 下表「檔案路徑」欄的檔，不改 10 的其他檔（唯一的改動是 `installExtensions` 加一行 import 與一行呼叫）。型別與註冊函式在 10 第 1 步定下，純函式在第 2 步，GL 與 `EditorApi` 的實作在第 3 步；11–13 只等這三步（畫在外框上的部分另等第 4、5 步，見「擁有」欄）。之後只加不改。
+
+規則：
+
+- **翻譯**：交給 10 的 `MessageKey`（`ToolSpec.label`、`MenuItemSpec.label`、`dispatch` / `commit` 的 label、`showError` 的 key、`api.t`、`useLabel()`）一律用 `src/image-editor/labels.ts` 的合併表翻：`commonMessages` → `imageMessages` → `registerMessages` 註冊的表（依註冊順序），同一個 key 取第一張有它的表；宿主 `messages` 蓋過全部；語系是 `useRoot().locale`。所以每份擴充的 `register…()` 第一行是 `registerMessages(<自己的表>)`。擴充自己的 React 元件：自己區域的 key 用 `useT(<自己的表>)`，`common.*` / `error.*` 用 `useT(commonMessages)`，別的區域用 `useLabel()`；React 外用 `api.t`。
+- **快捷鍵衝突照 Photoshop**（10 第 4 步 `ui/shortcuts.ts` 的分派順序）：輸入框有焦點 → 不處理；目前工具的 `onKeyDown`；有選取且按不帶修飾鍵的 Delete / Backspace → `SelectionProvider.clear`（清掉選取範圍內的像素）；選單快捷鍵（`layer.delete` 在這一層，所以沒有選取時才刪圖層）；工具鍵。移動工具（`V`，10 第 5 步）在有選取時把拖曳、按鍵、overlay 與換工具的收尾交給 `SelectionProvider.move`（移動選取範圍內的像素）。11 只要 `registerSelection` 就接手這兩個行為。
+- **測試**：`mountCanvas`、`mountEditor` 不呼叫 `installExtensions`；擴充的測試在 `beforeEach` 先 `resetRegistry()` 再呼叫自己的 register 函式，然後才 mount（`mountEditor` 自己呼叫冪等的 `registerCore()`）。兩者都畫 `UiOutlet`、都在掛上後呼叫 `setups()`。
+- **按需載入**：`import()` 的目標不准叫 `index.*`（product 的 chunks-check 拒絕 `index-*` chunk）。`bodies.comp` 載入 `src/image-editor/comp-preview.tsx`；`editors.image` 載入 `src/image-editor/image-editor.tsx`（`m.ImageEditor`），不載入 `index.ts`。11–13 不用 `import()`。
 
 | 符號 | 檔案路徑 | 簽名 | 擁有 | 使用 |
 | --- | --- | --- | --- | --- |
-| `ImageEditor`、`ImageEditorProps` | `src/image-editor/index.ts`（實作 `image-editor.tsx`） | `ImageEditor(props: EditorProps)`；`ImageEditorProps = EditorProps` | 10 第 7 步 | 05（API 頁）、v0.3 發版 commit（登錄 `editors.image`） |
-| `EditorApi` 與 `Layer`、`LayerId`、`Doc`、`LayerPixels`、`Command`、`PixelTile`、`Session`、`Rect`、`Point`、`Mat2D`、`PixelTarget`、`ViewTransform`、`PassView`、`EffectTarget`、`MessageKey` | `src/image-editor/api.ts` | 照 10 契約「擴充介面」原文；改像素的流程是 `snapshotTiles` → `writeRegion` → `commit(label, doc, tiles)` | 10 第 1 步 | 11、12、13 |
-| `registerTool`、`ToolSpec` | `src/image-editor/registry.ts`、`api.ts` | `registerTool(spec: ToolSpec): void`；工具鍵或 id 重複丟 Error | 10 第 1 步 | 11、13 |
+| `ImageEditor`、`ImageEditorProps` | `src/image-editor/index.ts`（實作 `image-editor.tsx`） | `ImageEditor(props: EditorProps)`；`ImageEditorProps = EditorProps` | 10 第 7 步 | 05（API 頁）、v0.3 發版 commit（登錄 `editors.image`：`lazy(() => import("../image-editor/image-editor").then((m) => ({ default: m.ImageEditor })))`）、11（走查測試） |
+| `EditorApi` 與 `Layer`、`LayerId`、`Doc`、`LayerPixels`、`Command`、`PixelTile`、`Session`、`Rect`、`Point`、`Size`、`Mat2D`、`PixelTarget`、`ViewTransform`、`EffectTarget`、`MessageKey`、`BLEND_MODES` | `src/image-editor/api.ts` | 照 10 契約「擴充介面」原文。改像素：`snapshotTiles` → `writeRegion` → `commit(label, doc, tiles)` | 10 第 1 步 | 11、12、13 |
+| `AdjustmentSettings`、`AdjustmentKind` | `src/image-editor/api.ts` | `AdjustmentSettings = LayerAdjustment`（09）；`AdjustmentKind = AdjustmentSettings["kind"]` | 10 第 1 步 | 12 |
+| `PassView` | `src/image-editor/api.ts` | `{ scale; width; height; docFromPx: Mat2D; forExport: boolean }`；`forExport` = 存檔、匯出、`readComposite` 時為 true，畫面為 false | 10 第 1 步；傳值在第 3 步的 `engine/render.ts` | 12（`forExport` 時效果不套預覽上限、不進快取） |
+| `EditorApi.pixelSize`、`resizePixels`、`LayerResize`、`commit` 的第 4 個參數 | `src/image-editor/api.ts` | `pixelSize(id, target): Size \| null`（texture 尺寸，沒有 texture 回 null）；`resizePixels(id, target, size: Size, opts?: { offset?: Point; pixels?: Uint8Array }): LayerResize`（換成新尺寸的 texture；有 `pixels` 就整張寫入，否則舊像素放在 `offset`，其餘 image 透明、mask 填邊緣多數值；邊長超過丟 `too_large`；不改文件、不記 undo）；`commit(label, doc, tiles, resizes?: readonly LayerResize[])`：undo 先寫回 tiles 的 before 再換回 resizes 的 before，redo 相反 | 10 第 1 步；實作第 3 步 | 11（畫到圖層外擴大圖層、圖層像素尺寸）、13（文字 / 形狀重畫成新大小時原 id 就地換） |
+| `EditorApi.selection`、`Selection`、`SelectionProvider`、`registerSelection`、`selectionProvider` | `src/image-editor/api.ts`、`registry.ts` | `Selection = { version: number; texture: WebGLTexture /* 畫布大小 R8，255 = 全選 */; bounds: Rect; read(rect: Rect): Uint8Array /* 文件座標 R8 */ }`；`SelectionProvider = { get(api): Selection \| null; clear?(api): void; move?: Pick<ToolSpec, "onPointerDown" \| "onPointerMove" \| "onPointerUp" \| "onKeyDown" \| "drawOverlay" \| "onDeactivate"> }`；`registerSelection(p)` 只能一次，第二次丟 Error；`api.selection()` = `selectionProvider()?.get(api) ?? null` | 10 第 1 步；`api.selection` 第 3 步；Delete 分派第 4 步、移動工具第 5 步 | 11（註冊 provider：內容、清除、移動像素）、12（新增調整圖層時拿選取當遮色片） |
+| `registerPropertyPanel`、`PropertyPanelSpec`、`propertyPanels` | `src/image-editor/registry.ts`、`api.ts` | `PropertyPanelSpec = { id; order?; when(layer: Layer, api): boolean; component: ComponentType<{ api: EditorApi; layer: Layer }> }`；屬性欄先畫目前工具的 `panel`，再依 `order` 畫 `session.active` 那一層 `when` 為 true 的面板；id 重複丟 Error | 10 第 1 步；畫出來在第 4 步的 `ui/properties.tsx` | 12（調整面板、效果面板） |
+| `EditorApi.openDialog`、`showError`、`t` | `src/image-editor/api.ts`（後台 `src/image-editor/ui-slot.tsx` 的 `createUiSlot`、`UiOutlet`） | `openDialog(render: (close: () => void) => ReactNode): () => void`（節點畫在編輯器自己的 `ViewerRoot` 裡，主題、語系、宿主 `messages` 生效）；`showError(e: ViewerError, key?: MessageKey, vars?: Vars): void`（交給宿主 `onError`，提示條顯示 key，沒給用 `error.<code>`，下一次有 label 的 dispatch / commit 清掉）；`t(key: MessageKey, vars?: Vars): string` | 10 第 1 步（slot）；接到 `EditorApi` 第 3 步；提示條第 4 步 | 11（選取 / 填色 / 遮蔽 / 點陣化對話框、預算錯誤、貼上的圖層名）、13（形狀圖層名） |
+| `registerSetup`、`SetupFn`、`setups` | `src/image-editor/registry.ts`、`api.ts` | `SetupFn = (api: EditorApi, root: HTMLElement) => (() => void) \| void`；每個編輯器掛上時呼叫一次，root 是 `.fv-root`，回傳的函式在卸載時呼叫；同一個函式第二次註冊略過 | 10 第 1 步；呼叫點在第 3 步 `mountCanvas`、第 4 步 `mountEditor`、第 7 步 `ImageEditor` | 11（在 `.fv-root` 收 `paste`；走查測試取得 `api`） |
+| `registerMessages`、`messageTables`、`labelTable`、`labelOf`、`useLabel` | `src/image-editor/registry.ts`、`labels.ts`、`ui/use-label.ts` | `registerMessages(table: MessageTable<string>): void`（同一個物件第二次略過）；`labelOf(locale, overrides, key, vars?)`；`useLabel(): (key: MessageKey, vars?: Vars) => string`；合併規則見上面「翻譯」 | 10 第 1 步；`useLabel` 第 4 步 | 11、12、13（`register…()` 第一行註冊自己的表；12 的元件用 `useLabel` 翻別區的 key） |
+| `registerTool`、`ToolSpec`（含 `onDeactivate`） | `src/image-editor/registry.ts`、`api.ts` | `registerTool(spec: ToolSpec): void`；工具鍵或 id 重複丟 Error；`onDeactivate?(api)`：`setSession` 把 `tool` 換走之前呼叫一次 | 10 第 1 步；`onDeactivate` 呼叫點第 3 步 | 11（換工具時合併浮動像素）、13（換工具時結束文字編輯） |
 | `registerAdjustment`、`AdjustmentHooks` | 同上 | `lut?(gl, s): { dims: 1 \| 3; texture: WebGLTexture }`（1 = 256×1 RGBA16F `TEXTURE_2D`、3 = 33³ RGBA16F `TEXTURE_3D`）；`pass?(gl, src, dst, s, view: PassView)`；`reach(s, scale): number`；`lut` 與 `pass` 擇一 | 10 第 1 步；查表 shader 在 10 第 3 步的 `src/image-editor/engine/render.ts` | 12（8 種只建 LUT texture，4 種給 `pass`；12 不寫查表 shader） |
 | `registerEffects`、`EffectsHooks` | 同上 | `pass(gl, layer, src, dst: EffectTarget, view: PassView & { version: number })`；`reach(effects, scale): number` | 10 第 1 步 | 12 |
-| `registerMenuItem`、`MenuItemSpec`、`MenuId` | 同上 | `MenuId = "edit" \| "image" \| "layer" \| "select" \| "layer-context" \| "layer-new" \| "hidden"`；`shortcut` 寫成 `"Mod+Shift+D"` | 10 第 1 步 | 11（選取、編輯選單與快捷鍵）、12（右鍵效果項目、新增調整圖層） |
-| `registerLayerDecor`、`LayerDecor` | 同上 | `{ id; thumbnail?(layer, api); badge?(layer, api); onTransformEnd?(id, before, api) }` | 10 第 1 步；畫出來的地方是 10 第 4 步的圖層列 | 12（`fx` 標記）、13（文字 / 形狀縮圖、形狀變形後重畫） |
+| `registerMenuItem`、`MenuItemSpec`、`MenuId` | 同上 | `MenuId = "edit" \| "image" \| "layer" \| "select" \| "layer-context" \| "layer-new" \| "hidden"`；`shortcut` 寫成 `"Mod+Shift+D"` | 10 第 1 步 | 11（選取、編輯、影像選單與快捷鍵）、12（右鍵效果項目、新增調整圖層） |
+| `registerLayerDecor`、`LayerDecor` | 同上 | `{ id; thumbnail?(layer, api); badge?(layer, api); onTransformEnd?(id, before, api); onThumbnailClick?(layer, target: PixelTarget, mods: { mod; shift; alt }, api): boolean }`；`onThumbnailClick` 在 10 的預設處理之前依序呼叫，回 true 吃掉 | 10 第 1 步；畫出來與點擊在 10 第 4 步的圖層列 | 11（⌘ 點縮圖載入選取）、12（調整標記、`fx` 標記）、13（文字 / 形狀縮圖、形狀變形後重畫） |
 | `registerOverlay`、`OverlaySpec` | 同上 | `{ id; draw(ctx, view, api, time); animated?(api): boolean }` | 10 第 1 步 | 11（選取虛線） |
+| `resetRegistry` | `src/image-editor/registry.ts` | `(): void`，只給測試；清空所有表（含 messages、selection provider、setups） | 10 第 1 步 | 11、12、13 的測試 |
 | `installExtensions` | `src/image-editor/extensions.ts` | `installExtensions(): void`，冪等；11、12、13 各加一行 import 與一行呼叫自己的 `register…()` | 10 第 1 步 | 11、12、13 |
-| `jobs`、`JobKind`、`JobInput`、`JobOutput`、`runInWorker` | `src/image-editor/worker/jobs.ts`；`EditorApi.runInWorker` | `encodePng: (input: PngImage, signal) => Uint8Array`；`decodePng: (input: { bytes: Uint8Array; kind: "layer" \| "mask" }, signal) => PngImage`；其他 plan 加一個 key | 10 第 1 步 | 11（加 `wand`、`heal`、`contentFill`；剪貼簿用 `encodePng`）、13 不編 PNG（只 `writeRegion`） |
+| `insertLayer`、`removeLayers`、`patchLayer` | `src/image-editor/doc/commands/layers.ts` | `insertLayer(record: Layer, above: LayerId \| null): Command`（插在 `above` 正上方、沿用它的 `parentID`；`above` 是資料夾時插在整個子樹上方；null 時放根層最上面；`activeLayerID` 設成新層；非資料夾、非調整圖層的 `pixels.image` 設 `{ kind: "gpu" }`，有 `maskFile` 時 `pixels.mask` 也設）；`removeLayers(ids: readonly LayerId[]): Command`（資料夾連子孫、`pixels`、指向它們的 `maskSourceID` 一起拿掉）；`patchLayer(id, patch: Partial<Layer>): Command`（淺合併，值為 `undefined` 的 key 刪掉） | 10 第 2 步 | 11（貼上的新層、點陣化、擴大圖層後的 transform）、12（新增調整圖層、改設定與效果）、13（新增 / 刪除 / 改文字與形狀圖層） |
+| `layerMatrixOf`、`resizedTransform` | `src/image-editor/doc/layer-matrix.ts` | `layerMatrixOf(t: Layer["transform"], px: Size): Mat2D`（文件 → 圖層像素）；`resizedTransform(t, from: Size, to: Size, offset: Point): Layer["transform"]`（舊像素留在原文件位置、像素密度不變的新 transform） | 10 第 2 步 | 11（擴大圖層或遮色片） |
+| `compile`、`FULLSCREEN_VS`、`drawFullscreen`、`createTarget` | `src/image-editor/engine/gl/program.ts`、`target.ts` | `compile(gl, vs, fs): WebGLProgram`（依 gl 與原始碼快取，失敗丟含 info log 的 Error）；`FULLSCREEN_VS`（`#version 300 es`，輸出 `v_uv`）；`drawFullscreen(gl)`；`createTarget(gl, width, height, format: "rgba16f" \| "rgba8" \| "r8"): { texture; framebuffer; width; height; dispose() }` | 10 第 3 步 | 11（選取、筆刷 shader）、12（調整與效果的 pass；12 不另帶 GL helper） |
+| `jobs`、`JobKind`、`JobInput`、`JobOutput`、`runInWorker` | `src/image-editor/worker/jobs.ts`；`EditorApi.runInWorker` | `encodePng: (input: PngImage, signal) => Uint8Array`；`decodePng: (input: { bytes: Uint8Array; kind: "layer" \| "mask" }, signal) => PngImage`；其他 plan 加一個 key | 10 第 1 步 | 11（加 `wand`、`heal`、`contentFill`；剪貼簿用 `encodePng`）、13（只在整合測試用 `encodePng`，元件只 `writeRegion`） |
 | `setSession` 的 `renderHidden` | `src/image-editor/api.ts` 的 `Session` | `ReadonlySet<LayerId>`，只影響畫面 | 10 第 1 步 | 13（編輯文字時藏那一層） |
-| `makeDoc`、`mountCanvas`、`mountEditor` | `src/image-editor/test/make-doc.ts`、`mount-canvas.tsx`、`mount-editor.tsx` | 測試輔助 | 10 第 2、3、4 步 | 11、12、13 的測試 |
+| `makeDoc`、`mountCanvas`、`mountEditor` | `src/image-editor/test/make-doc.ts`、`mount-canvas.tsx`、`mount-editor.tsx` | 測試輔助；見上面「測試」 | 10 第 2、3、4 步 | 11、12、13 的測試 |
 
 ### 9.8 repo 層的共用檔
 
@@ -489,112 +511,13 @@ file-viewer/
 | --- | --- | --- | --- |
 | `package.json` 的 `exports` 與 `tsdown.config.ts` 的 `entry` | repo 根 | 01 P01-1（`.`、`./styles.css`） | §4 表的「誰加」 |
 | `src/styles.css` | `src/styles.css` | 01 P01-1 建、02 P03-3 寫 root 段 | 每份有 UI 的 plan 在檔尾加一段，不用 `@import` |
-| `tsconfig.comp.json`（`src/comp/**`，不含 DOM lib） | repo 根 | 01 P01-2（`typecheck` 已含 `tsc --noEmit -p tsconfig.comp.json`） | 09 不另建 `src/comp/tsconfig.json`、不改 scripts |
-| `scripts/check-entry-deps.mjs` | `scripts/` | 01 P02-1 | 不改；黑名單見 §7 |
+| `tsconfig.comp.json`（`src/comp/**`，不含 DOM lib；一開始就含 `@types/node` 與 `types: ["node"]`） | repo 根 | 01 P01-2（`typecheck` 已含 `tsc --noEmit -p tsconfig.comp.json`） | 不改：09 不另建 `src/comp/tsconfig.json`、不改 scripts、不補 `@types/node` 與 `types` |
+| `src/comp/index.ts` | `src/comp/` | 01 P01-2 建空殼（兩行註解加 `export {};`，不在 `exports` 與 `entry` 裡） | 09 P01-1 整檔覆寫並加 `./comp` export；之後 09 的各步加匯出 |
+| `scripts/check-entry-deps.mjs` | `scripts/` | 01 P02-1（含 dynamic import 目標不得叫 `index.*` 的檢查，§7） | 不改；黑名單見 §7 |
 | `scripts/check-licenses.mjs`（含 OFL-1.1 字型例外） | `scripts/` | 01 P02-3 | 不改 |
-| `THIRD_PARTY_NOTICES.md` | repo 根 | 01 P02-3 | 04、06、07、09、10、13：加依賴或抄程式的那一步 |
+| `THIRD_PARTY_NOTICES.md` | repo 根 | 01 P02-3 | 02（`@base-ui/react`）、04、06、07、09、10、13：加依賴或抄程式的那一步 |
 | `docs/plans/README.md` | `docs/plans/` | 01 P03-1 | — |
-| `docs/guides/connect.md`、`docs/guides/guides.json` | `docs/guides/` | 05 第 6、8 步 | 04 → 05 Phase 04（字型、`assetPath`）；10 第 12 步（WebGL2、`optimizeDeps.exclude`） |
-| `site/vite.config.ts`、`site/public/_headers` | `site/` | 05 第 1、4 步 | 10 第 12 步（`optimizeDeps.exclude`） |
+| `docs/guides/connect.md`、`docs/guides/guides.json` | `docs/guides/` | 05 第 6、8 步 | 04 → 05 Phase 04（字型、`assetPath`）；07 第 20 步（影片編輯器：`editor.assets`、`maxOutputBytes`、不放寬 CSP）；10 第 12 步（WebGL2、`optimizeDeps.exclude`；這條只由 10 處理） |
+| `site/vite.config.ts`、`site/public/_headers` | `site/` | 05 第 1、4 步 | 10 第 12 步（`optimizeDeps.exclude`；只由 10 處理，05 不寫） |
 | playground（`site/playground/`，對外只有 `Playground({ locale, theme })`） | `site/playground/` | 05 第 2 步 | 07 第 20 步（素材欄的 `editor.assets`） |
-| `@fontsource-variable/geist@5.3.0` | `package.json` 的 `dependencies` | 07 第 8 步 | 13 第 2 步（同版本，已存在就不動） |
-
-## 10. 01–13 要對齊的地方（全部對齊後刪掉本節）
-
-每一條是「舊 → 新」或「刪」。對齊時只改這裡列的東西，其他設計不動；刪了步驟就重編號。
-
-**01 scaffold**
-- 契約的 `exports` 與 `tsdown.config.ts` 的 `entry`：只留 `.` 與 `./styles.css`，刪掉另外六條（由 04、07、08、09、10 加，§4）。`verify:pack` 只驗存在的 subpath。
-- P02-3 `check-licenses.mjs`：允許清單加「名稱以 `@fontsource/` 或 `@fontsource-variable/` 開頭的套件可以是 OFL-1.1」，加對應測試。
-- P03-1：同一個 commit 收進 `docs/plans/README.md`（02 不寫）。
-
-**02 contract**
-- 刪 `src/contract/shipped-editors.ts` 與 `SHIPPED_EDITORS`（判斷、契約表、P02-3）。P02-3 的 `kindOf` 先回 `edit: editKindOf(...)`，測試只透過 `editKindOf` 驗編輯規則；`edit` 依 `editors` 過濾由 03 第 8 步加。
-- `EditorProps` 從 `src/contract/props.ts` 移走，改由 03 第 8 步在 `src/contract/editor.ts` 定義（形狀見 §3）。
-- Phase 04 加兩步：P04-4 `Popover`、`ToggleGroup`、`RadioGroup`、`Switch`、`Progress`；P04-5 `Select`、`NumberField`、`ContextMenu`、`Menubar`（簽名照 §9.3）。原 P04-4 主題實測改成 P04-6。
-- 刪原 P04-5（本 repo 的 plan README，歸 01）。
-
-**03 viewer-core**
-- 刪第 1 步（`src/viewer/read-whole.ts` 的 `readWhole`、`CHUNK_BYTES`、`blobType`）。第 3 步的 `load.ts` 改用 02 的 `readBlob`（`src/contract/byte-source.ts`），type = `view === "pdf" ? "application/pdf" : mimeOf(file)`（`mimeOf` 已處理 `.svg`）。
-- 第 2 步 `resolve.ts`：不再用無上限的 limits 呼叫第二次，改看 `kindOf(...).tooLarge`。
-- `ThemeRoot` → `ViewerRoot`（`src/primitives/root.tsx`）。
-- `resolveMessages(locale, overrides)` 與 `BodyProps` / `Status` / `EditPane` 的 `m: Messages` → `useT(viewerMessages)`；`viewer.*` 放 `src/viewer/messages.ts`，不寫進 `src/i18n/en.ts`、`zh-TW.ts`。
-- `viewer.unsupported`、`viewer.tooLarge`、`viewer.readFailed`、`viewer.decodeFailed`、`viewer.codecUnsupported`、`viewer.renderFailed` → 02 的 `error.<code>`；第 4 步在 `src/i18n/en.ts`、`zh-tw.ts` 加 `error.render_failed`。`viewer.edit` → `common.edit`。保留 `viewer.loading`、`viewer.downloadHint`、`viewer.back`。
-- `src/viewer/icons.tsx`（`FileIcon`、`AlertIcon`、`Spinner`）→ 刪，用 02 的 `src/primitives/glyphs.tsx`、`spinner.tsx`。
-- 第 8 步多做：改 `src/contract/kinds.ts`，`edit` 只在 `editors[kind]` 存在時回，並加測試（空表時全部是 `null`；用 `vi.mock` 登錄一個假 editor 時回那個 kind）。
-- 「用到 02 的符號」那段的路徑與名字照 §9.1、§9.2 改寫；型別也從擁有的檔 import，不從 `src/index.ts`。
-
-**04 markdown-excalidraw**
-- `diagram.*` → `excalidraw.*`，放 `src/excalidraw/messages.ts`（`excalidrawMessages`）；`markdown.*` 放 `src/markdown/messages.ts`。不寫 `src/i18n/en.ts`、`zh-TW.ts`。
-- `diagram.save` / `diagram.cancel` → `common.save` / `common.cancel`；`diagram.discardTitle`、`diagram.discard`、`diagram.keepEditing` 與 AlertDialog → 02 的 `DiscardDialog`（`discard.*`）。
-- P03-2：`.excalidraw` 的編輯不在 03 的切換點特判，改成在 `src/viewer/editors.ts` 登錄 `excalidraw`，指向新檔 `src/excalidraw/file-editor.tsx` 的 `ExcalidrawFileEditor(props: EditorProps)`（用 `readBlob` 讀檔、畫 `DiagramEditor`、存檔交出 `.excalidraw` 的 `SaveRequest`）。`excalidraw-body.tsx` 不收 `editing` / `onExitEdit`。
-- 刪判斷裡「`edit === "markdown"` 時 03 的頂列不顯示」那條：`markdown` 不登錄，`kindOf` 對 `.md` 本來就回 `edit: null`。
-- 「接 01–03 的介面」整段照 §9 改寫：exports 由 04 自己加（`./markdown` 在 P01-1、`./excalidraw` 在 P02-2）；viewer context → `useRoot()` 加 `BodyProps`。
-
-**05 site**
-- 步驟參照改成本檔的名字即可，沒有改名。確認 `connect.md` 的 CSP 段寫出 §3 的 PDF 結論（iframe + blob，不用 embed / object）。
-
-**06 media-io**
-- 沒有改名（媒體層以 06 為準）。
-
-**07 video-editor**
-- `openInput` + `probeMedia` + `MediaProbe`（`src/media/source.ts`、`probe.ts`）→ `openMedia(source, need, signal)`（`src/media/open-media.ts`）回 `OpenedMedia`；寬高、fps 由 07 在 `engine/assets.ts` 從 `OpenedMedia.video` 算。
-- `hasWebCodecs` → `hasVideoCodecs`（`src/media/support.ts`）。
-- `class BlobSink { …; discard() }` → `createBlobSink({ maxBytes })` 回 `BlobSink`（`writable`、`size`、`toBlob`），沒有 `discard`。
-- 刪 `engine/read-blob.ts` 的 `readBlob`，用 02 的 `readBlob(source, { type, signal })`。
-- `FvRoot` → `ViewerRoot`；`src/contract/index.ts` → §9.1 的各檔；`src/i18n/index.ts` 的 `useT()` → `useT(videoMessages)`（`src/i18n/use-t.ts`）。
-- `videoEditor.*`（巢狀）→ `video.*` 扁平 key，放 `src/video-editor/messages.ts`；`discard.title`、`discard.body`、`discard.confirm`、`discard.cancel` → 02 的 `discard.*` 加 `DiscardDialog`；`discardExport.title` → `video.discardExport`，用 `ConfirmDialog`。
-- AlertDialog → `ConfirmDialog` / `DiscardDialog`；radio → `RadioGroup`；載入條、輸出進度 → `Progress`。
-- `src/viewer/editor-props.ts` → `src/contract/editor.ts`；`VideoEditorProps` → `export type VideoEditorProps = EditorProps`。
-- `src/viewer/editor-registry.ts` 的 `editorLoaders` → `src/viewer/editors.ts` 的 `editors`；登錄 `VideoEditor`（`ViewerRoot` 巢狀時不重包），不登錄 `VideoEditorBody`。
-- `model/project.ts` 的 `AssetInfo` → `AssetMeta`（避開 02 的 `AssetInfo`）。
-- 第 8 步：刪「改授權允許清單」（01 已含）；`pnpm add @fontsource-variable/geist@5.3.0`。
-- 第 11 步：同一個 commit 加 `./video-editor` 的 exports 與 tsdown entry。
-
-**08 audio-editor**
-- `src/viewer/editor-loaders.ts` 的 `editorLoaders` → `src/viewer/editors.ts` 的 `editors`（`audio: lazy(...AudioEditor)`）。
-- `src/viewer/editor-props.ts` → `src/contract/editor.ts`；`src/contract/file-ref.ts` → `src/contract/byte-source.ts`。
-- `useT()` → `useT(audioMessages)`；`audioEditor.*` → `audio.*`，放 `src/audio-editor/messages.ts`；`src/i18n/` 只在 `messages.ts` 加 `& AudioMessages`。
-- `openInput(source, signal): Input` → `openMedia(source, "audio", signal)`；`open-track.ts` 包它。
-- `createBlobSink(): { target; blob }` → `createBlobSink({ maxBytes })`，`new StreamTarget(sink.writable)`，`sink.toBlob(mime)`。
-- 刪 P03-4 新增的 `src/primitives/popover.tsx`、`popover.css`、`@import`，用 02 的 `Popover`；輸出格式用 `RadioGroup`；進度用 `Progress`；放棄修改用 `DiscardDialog`（文案不同的「停止輸出並關閉？」用 `ConfirmDialog`）。
-- `bytesSource(bytes: Uint8Array)` → `Uint8Array<ArrayBuffer>`。
-- P03-1：同一個 commit 加 `./audio-editor` 的 exports 與 tsdown entry。
-
-**09 comp-format**
-- P01-1：exports 的條件寫 `"default"`（照 01 的 `.`），不寫 `"import"`；不建 `src/comp/tsconfig.json`、不改 `scripts.check`，用 01 的 `tsconfig.comp.json`。
-
-**10 image-editor**
-- 刪 `src/contract/image-edit.ts`（`IMAGE_EDITOR_ENABLED`、`COMP_MAX_BYTES`、`isCompName`、`imageEditKind`）與第 1 步裡改 `kindOf` 的那段：上限用 02 的 `Limits.projectBytes`，專案檔判斷用 `extOf(name) === "comp.zip"`，能不能編輯用 02 的 `editKindOf`，開關是 `editors.image`，由 v0.3 發版 commit 登錄。第 9 步不登錄 image editor。
-- 刪第 1 步的六個 primitives（`alert-dialog`、`context-menu`、`toggle-group`、`select`、`number-field`、`menubar`）與 `src/primitives/image-editor-primitives.test.tsx`；改用 02 的 `ConfirmDialog`、`ContextMenu`、`ToggleGroup`、`Select`、`NumberField`、`Menubar`。
-- `ImageEditorProps`（`Pick<FileViewerProps, …>`）→ `export type ImageEditorProps = EditorProps`；`from "../contract"` → §9.1 的各檔。
-- `imageEditor.*` → `image.*`，放 `src/image-editor/messages.ts`（`imageMessages`），不寫 `src/i18n/en.ts`、`zh-TW.ts`。
-- worker 的 `decodePng` job 輸入 `Uint8Array` → `{ bytes: Uint8Array; kind: "layer" | "mask" }`。
-- `api.ts` 的 `BlendMode` 改成 re-export 09 的 `BlendMode`；`Layer` 是 09 `LayerRecord` 的別名。
-- 第 9 步：`ViewKind` 加 `"comp"` 在 `src/contract/formats.ts`、規則在 `src/contract/kinds.ts` 的 `formatOf`，同一個 commit 在 `src/viewer/bodies.tsx` 加 `comp`。
-- 刪「容器寬 < 768 px 時 viewer 的『編輯』鈕停用」：viewer 不知道 editor 的規則，改成 editor 掛上後自己判斷並顯示說明與「返回」（同 07）。
-- 進入編輯的回呼用 03 的 `onEditingChange`，不加 `onModeChange`。
-- 第 7 步：同一個 commit 加 `./image-editor` 的 exports 與 tsdown entry。
-
-**11 image-select-paint**
-- `readComp` → `readProject`（`src/comp/index.ts`）。
-- 「加進 10 的 `ui/shortcuts.ts` 和選單定義」→ `registerMenuItem`；選取虛線 → `registerOverlay`；工具 → `registerTool`；在 `src/image-editor/extensions.ts` 的 `installExtensions` 加一行。
-- `commit(label, doc, rasterTiles)` → 先 `snapshotTiles`、寫像素、再 `commit(label, doc, tiles)`。
-- `imageEditor.select.*` / `imageEditor.paint.*` → `image.select.*` / `image.paint.*`，放 `src/image-editor/tools/messages.ts`（`selectPaintMessages`）。
-- Popover、ToggleGroup、AlertDialog、可拖曳的數字、進度條 → 02 的 `Popover`、`ToggleGroup`、`ConfirmDialog`、`NumberField`、`Progress`。
-- 剪貼簿的 PNG：`api.runInWorker({ kind: "encodePng", input })`。
-
-**12 image-adjustments-effects**
-- `lut?(settings)` → `lut?(gl, s): { dims: 1 | 3; texture }`；`pass?(gl, src, dst, settings)` → `pass?(gl, src, dst, s, view)`；`reach(settings)` → `reach(s, scale)`；效果的 `pass(gl, layer, src, dst)` → `pass(gl, layer, src, dst, view)`、`reach(effects)` → `reach(effects, scale)`。
-- 第 3 步：刪 `adjust/lut.glsl.ts` 的查表 shader；12 只做 `adjust/lut-texture.ts`（上傳 256×1 RGBA16F `TEXTURE_2D` 與 33³ RGBA16F `TEXTURE_3D`）加 `register.ts`。查表在 10 的 `engine/render.ts`，測試用 `readComposite` 讀回比對 CPU 結果。
-- `imageEditor.adjust.*` / `imageEditor.effects.*` → `image.adjust.*` / `image.effects.*`，放 `src/image-editor/adjust/messages.ts`（`adjustMessages`）。
-- 面板的 Slider、Select、Switch、Menu → 02 的同名元件；`fx` 標記 → `registerLayerDecor({ badge })`；右鍵「效果…」「拷貝效果」「貼上效果」「清除效果」→ `registerMenuItem({ menu: "layer-context" })`，不改 `ui/layers/` 的檔。
-- 狀態行：Phase 03 另等 10 第 4 步（圖層面板）。
-
-**13 image-text-shapes**
-- `TextSpec` / `ShapeSpec` → 09 的 `LayerTextStyle` / `LayerShapeStyle`（`src/comp/index.ts`）。
-- AlertDialog → `ConfirmDialog`。
-- 「圖層縮圖的繪製點」→ `registerLayerDecor({ thumbnail })`；形狀變形後重畫 → `LayerDecor.onTransformEnd`；編輯中藏圖層 → `setSession({ renderHidden })`。
-- `imageEditor.text.*` / `imageEditor.shape.*` → `image.text.*` / `image.shape.*`，放 `src/image-editor/text/messages.ts`（`textShapeMessages`）。
-- 第 2 步：`pnpm add @fontsource-variable/geist@5.3.0`（07 已加就不變）。
-- 狀態行：Phase 03 另等 10 第 4 步（圖層面板）。
+| `@fontsource-variable/geist@5.3.0`（`pnpm add --save-exact`，確切版本） | `package.json` 的 `dependencies` | 07 第 8 步 | 13 第 2 步（同版本，已存在就不動） |

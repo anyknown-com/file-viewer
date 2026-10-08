@@ -235,7 +235,7 @@ export class EditorSession { constructor(o: { file: FileRef; provider?: AssetPro
 | `ViewerError`、`ViewerErrorCode`、`isAbortError` | `src/contract/errors.ts` | `new ViewerError(code, { message?, cause? })`；`isAbortError(e: unknown): boolean` | 02 P02-1 |
 | `AssetInfo`、`AssetProvider` | `src/contract/props.ts` | `AssetInfo = { id; name; mime; size }`；`AssetProvider = { list(): Promise<AssetInfo[]>; open(id: string): Promise<ByteSource> }` | 02 P03-2 |
 | `EditorProps` | `src/contract/editor.ts` | `CommonProps & { onSave; onClose; onDirtyChange?; maxOutputBytes?; assets? }` | 03 第 8 步 |
-| `editors` | `src/viewer/editors.ts` | `EditorRegistry`；每行 `<kind>: lazy(() => import("../<dir>/index").then((m) => ({ default: m.<Editor> })))` | 03 第 8 步（空表）；本份第 11 步加 `video` |
+| `editors` | `src/viewer/editors.ts` | `EditorRegistry`；每行 `<kind>: lazy(() => import("../<dir>/<定義元件的檔>").then((m) => ({ default: m.<Editor> })))`；目標檔不能叫 `index.*`（00-overview §7） | 03 第 8 步（空表）；本份第 11 步加 `video` |
 | `MessageTable`、`Messages` | `src/i18n/messages.ts` | `MessageTable<K> = Record<Locale, Record<K, string>>`；`Messages` 在本份第 11 步加 `& VideoMessages` | 02 P03-1 |
 | `useT` | `src/i18n/use-t.ts` | `useT<K extends string>(table: MessageTable<K>): (key: K, vars?: Vars) => string` | 02 P03-3 |
 | `ViewerRoot` | `src/primitives/root.tsx` | `ViewerRoot(props: Omit<CommonProps, "file"> & { className?; children })`；巢狀時直接渲染 children | 02 P03-3 |
@@ -441,7 +441,7 @@ blocker：Phase 01；02 P02-2、P02-3（`readBlob`、`blobSource`、`formatOf`�
    - `drop` 以後再要幀，會重建 sink
 
    verify：`pnpm test:browser src/video-editor/engine/frame-cache.browser.test.ts`。commit：`feat(video-editor): cache and prefetch decoded frames`
-8. 合成一幀與 Geist 字型。執行 `pnpm add @fontsource-variable/geist@5.3.0`（13 已經加過、`package.json` 的 `dependencies` 已有就略過）；授權檢查 01 已含 `@fontsource*` 的 OFL-1.1 例外，不改 `scripts/`；`THIRD_PARTY_NOTICES.md` 的「Runtime dependencies」段加上 Geist 一列（`@fontsource-variable/geist 5.3.0 — OFL-1.1 — font files, github.com/vercel/geist-font`），已有就略過。
+8. 合成一幀與 Geist 字型。執行 `pnpm add --save-exact @fontsource-variable/geist@5.3.0`（13 已經加過、`package.json` 的 `dependencies` 已有就略過）；授權檢查 01 已含 `@fontsource*` 的 OFL-1.1 例外，不改 `scripts/`；`THIRD_PARTY_NOTICES.md` 的「Runtime dependencies」段加上 Geist 一列（`@fontsource-variable/geist 5.3.0 — OFL-1.1 — font files, github.com/vercel/geist-font`），已有就略過。
 
    新增 `src/video-editor/engine/render-frame.ts`，簽名照「契約」的 `engine/render-frame.ts`。檔頭 `import "@fontsource-variable/geist";`。
    - `drawPlan`（純函式）：主軌蓋住 `t` 的影片片段，`seconds = ticksToSeconds(t − start + in)`（`src/video-editor/model/time.ts`）；疊加軌從最下面（`overlay` 陣列的最後一條）畫到最上面（`overlay[0]`）；`muted` 的疊加軌不畫；主軌的 `muted` 只影響聲音。
@@ -530,7 +530,7 @@ blocker：Phase 02；03 viewer-core 第 8 步（`src/contract/editor.ts`、`src/
     - 新增 `src/video-editor/ui/video-editor.tsx`：`export type VideoEditorProps = EditorProps;` 與 `VideoEditor(props: VideoEditorProps)`，用 `src/primitives/root.tsx` 的 `ViewerRoot`（傳 `locale`、`messages`、`theme`、`limits`、`onError`）包住 `VideoEditorBody`。
     - 新增 `src/video-editor/index.ts`：`export { VideoEditor } from "./ui/video-editor"; export type { VideoEditorProps } from "./ui/video-editor";`。
     - `package.json` 的 `exports` 加 `"./video-editor": { "types": "./dist/video-editor/index.d.ts", "default": "./dist/video-editor/index.js" }`；`tsdown.config.ts` 的 `entry` 物件加 `"video-editor/index": "src/video-editor/index.ts"`（寫法照同檔 `index` 那一行）。
-    - `src/viewer/editors.ts`：`editors` 加一行 `video: lazy(() => import("../video-editor/index").then((m) => ({ default: m.VideoEditor })))`（登錄 `VideoEditor`，不登錄 `VideoEditorBody`）。
+    - `src/viewer/editors.ts`：`editors` 加一行 `video: lazy(() => import("../video-editor/ui/video-editor").then((m) => ({ default: m.VideoEditor })))`（登錄 `VideoEditor`，不登錄 `VideoEditorBody`；目標檔是定義 `VideoEditor` 的 `ui/video-editor.tsx`，不是 `index.ts`：宿主的 chunk 名取自目標檔名，`index-*` 會被 product 的 chunks-check 拒絕，`pnpm check` 的 `check:entry` 會擋）。
     - `src/styles.css`：在檔尾加 `/* == video-editor (07) == */` 段，寫 `.fv-ve-root` 的四區 grid（左欄 240 px、右欄 280 px、時間軸 40%）、`.fv-ve-notice`。
 
     測試：`src/video-editor/ui/editor-body.test.tsx`（jsdom，用 `vi.mock("../../media/support")` 與 `vi.mock("../engine/assets")`）

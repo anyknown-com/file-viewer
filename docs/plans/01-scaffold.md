@@ -30,7 +30,7 @@
   首發 0.0.1 只是佔名，沒有 API。第一個能用的版本是 0.1.0，由 tag 發。
 - 不做：
   - docs 站（05 做）；
-  - React 與 `@anyknown/ui` 的 peer：02 第一次用到時用 `pnpm add` 加；
+  - React 與 `@anyknown/ui` 的 `peerDependencies` 版本範圍：02 第一次用到時手動加；`peerDependenciesMeta` 本檔先寫好（見契約）；
   - publint / attw / size-limit：exports 交給 `verify:pack` 驗，入口大小交給 `check-entry-deps.mjs` 驗。
 
 ## 契約
@@ -46,7 +46,7 @@
 | `./comp` | 09 P01-1 |
 | `./image-editor` | 10 第 7 步 |
 
-本檔建的、之後各 plan 會接手的東西（00-overview §9.8）：`package.json` 的 `exports` 與 `tsdown.config.ts` 的 `entry`（`.`、`./styles.css`）、`src/styles.css`（02 P03-3 寫 root 段，每份有 UI 的 plan 在檔尾加一段）、`tsconfig.comp.json`（`typecheck` 已含；09 不另建 `src/comp/tsconfig.json`、不改 scripts）、`scripts/check-entry-deps.mjs`（不改）、`scripts/check-licenses.mjs`（不改）、`THIRD_PARTY_NOTICES.md`（04、06、07、09、10、13 在加依賴或抄程式的那一步增補）、`docs/plans/README.md`（P03-1 收進）。
+本檔建的、之後各 plan 會接手的東西（00-overview §9.8）：`package.json` 的 `exports` 與 `tsdown.config.ts` 的 `entry`（`.`、`./styles.css`）、`src/styles.css`（02 P03-3 寫 root 段，每份有 UI 的 plan 在檔尾加一段）、`tsconfig.comp.json`（P01-2 建，已含 `@types/node` 與 `types: ["node"]`；`typecheck` 已含；09 不另建 `src/comp/tsconfig.json`、不改 scripts、不改這個檔）、`src/comp/index.ts` 空殼（P01-2 建，09 P01-1 覆寫）、`scripts/check-entry-deps.mjs`（含 dynamic import 不得指向 `index.*` 的檢查；不改）、`scripts/check-licenses.mjs`（不改）、`THIRD_PARTY_NOTICES.md`（04、06、07、09、10、13 在加依賴或抄程式的那一步增補）、`docs/plans/README.md`（P03-1 收進）。
 
 ```jsonc
 {
@@ -64,10 +64,17 @@
     ".":            { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
     "./styles.css": "./dist/styles.css"
   },
+  "peerDependenciesMeta": {
+    "react": { "optional": true },
+    "react-dom": { "optional": true },
+    "@anyknown/ui": { "optional": true }
+  },
   "publishConfig": { "access": "public" },
   "packageManager": "pnpm@10.30.3"
 }
 ```
+
+`peerDependenciesMeta` 一開始就寫：`react`、`react-dom`、`@anyknown/ui` 都是 optional peer，因為只用 `./comp`（不碰 DOM、不用 React）的人（例如 product 的 docs 工具）不需要裝它們。`peerDependencies` 本身（版本範圍）由 02 手動加，不動 `peerDependenciesMeta`。
 
 `repository.url` 必須是上面這個值：npm provenance 會拿它比對簽章裡的 repo。
 
@@ -93,6 +100,7 @@
 
 - 從 `dist/index.js` 出發，只沿著靜態 `import` / `export … from` 的相對路徑走，`import()` 不跟。走到的所有檔案就是入口的靜態 import 圖。
 - 圖裡出現下面任何一個 bare specifier 就失敗：`@excalidraw/` 開頭、`mediabunny`、`react-markdown`、`remark-` 開頭、`rehype-` 開頭、`unified`、`fflate`。
+- 另外掃 `dist/` 底下所有 `.js`：只要有 `import()` 的目標是相對路徑、而且檔名（basename）以 `index.` 或 `index-` 開頭，就失敗。理由：宿主 bundler 用目標檔名當 chunk 名，product 的 chunks-check 會拒絕 `index-*`（00-overview §7 的程式規則）。所以 dynamic import 的目標檔不能叫 `index.*`，要指向定義元件的檔本身（例如 `../video-editor/ui/video-editor`）。靜態 import 的 `index.js` 不受影響。
 - 圖裡所有檔案的大小加起來超過 65536 bytes 就失敗。上限要調高，理由寫在調高的那個 commit 的訊息裡。
 
 授權檢查（`scripts/check-licenses.mjs`）：
@@ -146,10 +154,12 @@ blocker：無；model：sonnet。
    - commit：`build(scaffold): set up package, tsdown entry and empty main entry`
 2. typecheck、lint、format 與 `pnpm check`。
    - 執行 `pnpm add -D oxlint@^1.87.0 oxfmt@^0.72.0 turbo@^2.11.7`。
+   - 執行 `pnpm add -D @types/node@^22`。
    - 新增 `tsconfig.comp.json`（00-overview §9.8：09 的 `src/comp/**` 用它做型別檢查，不含 DOM lib）：
-     - 內容是 `{ "extends": "./tsconfig.json", "compilerOptions": { "lib": ["ES2022"] }, "include": ["src/comp"] }`；
+     - 內容是 `{ "extends": "./tsconfig.json", "compilerOptions": { "lib": ["ES2022"], "types": ["node"] }, "include": ["src/comp"] }`；
+     - `types: ["node"]` 一開始就有：基底 `tsconfig.json` 是 `types: []`，沒有它 `src/comp` 的 `Blob`、`TextEncoder`、`crypto` 與測試檔的 `node:*` 都編不過；09 不再補；
      - 作用：`src/comp` 一用到 DOM 型別就會報錯（00-overview §7）。
-   - 新增空殼檔 `src/comp/index.ts`，兩行：第一行 `// Not a published subpath yet. Replaced by 09 comp-format P01-1, which adds the "./comp" export.`，第二行 `export {};`。理由：`tsc -p tsconfig.comp.json` 在 `include` 沒有任何檔案時會報 TS18003，09 之前 `pnpm typecheck` 就會紅。這個檔不在 `exports` 與 `tsdown.config.ts` 的 `entry` 裡。
+   - 新增空殼檔 `src/comp/index.ts`（00-overview §9.8：由本步建立，09 P01-1 覆寫），兩行：第一行 `// Not a published subpath yet. Replaced by 09 comp-format P01-1, which adds the "./comp" export.`，第二行 `export {};`。理由：`tsc -p tsconfig.comp.json` 在 `include` 沒有任何檔案時會報 TS18003，09 之前 `pnpm typecheck` 就會紅。這個檔不在 `exports` 與 `tsdown.config.ts` 的 `entry` 裡。
    - 新增 `.oxlintrc.json`。
      - 先整份複製 `../storage/.oxlintrc.json`，然後改兩處。
      - 第一處：`ignorePatterns` 改成 `["**/dist/**", "**/node_modules/**", "**/*.d.ts"]`。
@@ -268,11 +278,15 @@ blocker：Phase 01；model：sonnet。
        - 用 `es-module-lexer` 的 `init` 與 `parse` 解析每個檔，一律不用 regex。
        - 只看 `d === -1` 的 import，也就是靜態 import 與 `export … from`。
        - specifier 以 `./` 或 `../` 開頭的，相對於所在的檔 resolve，再遞迴往下走；其他的 specifier 收進 `bare`。
+     - `export async function dynamicIndexTargets(distDir)`，回傳 `string[]`：
+       - 遞迴走 `distDir` 底下所有 `.js`，用 `es-module-lexer` 解析（一律不用 regex 解析程式）；
+       - 只看 `d >= 0`（`import()`）、而且 specifier 是字串字面值且以 `./` 或 `../` 開頭的；
+       - basename 符合 `/^index[.-]/` 的，每個回一行 `"dynamic import of <specifier> in <file>: the target file must not be named index.*"`。
      - `export function findViolations(graph)`，回傳 `string[]`：
        - 每個符合 `FORBIDDEN` 的 bare specifier 一行，寫成 `"<specifier> imported by <from>"`；
        - `bytes > MAX_BYTES` 時再多一行 `"entry graph is <bytes> bytes, limit <MAX_BYTES>"`。
      - 直接執行時（判斷式 `import.meta.url === pathToFileURL(process.argv[1]).href`）：
-       - 對 `dist/index.js` 跑 `staticGraph` 與 `findViolations`；
+       - 對 `dist/index.js` 跑 `staticGraph` 與 `findViolations`，再對 `dist` 跑 `dynamicIndexTargets`，兩邊的違規合併；
        - 有違規就逐行印到 stderr，然後 `process.exit(1)`；
        - 沒有違規就印 `entry graph ok: <files.length> files, <bytes> bytes`。
    - `package.json` 的 `check:entry` 改成 `tsdown && node scripts/check-entry-deps.mjs`。
@@ -285,7 +299,9 @@ blocker：Phase 01；model：sonnet。
        - `index.js` 寫 `import("mediabunny")`：沒有違規；
        - `index.js` 寫 `export * from "./x.js"`，`x.js` 再 `import "fflate"`：抓到 `fflate`；
        - `index.js` 有 70000 bytes：違規一行，內容含 `limit 65536`；
-       - `index.js` 只 import `react`：沒有違規。
+       - `index.js` 只 import `react`：沒有違規；
+       - `dynamicIndexTargets`：`dist/chunk.js` 寫 `import("./index-Ab12.js")`：一行，內容含 `index-Ab12.js` 與 `chunk.js`；`import("../markdown/index.js")`：一行；
+       - `dynamicIndexTargets`：`import("./video-editor-Ab12.js")`、`import("react")`、靜態的 `import "./index.js"`：沒有違規。
    - verify：`pnpm test scripts/check-entry-deps.test.mjs && pnpm check`
    - commit：`build(scaffold): fail the check when the main entry statically imports a heavy dependency`
 2. verify:pack。
@@ -351,7 +367,8 @@ blocker：Phase 02；model：sonnet。
         - `src/**` 不 import 任何 `@anyknown/*`。
      4. 入口與 subpath：
         - `src/index.ts` 不得靜態 import 重依賴，要用 `import()` 按需載入（`pnpm check` 的 `check:entry` 會擋）；
-        - 新增 subpath 要在同一個 commit 改 `package.json` 的 `exports`、`tsdown.config.ts` 的 `entry`、`src/<subpath>/index.ts`。
+        - 新增 subpath 要在同一個 commit 改 `package.json` 的 `exports`、`tsdown.config.ts` 的 `entry`、`src/<subpath>/index.ts`；
+        - dynamic import 的目標檔不能叫 `index.*`（宿主的 chunk 會變成 `index-<hash>`，product 的 chunks-check 拒絕），要指向定義元件的檔本身；`check:entry` 會擋。
      5. 依賴：加 production 依賴時，同一個 commit 在 `THIRD_PARTY_NOTICES.md` 加一列；抄進來的程式在檔頭寫來源路徑、commit、MIT。
      6. Commits：逐字複製 `../ui/CLAUDE.md` 的 `## Commits` 段（英文原文），再加一行「plan 名當 scope」。
      7. Plans 與輸出：

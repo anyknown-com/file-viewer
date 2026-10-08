@@ -279,7 +279,7 @@ export function ConfirmDialog(props: { open: boolean; onOpenChange: (open: boole
   description: string; confirmLabel: string; cancelLabel: string; danger?: boolean; onConfirm: () => void }): React.JSX.Element;
 export function DiscardDialog(props: { open: boolean; onOpenChange: (open: boolean) => void; onDiscard: () => void }): React.JSX.Element;
 // popover.tsx
-export function Popover(props: { trigger: React.ReactElement; label: string; children: ReactNode }): React.JSX.Element; // label = trigger 的 aria-label
+export function Popover(props: { trigger: React.ReactElement; label: string; children: ReactNode; onOpenChange?: (open: boolean) => void }): React.JSX.Element; // label = trigger 的 aria-label；onOpenChange 在開、關（含 Escape、點外面）時各呼叫一次，帶新的 open
 // toggle-group.tsx
 export function ToggleGroup<T extends string>(props: {
   label: string; value: T; options: readonly { value: T; label: string; icon?: ReactNode }[]; onChange: (v: T) => void;
@@ -311,7 +311,7 @@ export function Menubar(props: {
 依賴（02 加入）：
 
 - dependencies：`@base-ui/react@^1.8.0`。
-- peerDependencies：`react: "^19"`、`react-dom: "^19"`、`@anyknown/ui: ">=0.11.0"`。peer 範圍放寬到 `>=`，因為本套件只用 `--ak-*` 變數名；已經發佈的變數名要等 ui 的 major 才會拿掉（`../ui/scripts/tokens-css.mjs` 的 `PUBLISHED`）。
+- peerDependencies：`react: "^19"`、`react-dom: "^19"`、`@anyknown/ui: ">=0.11.0"`。`peerDependenciesMeta`（三個都 optional）01 已寫好，這裡只加版本範圍、不動它。peer 範圍放寬到 `>=`，因為本套件只用 `--ak-*` 變數名；已經發佈的變數名要等 ui 的 major 才會拿掉（`../ui/scripts/tokens-css.mjs` 的 `PUBLISHED`）。
 - devDependencies：`react`、`react-dom`、`@types/react`、`@types/react-dom`、`@testing-library/react@^16`、`@testing-library/dom@^10`、`@testing-library/user-event@^14`、`@anyknown/ui@0.11.0`。
 
 宿主要做的（寫進 05 的「接上你的 app」頁，H1 / H2 照做）：
@@ -332,7 +332,7 @@ export function Menubar(props: {
 - `Tooltip`：`--ak-surface-raised` 底，`--ak-type-t1` 字。
 - `Menu`：同一個底色，項目被選中時用 `--ak-ink-n8` 的底；`danger` 的項目用 `--ak-danger` 字色。
 - `Slider`：4 px 的軌道，14 px 的圓形把手。
-- `Popover`：外觀同 `Menu` 的 popup（`--ak-surface-raised` 底、`--ak-border` 框、`--ak-shadow-float`），內距 `--ak-space-md`。
+- `Popover`：`onOpenChange` 是給呼叫端在關閉時清掉自己的暫存狀態（例如 08 的靜音標記）用的，內容不必卸載再靠 ref cleanup。外觀同 `Menu` 的 popup（`--ak-surface-raised` 底、`--ak-border` 框、`--ak-shadow-float`），內距 `--ak-space-md`。
 - `ToggleGroup`：一排相連的按鈕，選中的用 `--ak-ink-n8` 底；高 32 px。
 - `RadioGroup`：圓形單選鈕在左，label 在右，`description` 在 label 下方用 `--ak-text-muted`。
 - `Switch`：36 × 20 px 的軌道，開啟時 `--ak-accent` 底，把手 16 px。
@@ -729,7 +729,7 @@ blocker：Phase 03；第 6 步另外要等 Phase 01 第 2 步（npm 上已經有
    - commit：`feat(contract): add dialog, confirm dialog and discard dialog`
 4. `Popover`、`ToggleGroup`、`RadioGroup`、`Switch`、`Progress`。
    - 新增 `src/primitives/popover.tsx`，`Popover` 簽名見契約的「基本元件」。結構是 `@base-ui/react/popover` 的：
-     - `Popover.Root`
+     - `Popover.Root`，`onOpenChange={(open) => onOpenChange?.(open)}`（Base UI 本來就支援；不受控，開關狀態在 Base UI 內，不加 `open` prop）
      - └ `Popover.Trigger`，`render={trigger}`、`aria-label={label}`
      - └ `Popover.Portal`，`container={useRoot().portal}`（`useRoot` 從 `src/primitives/root-context.ts` import）
      -   └ `Popover.Positioner`，`positionMethod="fixed"`、`sideOffset={6}`、`className="fv-popover-positioner"`
@@ -758,7 +758,7 @@ blocker：Phase 03；第 6 步另外要等 Phase 01 第 2 步（npm 上已經有
      - `.fv-progress`：`width: 100%`；`.fv-progress-track`：`position: relative; height: 4px; overflow: hidden; border-radius: var(--ak-radius-full); background: var(--ak-ink-n14)`；`.fv-progress-indicator`：`height: 100%; border-radius: inherit; background: var(--ak-accent)`。
      - `.fv-progress-indicator[data-indeterminate]`：`position: relative; width: 40%; animation: fv-progress-slide var(--ak-motion-loop) linear infinite`；`@keyframes fv-progress-slide { from { left: -40%; } to { left: 100%; } }`。
    - 測試，新增 `src/primitives/popover.test.tsx`、`toggle-group.test.tsx`、`radio-group.test.tsx`、`switch.test.tsx`、`progress.test.tsx`，案例：
-     - Popover：`<Popover label="Volume" trigger={<Button>Open</Button>}>content</Popover>`，點 `getByRole("button", { name: "Volume" })` 之後 `await screen.findByText("content")` 找得到，而且 `closest(".fv-portal")` 不是 null；按 `{Escape}` 之後 `content` 消失（`waitFor`）。
+     - Popover：`<Popover label="Volume" trigger={<Button>Open</Button>}>content</Popover>`，點 `getByRole("button", { name: "Volume" })` 之後 `await screen.findByText("content")` 找得到，而且 `closest(".fv-portal")` 不是 null；按 `{Escape}` 之後 `content` 消失（`waitFor`）。另一案：傳 `onOpenChange` 的 `vi.fn()`，點開後被呼叫一次且參數是 `true`；按 `{Escape}` 後第二次呼叫、參數是 `false`；不傳 `onOpenChange` 時開關照常、不丟錯。
      - ToggleGroup：三個 option `a`、`b`、`c`，`value="a"`：`getByRole("group", { name: "Mode" })` 找得到，`a` 的 `aria-pressed` 是 `"true"`；點 `b` 呼叫 `onChange("b")`；再點已選中的 `a` 不呼叫 `onChange`。
      - RadioGroup：`getByRole("radiogroup", { name: "Format" })` 找得到；`value` 對應的 radio `aria-checked` 是 `"true"`；點另一個 radio 呼叫 `onChange` 帶那個值；`disabled` 的 option 點了不呼叫；有 `description` 的 radio，`toHaveAccessibleDescription` 等於該文字。
      - Switch：`getByRole("switch", { name: "Fast" })` 的 `aria-checked` 等於 `checked`；點一下呼叫 `onCheckedChange(!checked)`；`disabled` 時點了不呼叫。

@@ -8,7 +8,7 @@
 
 | 東西 | 出處 | 本份怎麼用 |
 | --- | --- | --- |
-| `tsconfig.comp.json`（repo 根；`extends ./tsconfig.json`、`lib: ["ES2022"]`、`include: ["src/comp"]`） | 01 P01-2，§9.8；`pnpm typecheck` 已含 `tsc --noEmit -p tsconfig.comp.json` | Phase 01 第 1 步只在它的 `compilerOptions` 加 `"types": ["node"]`；不建 `src/comp/tsconfig.json`、不改 `scripts` |
+| `tsconfig.comp.json`（repo 根；`extends ./tsconfig.json`、`lib: ["ES2022"]`、`include: ["src/comp"]`） | 01 P01-2，§9.8；`pnpm typecheck` 已含 `tsc --noEmit -p tsconfig.comp.json` | 01 已含 `@types/node` 與 `"types": ["node"]`；本份不改這個檔、不建 `src/comp/tsconfig.json`、不改 `scripts` |
 | `package.json` 的 `exports` 形狀 `{ "types", "default" }`、`tsdown.config.ts` 的 `entry` 寫法 | 01 P01-1，§4 | Phase 01 第 1 步加 `./comp` 與 `"comp/index"`；條件寫 `"default"`，不寫 `"import"` |
 | `.oxlintrc.json` 的 `overrides`（已有 `files: ["src/**"]` 那條，含 `@anyknown/*` 的 `patterns`） | 01 P01-2 | Phase 01 第 1 步在 `overrides` 尾端加 `src/comp/**` 的條目 |
 | `scripts/check-entry-deps.mjs`、`THIRD_PARTY_NOTICES.md`、`pnpm check:licenses` | 01 P02-1、P02-3，§9.8 | 不改；Phase 01 第 1 步在加 `fflate`、`zod` 的那個 commit 加 notices 行（§4 規則）；Phase 03 第 4 步用 `pnpm check` 驗入口 |
@@ -133,11 +133,11 @@ blocker：01 scaffold；model：sonnet。可和 Phase 02、03 平行的部分：
    - `pnpm add fflate@^0.8.3 zod@^4.4.3`（已在 `package.json` 的 `dependencies` 就不動）。
    - `package.json`：`exports` 加 `"./comp": { "types": "./dist/comp/index.d.ts", "default": "./dist/comp/index.js" }`（條件寫 `"default"`，照 01 的 `"."` 那條，不寫 `"import"`；01 只建 `.` 與 `./styles.css`）。不改 `scripts`（01 的 `typecheck` 已含 `tsc --noEmit -p tsconfig.comp.json`，`check` 會跑到它）。
    - `tsdown.config.ts`：`entry` 加 `{ "comp/index": "src/comp/index.ts" }`（照 01 的 entry 寫法，輸出到 `dist/comp/index.js` 與 `.d.ts`）。
-   - `pnpm add -D @types/node@^22`（已存在就不動）；`tsconfig.comp.json`（repo 根，01 建）的 `compilerOptions` 加 `"types": ["node"]`（01 的基底 `tsconfig.json` 是 `types: []`，沒有它 `Blob`、`TextEncoder`、`crypto`、測試檔的 `node:*` 都編不過）。`lib` 維持 01 的 `["ES2022"]`、沒有 DOM，用到 `document`、`ImageData`、`OffscreenCanvas` 會編不過。不建 `src/comp/tsconfig.json`。
+   - `tsconfig.comp.json` 與 `@types/node` 都不動：01 P01-2 已建好 `tsconfig.comp.json`（`lib: ["ES2022"]`、沒有 DOM，`types: ["node"]`），用到 `document`、`ImageData`、`OffscreenCanvas` 會編不過。不建 `src/comp/tsconfig.json`。
    - `.oxlintrc.json`（01 建）的 `overrides` 尾端加一條 `files: ["src/comp/**"]`：`no-restricted-imports` 擋 `react`、`react-dom`、`react/*`、`node:*`、`../*`、`@anyknown/*`（這條 override 會蓋掉 01 的 `src/**` 那條同名規則，所以 `@anyknown/*` 要重列）（`src/comp/` 是平的，`../` 一定是出了這個目錄；`./fixtures/*` 不受影響）；`no-restricted-globals` 擋 `window`、`document`、`self`、`Buffer`、`process`、`createImageBitmap`、`OffscreenCanvas`、`Image`、`ImageData`。緊接著再加一條 `files: ["src/comp/**/*.test.ts"]`，把這兩條規則設成 `"off"`（測試可以用 `node:fs`、`node:child_process` 產生與檢查 fixture；後面的 override 蓋過前面的）。
    - `src/comp/errors.ts`：契約裡的 `ProjectErrorCode`、`ProjectError`（`name = "ProjectError"`，`message` = `code` 加上 `details.join("; ")`，`details` 預設 `[]`）。
    - `src/comp/crc32.ts`：`crc32(bytes: Uint8Array, seed = 0): number`，標準 CRC-32（多項式 0xEDB88320，查表，表在 module 載入時算一次），回無號 32 位元；`seed` 讓呼叫端分段累算（`crc32(b, crc32(a)) === crc32(a + b)`）。
-   - `src/comp/index.ts`：匯出 `ProjectError`、`type ProjectErrorCode`。
+   - `src/comp/index.ts`：整檔覆寫 01 P01-2 建的空殼（兩行註解加 `export {};`），內容為匯出 `ProjectError`、`type ProjectErrorCode`。
    - `THIRD_PARTY_NOTICES.md`（01 建）：`## Runtime dependencies` 段（把 `None yet.` 換掉；已有別的依賴就接在後面）加 `fflate` 與 `zod` 各一行（套件名逐字出現，格式照該檔已有的行：名稱、版本、授權 MIT、來源 URL）；`## Code copied into this package` 段加 Compositor 一條（repo `https://github.com/robbietilton/Compositor`、commit `11d8d7a`、抄的路徑 `IO/ProjectStore.swift`、`IO/ImageExporter.swift`、`Document/*.swift` 的規則、MIT 全文、`Copyright (c) 2026 Wonder Assembly LLC`）。
    測試：`src/comp/crc32.test.ts`：`"123456789"` → `0xCBF43926`；空陣列 → 0；分段累算等於整段；`src/comp/errors.test.ts`：`code`、`details`、`instanceof Error`、`message` 含 details。
    verify：`pnpm test src/comp && pnpm check && pnpm check:licenses && pnpm build && node --input-type=module -e "import { ProjectError } from '@anyknown/file-viewer/comp'; const e = new ProjectError('invalid', ['x']); if (e.code !== 'invalid') process.exit(1)"`

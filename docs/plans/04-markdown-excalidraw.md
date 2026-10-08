@@ -35,7 +35,7 @@
   不給 `assetPath` 時就是 Excalidraw 的預設 CDN（esm.sh）。00 §3「本套件不發任何請求」的前提是宿主有給，05 的「接上你的 app」頁要寫清楚。
 - **Excalidraw 的 subset worker 不違反「不開 `blob:` worker」**：它是 `new Worker(new URL(import.meta.url), { type: "module" })` 開的同源 chunk（`subset-worker.chunk.js`）。開不起來時會退回主執行緒（`chunk-K2UTITRG.js` 的 `WorkerInTheMainChunkError` 分支）。
 - **Esc 交給 Excalidraw**（取消選取、離開工具），不拿來關編輯器；離開編輯器只能按「取消」鈕。storage 11 的「Esc 出來」是 shadcn Dialog 的行為，本套件不開 modal（00 §3「版面」），而且 Esc 在 Excalidraw 裡本來就有用途。
-- **`.md` 沒有頂列的「編輯」**：`markdown` 不在 `src/viewer/editors.ts` 登錄（00 §3「編輯器開關」），`kindOf` 對 `.md` 回 `edit: null`，頂列自然沒有「編輯」。v0.1 能編輯的只有圖，入口是點圖，由 `src/viewer/markdown-body.tsx` 自己開 `DiagramEditor`。`.excalidraw` 在 P03-2 登錄進 `editors`，頂列「編輯」由 03 提供。
+- **`.md` 沒有頂列的「編輯」**：`markdown` 不在 `src/viewer/editors.ts` 登錄（00 §3「編輯器開關」），`kindOf` 對 `.md` 回 `edit: null`，頂列自然沒有「編輯」。v0.1 能編輯的只有圖，入口是點圖，由 `src/viewer/markdown-body.tsx` 自己開 `DiagramEditor`。頂列的「編輯」不經過 03 的切換點，所以 `markdown-body.tsx` 要自己通知宿主：點圖進入編輯時呼叫 `viewer.onEditingChange?.(true)`，離開編輯（存好、取消、放棄修改，一律經 `close`）時呼叫 `viewer.onEditingChange?.(false)`，語意同 03 的 `FileViewerProps.onEditingChange`（宿主據此藏起 ← → 與下載）。沒給 `onSave` 時圖不能點，也就不會觸發。`.excalidraw` 在 P03-2 登錄進 `editors`，頂列「編輯」由 03 提供。
 - **目錄依賴方向（00 §9）。** `src/markdown`、`src/excalidraw` 都只能 import `src/contract/`、`src/i18n/`、`src/primitives/`，彼此不 import，也不 import `src/viewer/`。所以 `MarkdownView` 不認得 Excalidraw：excalidraw 區塊由 `renderDiagram(fence)` 回呼畫（沒給時就畫成一般 code block，內容是原 JSON）。接上 Excalidraw 的工作只在 `src/viewer/markdown-body.tsx`、`src/viewer/excalidraw-body.tsx` 兩個檔裡做（00 §9 明列的例外）。
 - **每個 subpath 的元件自己包 `ViewerRoot`**（`MarkdownView`、`DiagramEditor`、`ExcalidrawFileEditor`；巢狀時 `ViewerRoot` 直接渲染 children，所以在 `FileViewer` 裡不會多一層）。`DiagramImage` 不需要 root（只吃 props）。`DiagramBlock` 只給 viewer 側用，不匯出，要在 `ViewerRoot` 裡面。
 - 不做（見「之後再做」）：在 UI 改 `.md` 文字、新建圖、相對路徑的圖片、程式碼上色。
@@ -76,7 +76,7 @@
 | `FileViewer` | `src/viewer/file-viewer.tsx` | `FileViewer(props: FileViewerProps): JSX.Element` | 03 第 6 步 |
 | `bodies`、`BodyProps` | `src/viewer/bodies.tsx` | `bodies: Record<ViewKind, ComponentType<BodyProps>>`；`BodyProps = { file: FileRef; loaded: Loaded; fail(e: ViewerError): void; viewer: FileViewerProps }` | 03 第 5 步 |
 | `Loaded` | `src/viewer/load.ts` | `{ blob: Blob; url: string \| null; text: string \| null }`；`markdown`、`excalidraw` 時 `text` 是字串 | 03 第 3 步 |
-| `editors`、`EditorRegistry` | `src/viewer/editors.ts` | 每行 `<kind>: lazy(() => import("../<dir>/index").then((m) => ({ default: m.<Editor> })))` | 03 第 8 步 |
+| `editors`、`EditorRegistry` | `src/viewer/editors.ts` | 每行 `<kind>: lazy(() => import("../<dir>/<定義元件的檔>").then((m) => ({ default: m.<Editor> })))`；目標檔不能叫 `index.*`（00 §7） | 03 第 8 步 |
 
 **本 plan 的型別與簽名：**
 
@@ -412,8 +412,8 @@ blocker：Phase 02；model：opus。
 2. **接上 `FileViewer` 的存檔與 `.excalidraw` 編輯器。**
    - `src/viewer/markdown-body.tsx` 改動（`BodyProps` 的 `file`、`viewer` 都用得到）：
      - 狀態 `source`（初值 `loaded.text ?? ""`）、`editing: Fence | null`、`focusIndex: number | null`。`t = useT(commonMessages)`。
-     - `viewer.onSave` 有給時，`renderDiagram` 裡的 `DiagramBlock` 多傳 `onEdit={() => { viewer.onEditingChange?.(true); setEditing(fence) }}`。
-     - `editing` 有值時，整個 body 換成 `<Suspense fallback={<Spinner label={t("common.loading")} />}><LazyDiagramEditor json={editing.json} assetPath={viewer.excalidraw?.assetPath} onDirtyChange={viewer.onDirtyChange} onSave={save} onClose={close} /></Suspense>`。`LazyDiagramEditor = lazy(() => import("../excalidraw/diagram-editor"))`。`close`：`viewer.onEditingChange?.(false)`，`setFocusIndex(editing.index)`，`setEditing(null)`。
+     - `viewer.onSave` 有給時，`renderDiagram` 裡的 `DiagramBlock` 多傳 `onEdit={() => { viewer.onEditingChange?.(true); setEditing(fence) }}`（進入編輯：先通知宿主 `true`，再換成編輯器）。
+     - `editing` 有值時，整個 body 換成 `<Suspense fallback={<Spinner label={t("common.loading")} />}><LazyDiagramEditor json={editing.json} assetPath={viewer.excalidraw?.assetPath} onDirtyChange={viewer.onDirtyChange} onSave={save} onClose={close} /></Suspense>`。`LazyDiagramEditor = lazy(() => import("../excalidraw/diagram-editor"))`。`close`：`viewer.onEditingChange?.(false)`，`setFocusIndex(editing.index)`，`setEditing(null)`；`DiagramEditor` 的 `onClose`（存好之後、按「Cancel」、在放棄修改對話框按「Discard」）都走這個 `close`，所以離開編輯一定會送出 `false`，每次進入恰好一次 `true`、一次 `false`。
      - `save(json)`：`next = replaceFence(source, editing, json)`（`src/markdown/fences.ts`），`ext = splitName(file.name).ext`（`src/contract/save.ts`），然後 `await viewer.onSave({ blob: new Blob([next], { type: "text/markdown" }), mime: "text/markdown", ext, mode: "replace", suggestedName: suggestedName(file.name, ext, "replace") })`；成功後 `setSource(next)`。`viewer.onSave` 在 `save` 被呼叫時一定有值（沒有 `onSave` 就不會有 `onEdit`）。
      - 回到文件後，包住 `MarkdownView` 的 `<div ref={…}>` 的 ref callback 在 `focusIndex !== null` 時找 `` `[data-fence="${focusIndex}"] .fv-diagram` `` 並 `focus()`，然後 `setFocusIndex(null)`。
    - 新檔 `src/excalidraw/file-editor.tsx`：`export function ExcalidrawFileEditor(props: EditorProps)`。`const { onSave, onClose, onDirtyChange, maxOutputBytes, assets, file, ...root } = props`，輸出 `<ViewerRoot {...root}><FileEditorBody …/></ViewerRoot>`（`maxOutputBytes`、`assets` 收下不用）。`FileEditorBody`：
@@ -423,18 +423,19 @@ blocker：Phase 02；model：opus。
      - `error`：`<div className="fv-diagram-broken" role="alert"><p>{message}</p><Button onClick={onClose}>{tc("common.close")}</Button></div>`。
      - `ready` 且 ok：`<Suspense fallback={<Spinner …/>}><LazyDiagramEditor json={text} onDirtyChange={onDirtyChange} onClose={onClose} onSave={async (j) => { await onSave({ blob: new Blob([j], { type: "application/vnd.excalidraw+json" }), mime: "application/vnd.excalidraw+json", ext: ".excalidraw", mode: "replace", suggestedName: suggestedName(file.name, ".excalidraw", "replace") }) }} /></Suspense>`。`LazyDiagramEditor = lazy(() => import("./diagram-editor"))`。字型路徑：`EditorProps` 沒有 `assetPath`，所以這裡不傳，由 `window.EXCALIDRAW_ASSET_PATH` 沿用（`FileViewer` 開過檢視時已由 `setAssetPath` 設好；直接用 `./excalidraw` subpath 單獨掛 `ExcalidrawFileEditor` 的宿主要自己先呼叫 `setAssetPath`）。
    - `src/excalidraw/index.ts` 加 `export { ExcalidrawFileEditor } from "./file-editor";`。
-   - `src/viewer/editors.ts`：在 `editors` 加 `excalidraw: lazy(() => import("../excalidraw/index").then((m) => ({ default: m.ExcalidrawFileEditor }))),`（`lazy` 從 `react` import）。`grep -n "editors" src/viewer/*.test.ts*`：03 若有測試斷言 `editors` 是空表，改成斷言 `Object.keys(editors)` 等於 `["excalidraw"]`。
+   - `src/viewer/editors.ts`：在 `editors` 加 `excalidraw: lazy(() => import("../excalidraw/file-editor").then((m) => ({ default: m.ExcalidrawFileEditor }))),`（`lazy` 從 `react` import；目標檔是定義 `ExcalidrawFileEditor` 的 `file-editor.tsx`，不是 `index.ts`：宿主的 chunk 名取自目標檔名，`index-*` 會被 product 的 chunks-check 拒絕，`pnpm check` 的 `check:entry` 會擋）。`grep -n "editors" src/viewer/*.test.ts*`：03 若有測試斷言 `editors` 是空表，改成斷言 `Object.keys(editors)` 等於 `["excalidraw"]`。
    - `test/csp/main.tsx` 加 `onSave={async () => {}}`。`scripts/csp-smoke.mjs` 在 `?f=md` 那段多做：點第一個 `.fv-diagram`，等 `.excalidraw canvas` 出現，再斷言一次沒有 violation、沒有外部請求。
    - 測試 `src/viewer/markdown-body.test.tsx` 加案例（沿用檔頭的 `bodyProps`）。檔頭加 `vi.mock("../excalidraw/diagram-editor", …)`，換成假元件：一顆按鈕，按下去 `try { await p.onSave(EDITED); p.onClose() } catch {}`，`EDITED` 是 `{"type":"excalidraw","version":2,"elements":[],"appState":{},"files":{}}`。文字用 `test/fixtures/doc-with-diagrams.md`，`viewer.onSave` 用 `vi.fn()`：
-     - 點第二個 `.fv-diagram` 再按假按鈕：`onSave` 收到 `mode: "replace"`、`ext: ".md"`、`mime: "text/markdown"`、`suggestedName: "doc.md"`；`blob.text()` 和原文逐字比對時只有第二個 fence 的內容行不同（list 縮排前綴保留），第一張圖和其他文字 byte 相同；`viewer.onEditingChange` 依序收到 `true`、`false`；
+     - 點第二個 `.fv-diagram` 再按假按鈕：`onSave` 收到 `mode: "replace"`、`ext: ".md"`、`mime: "text/markdown"`、`suggestedName: "doc.md"`；`blob.text()` 和原文逐字比對時只有第二個 fence 的內容行不同（list 縮排前綴保留），第一張圖和其他文字 byte 相同；`viewer.onEditingChange` 依序收到 `true`、`false`（各一次）；
+     - 點第一個 `.fv-diagram` 進入編輯：`onEditingChange` 立刻收到 `true`、只一次，此時 `onSave` 還沒被呼叫；假編輯器改成按鈕呼叫 `p.onClose()`（不存檔，等同取消或放棄修改）：`onEditingChange` 接著收到 `false`，`onSave` 沒被呼叫，`source` 不變，回到文件並把 focus 還給那張圖；再點一次同一張圖：依序又收到 `true`；
      - `onSave` reject 時 `source` 不變，假編輯器還在；
-     - 沒給 `onSave` 時 `.fv-diagram` 不是 button；
+     - 沒給 `onSave` 時 `.fv-diagram` 不是 button，點它 `onEditingChange` 沒被呼叫；
      - 存好之後，`document.activeElement` 是 `[data-fence="1"] .fv-diagram`。
    - 測試 `src/excalidraw/file-editor.test.tsx`（jsdom，同樣 mock `./diagram-editor`；用 `bytesSource(new TextEncoder().encode(text))`，`bytesSource` 在 `src/contract/byte-source.ts`），案例：
      - 讀 `diagram.excalidraw` fixture，假編輯器收到的 `json` 等於檔案文字；按假按鈕後 `onSave` 收到 `ext: ".excalidraw"`、`mime: "application/vnd.excalidraw+json"`、`mode: "replace"`、`suggestedName: "a.excalidraw"`（`file.name` 是 `a.excalidraw`），blob 內容是 `EDITED`，之後 `onClose` 被呼叫；
      - 檔案內容 `{not json`：顯示 `This diagram can't be read` 和 `Close` 鈕，按下去 `onClose` 被呼叫，`onError` 收到 `decode_failed`；
      - `ByteSource.read` reject 時，`onError` 收到 `read_failed`。
-   - 測試 `src/viewer/excalidraw-open.test.tsx` 加案例（檔頭 mock `../excalidraw/diagram-editor`，並 `vi.mock("../excalidraw/index", async () => ({ ExcalidrawFileEditor: (await import("../excalidraw/file-editor")).ExcalidrawFileEditor }))`，避免在 jsdom 載入 Excalidraw）：`FileViewer` 開 `diagram.excalidraw` 並給 `onSave`，頂列有 `Edit`；點下去後出現假編輯器；按假按鈕後 `onSave` 被呼叫，並回到檢視（`.fv-excalidraw` 再次出現）。
+   - 測試 `src/viewer/excalidraw-open.test.tsx` 加案例（檔頭只 mock `../excalidraw/diagram-editor`，避免在 jsdom 載入 Excalidraw；`editors.excalidraw` 指向的 `file-editor.tsx` 不載入 Excalidraw，不必再 mock）：`FileViewer` 開 `diagram.excalidraw` 並給 `onSave`，頂列有 `Edit`；點下去後出現假編輯器；按假按鈕後 `onSave` 被呼叫，並回到檢視（`.fv-excalidraw` 再次出現）。
    - verify：`pnpm test src/viewer src/excalidraw && pnpm test:csp`
    - commit：`feat(markdown-excalidraw): save edited diagrams through onSave`
 
