@@ -17,3 +17,4 @@ export { fromImage, readProject, writeProject } from "./project";
 export type { Project } from "./project";
 export { readHead } from "./project-head";
 export type { ReadRange } from "./project-head";
+export { summarize } from "./summary";
