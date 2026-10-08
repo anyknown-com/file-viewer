@@ -18,7 +18,7 @@
     },
     "lint": { "inputs": ["src/**", "scripts/**", ".oxlintrc.json"] },
     "fmt:check": { "inputs": ["$TURBO_DEFAULT$", "!**/*.md"] },
-    "check:entry": { "cache": false },
+    "check:entry": { "inputs": ["src/**", "tsdown.config.ts", "scripts/check-entry-deps.mjs"] },
     "test": { "inputs": ["src/**", "scripts/**", "vitest.config.ts"] },
     "test:browser": { "inputs": ["src/**", "vitest.config.ts"] },
     "verify:pack": { "cache": false }
