@@ -532,6 +532,7 @@ blocker：Phase 03；model：sonnet。
 12. **docs 站的 API 與接法。**
     - 改 05 的 API 頁（`site/` 底下列出每個 subpath 的那一頁，實作時 `grep -rln "video-editor" site/` 找到）：加 `./image-editor` 一節：`ImageEditorProps` 每個欄位一行、存檔規則表（照「契約 / 存檔」）、上限（一般影像 64 MiB / 40 MP、`.comp.zip` 1 GiB、像素預算 200 MP / 觸控裝置 50 MP、匯出 100 MP）、需要 WebGL2 與 `EXT_color_buffer_float`（沒有時退回 8-bit）。改 `docs/guides/connect.md`（05 的「接上你的 app」）：寫明 image editor 的 worker 需要宿主的 Vite `optimizeDeps.exclude: ["@anyknown/file-viewer"]`、CSP 不必加 `worker-src`（同源 module worker 退到 `script-src 'self'`）。
     - 改 `site/vite.config.ts`（05）：加 `optimizeDeps: { exclude: ["@anyknown/file-viewer"] }`（已有 `optimizeDeps` 就把這個 key 合併進去；00-overview §4、§9.8）。
+    - 註記（2026-10-08，worker 打包修正之後實測）：`tsdown.config.ts` 的 `newUrlChunks` 把 worker 打成 `dist/image-editor/worker/worker.js`，dist 裡是 `new URL("./worker/worker.js", import.meta.url)`。用 Vite 8.3.3 宿主裝 `pnpm pack` 的 tarball、不設 `optimizeDeps.exclude` 實測：`vite build` 會把 worker 打成 `assets/worker-*.js`，路徑正確；dev 的 optimizer 會把 `new URL` 改寫成指向 `node_modules` 裡原本的 `dist/image-editor/worker/worker.js`，worker 與它 import 的 chunk 都回 200。所以宿主**不需要** `optimizeDeps.exclude`。寫指南前用當時的 Vite 版本重驗一次，結果不同才寫進指南；`site/vite.config.ts` 是否需要這個 key 也照實測決定。
     - verify：`pnpm site:build && pnpm check`
     - commit：`docs(image-editor): document the image editor api and host setup`
 

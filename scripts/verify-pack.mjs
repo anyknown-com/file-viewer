@@ -7,6 +7,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync } from "node:f
 import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { missingNewUrlTargets } from "./new-url-targets.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 // Outside the package tree on purpose: Node self-references a package by its own
@@ -52,6 +53,10 @@ for (const [subpath, target] of Object.entries(exports)) {
   if (existsSync(file)) console.log(`  ok  ${specifier} types → ${target.types}`);
   else failures.push(`  FAIL ${specifier} types: missing ${target.types}`);
 }
+
+const urlFailures = missingNewUrlTargets(packed);
+if (urlFailures.length === 0) console.log("  ok  every new URL(…, import.meta.url) target ships");
+failures.push(...urlFailures.map((line) => `  FAIL ${line}`));
 
 rmSync(scratch, { recursive: true, force: true });
 
