@@ -1,0 +1,14 @@
+[
+  {
+    "key": "readme",
+    "file": "README.md",
+    "title": "Package README",
+    "note": "Package layout, commands, releasing."
+  },
+  {
+    "key": "changelog",
+    "file": "CHANGELOG.md",
+    "title": "Changelog",
+    "note": "What changed in each release."
+  }
+]

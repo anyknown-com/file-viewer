@@ -144,6 +144,75 @@ a {
   font-family: var(--ak-font-display);
 }
 
+.guide {
+  display: grid;
+  grid-template-columns: 14rem minmax(0, 1fr);
+  gap: var(--ak-space-xl);
+  align-items: start;
+}
+
+.guide-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ak-space-xxs);
+}
+
+.guide-list a {
+  display: flex;
+  flex-direction: column;
+  padding: var(--ak-space-xs) var(--ak-space-sm);
+  border-radius: var(--ak-radius-md);
+  color: var(--ak-text);
+  text-decoration: none;
+}
+
+.guide-list a:hover,
+.guide-list a[aria-current="page"] {
+  background: var(--ak-accent-subtle);
+}
+
+.guide-list-note {
+  font-size: 0.8125rem;
+  color: var(--ak-text-muted);
+}
+
+.guide-body {
+  max-width: 72ch;
+  min-width: 0;
+}
+
+.guide-body h1,
+.guide-body h2,
+.guide-body h3 {
+  font-family: var(--ak-font-display);
+}
+
+.guide-body pre {
+  padding: var(--ak-space-sm) var(--ak-space-md);
+  overflow-x: auto;
+  background: var(--ak-surface);
+  border: 1px solid var(--ak-border);
+  border-radius: var(--ak-radius-md);
+  font-size: 0.875rem;
+}
+
+.guide-body code {
+  font-family: var(--ak-font-mono);
+}
+
+.guide-body table {
+  border-collapse: collapse;
+  display: block;
+  overflow-x: auto;
+}
+
+.guide-body th,
+.guide-body td {
+  padding: var(--ak-space-xxs) var(--ak-space-sm);
+  border: 1px solid var(--ak-border);
+  text-align: left;
+}
+
 @media (max-width: 640px) {
   .site-header {
     padding: var(--ak-space-sm) var(--ak-space-md);
@@ -157,5 +226,9 @@ a {
 
   .site-main {
     padding: var(--ak-space-lg) var(--ak-space-md);
+  }
+
+  .guide {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

@@ -45,3 +45,22 @@ it("shows not-found for an unknown route", async () => {
   });
   expect(screen.getByText("Page not found")).toBeTruthy();
 });
+
+async function go(hash: string): Promise<void> {
+  await act(async () => {
+    location.hash = hash;
+    window.dispatchEvent(new HashChangeEvent("hashchange"));
+  });
+}
+
+it("shows the README's h1 on #/guide/readme", async () => {
+  render(<Site />);
+  await go("#/guide/readme");
+  expect(screen.getByRole("heading", { level: 1, name: "@anyknown/file-viewer" })).toBeTruthy();
+});
+
+it("shows not-found for an unknown guide", async () => {
+  render(<Site />);
+  await go("#/guide/nope");
+  expect(screen.getByText("Page not found")).toBeTruthy();
+});

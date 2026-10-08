@@ -1,3 +1,4 @@
+import { GuidePage } from "./docs/guide-page";
 import { Header } from "./header";
 import { HomePage } from "./home-page";
 import { useHash, useSiteLocale, useTheme } from "./prefs";
@@ -13,6 +14,8 @@ export function Site(): React.JSX.Element {
       <main className="site-main">
         {route.page === "home" ? (
           <HomePage locale={locale} theme={theme === "system" ? undefined : theme} />
+        ) : route.page === "guide" ? (
+          <GuidePage guideKey={route.key} />
         ) : (
           <div className="site-not-found">
             <h1>Page not found</h1>
