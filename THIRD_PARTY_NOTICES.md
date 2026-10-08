@@ -42,3 +42,4 @@ SOFTWARE.
 - fflate 0.8.3, MIT, https://github.com/101arrowz/fflate
 - zod 4.6.5, MIT, https://github.com/colinhacks/zod
 - @base-ui/react 1.8.0, MIT, https://github.com/mui/base-ui
+- mediabunny 1.61.1, MPL-2.0, used unmodified as an npm dependency, https://github.com/Vanilagy/mediabunny/tree/v1.61.1
