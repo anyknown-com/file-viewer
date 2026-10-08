@@ -46,6 +46,7 @@ it("registers the select and paint tools, menus, overlay, thumbnail decor and pr
   expect(menuItems("hidden").map((m) => m.id)).toEqual(
     expect.arrayContaining(["paint.swapColors", "paint.defaultColors"]),
   );
+  expect(menuItems("image").map((m) => m.id)).toContain("image.redact");
   expect(overlays().map((o) => o.id)).toContain("select.ants");
   expect(layerDecors().map((d) => d.id)).toContain("select.thumbnailLoad");
   expect(selectionProvider()).toBe(provider);
