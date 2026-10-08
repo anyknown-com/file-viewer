@@ -28,7 +28,13 @@ export function NumberField(props: {
         <BaseNumberField.ScrubAreaCursor>↔</BaseNumberField.ScrubAreaCursor>
       </BaseNumberField.ScrubArea>
       <BaseNumberField.Group>
-        <BaseNumberField.Input aria-label={props.label} className="fv-number-field-input" />
+        <BaseNumberField.Input
+          aria-label={props.label}
+          className="fv-number-field-input"
+          onKeyDown={(e) => {
+            if (e.key === "Enter") e.currentTarget.blur();
+          }}
+        />
       </BaseNumberField.Group>
     </BaseNumberField.Root>
   );

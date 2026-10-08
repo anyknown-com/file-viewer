@@ -45,6 +45,15 @@ describe("NumberField", () => {
     expect(onCommit).toHaveBeenCalledWith(42);
   });
 
+  it("commits a typed value on Enter", async () => {
+    const { input, user, onChange, onCommit } = setup();
+    await user.clear(input);
+    await user.type(input, "42{Enter}");
+    expect(onChange).toHaveBeenCalledWith(42);
+    expect(onCommit).toHaveBeenCalledTimes(1);
+    expect(onCommit).toHaveBeenCalledWith(42);
+  });
+
   it("clamps to max on blur", async () => {
     const { input, user, onCommit } = setup();
     await user.clear(input);
