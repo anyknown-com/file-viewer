@@ -7,6 +7,7 @@ import { DiscardDialog } from "../primitives/dialog";
 import { CloseIcon } from "../primitives/glyphs";
 import { useRoot } from "../primitives/root-context";
 import { type AudioEdit, cut, initialEdit, keep, outputDuration, type Range, split } from "./edit";
+import { ExportDialog } from "./export-dialog";
 import { RedoIcon, UndoIcon } from "./glyphs";
 import {
   type History,
@@ -23,7 +24,7 @@ import { SelectionLayer } from "./selection-layer";
 import { SilencePopover } from "./silence-popover";
 import { Tools } from "./tools";
 import { togglePlay, Transport } from "./transport";
-import { useTrackLoad } from "./use-track-load";
+import { type Load, useTrackLoad } from "./use-track-load";
 import { clampView, fitView, type View, zoom } from "./view";
 import { VolumePopover } from "./volume-popover";
 import { Waveform } from "./waveform";
@@ -50,6 +51,11 @@ function editKey(key: string, state: AudioEdit, sel: Range | null, playhead: num
   return null;
 }
 
+/** What the export dialog needs, once the peak scan is done. */
+function exportable(load: Load, history: History | null) {
+  return load.status === "ready" && history ? { opened: load.opened, edit: history.present } : null;
+}
+
 type Action = HistoryAction | { type: "init"; edit: AudioEdit };
 
 function reducer(h: History | null, a: Action): History | null {
@@ -62,6 +68,7 @@ export function EditorBody(props: EditorProps): React.JSX.Element {
   const tc = useT(commonMessages);
   const [history, dispatchRaw] = useReducer(reducer, null);
   const [discardOpen, setDiscardOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const [rawView, setView] = useState<View>({ start: 0, secondsPerPixel: 0, width: 0 });
   const [selection, setSelection] = useState<Range | null>(null);
   const [playhead, setPlayhead] = useState(0);
@@ -110,6 +117,7 @@ export function EditorBody(props: EditorProps): React.JSX.Element {
   };
 
   const dirty = history !== null && isDirty(history);
+  const toExport = exportable(load, history);
   const dispatch = (a: HistoryAction) => {
     if (!history) return;
     const next = historyReducer(history, a);
@@ -199,7 +207,7 @@ export function EditorBody(props: EditorProps): React.JSX.Element {
             disabled={!history || history.future.length === 0}
             onClick={() => dispatch({ type: "redo" })}
           />
-          <Button variant="primary" disabled>
+          <Button variant="primary" disabled={!toExport} onClick={() => setExportOpen(true)}>
             {t("audio.export")}
           </Button>
         </div>
@@ -284,6 +292,19 @@ export function EditorBody(props: EditorProps): React.JSX.Element {
         )}
       </div>
       <DiscardDialog open={discardOpen} onOpenChange={setDiscardOpen} onDiscard={props.onClose} />
+      {toExport && (
+        <ExportDialog
+          open={exportOpen}
+          onOpenChange={setExportOpen}
+          opened={toExport.opened}
+          edit={toExport.edit}
+          fileName={props.file.name}
+          maxOutputBytes={props.maxOutputBytes}
+          onSave={props.onSave}
+          onDone={props.onClose}
+          onError={root.report}
+        />
+      )}
     </>
   );
 }

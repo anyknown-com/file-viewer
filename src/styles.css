@@ -971,6 +971,20 @@
   font-size: var(--ak-type-t2);
 }
 
+.fv-audio-export {
+  display: grid;
+  gap: var(--ak-space-sm);
+  min-inline-size: min(320px, 100%);
+}
+
+.fv-audio-progress {
+  display: grid;
+  gap: var(--ak-space-xs);
+  color: var(--ak-text-muted);
+  font-size: var(--ak-type-t2);
+  font-variant-numeric: tabular-nums;
+}
+
 @container (max-width: 639px) {
   .fv-audio-tools {
     flex-wrap: nowrap;
