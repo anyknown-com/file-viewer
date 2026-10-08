@@ -2,6 +2,7 @@ import type { AudioMessages } from "../audio-editor/messages";
 import type { AdjustMessages } from "../image-editor/adjust/messages";
 import type { ExcalidrawMessages } from "../excalidraw/messages";
 import type { ImageMessages } from "../image-editor/messages";
+import type { TextShapeMessages } from "../image-editor/text/messages";
 import type { SelectPaintMessages } from "../image-editor/tools/messages";
 import type { MarkdownMessages } from "../markdown/messages";
 import type { VideoMessages } from "../video-editor/messages";
@@ -24,7 +25,8 @@ export type Messages = CommonMessages &
   ExcalidrawMessages &
   AudioMessages &
   VideoMessages &
-  AdjustMessages;
+  AdjustMessages &
+  TextShapeMessages;
 
 export function format(template: string, vars?: Vars): string {
   if (!vars) return template;
