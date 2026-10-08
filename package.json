@@ -39,7 +39,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsdown",
+    "build": "tsdown && node scripts/copy-excalidraw-assets.mjs",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.comp.json",
     "lint": "oxlint",
     "fmt": "oxfmt",
@@ -54,6 +54,7 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
+    "@excalidraw/excalidraw": "0.18.1",
     "fflate": "^0.8.3",
     "mediabunny": "1.61.1",
     "react-markdown": "^10.1.0",
