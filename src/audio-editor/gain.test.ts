@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import { cut, fade, gain as addGain, initialEdit, split } from "./edit";
 import { applyGains, downmixToStereo, gainAt } from "./gain";
 
+const make = () => [new Float32Array(48000).fill(0.5), new Float32Array(48000).fill(-0.25)];
+const ch = (...v: number[]) => v.map((x) => new Float32Array([x]));
+
 describe("gainAt", () => {
   it("fade in runs 0 to 1, fade out runs 1 to 0", () => {
     const fi = fade(initialEdit(10), { start: 2, end: 4 }, "in");
@@ -38,8 +41,6 @@ describe("gainAt", () => {
 });
 
 describe("applyGains", () => {
-  const make = () => [new Float32Array(48000).fill(0.5), new Float32Array(48000).fill(-0.25)];
-
   it("is byte-identical before and after a split", () => {
     let e = fade(initialEdit(1), { start: 0, end: 0.5 }, "in");
     e = addGain(e, { start: 0.3, end: 0.9 }, -4);
@@ -67,8 +68,6 @@ describe("applyGains", () => {
 });
 
 describe("downmixToStereo", () => {
-  const ch = (...v: number[]) => v.map((x) => new Float32Array([x]));
-
   it("returns mono and stereo as is", () => {
     const m = ch(1);
     const s = ch(1, 2);
