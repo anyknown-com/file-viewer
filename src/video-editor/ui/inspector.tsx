@@ -40,6 +40,41 @@ function DraftSlider(props: {
   );
 }
 
+/**
+ * A text area that keeps the typing local and runs one command on blur or Enter, so a
+ * typed phrase is one undo step. Shift+Enter adds a line; Enter while composing (IME) is
+ * left to the input method.
+ */
+function DraftText(props: {
+  label: string;
+  value: string;
+  onCommit(v: string): void;
+}): React.JSX.Element {
+  const [draft, setDraft] = useState<string | null>(null);
+  const commit = () => {
+    if (draft === null) return;
+    setDraft(null);
+    if (draft !== props.value) props.onCommit(draft);
+  };
+  return (
+    <label className="fv-ve-inspector-field">
+      <span className="fv-ve-inspector-label">{props.label}</span>
+      <textarea
+        className="fv-ve-input"
+        rows={3}
+        value={draft ?? props.value}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key !== "Enter" || e.shiftKey || e.nativeEvent.isComposing) return;
+          e.preventDefault();
+          commit();
+        }}
+      />
+    </label>
+  );
+}
+
 function Position(props: {
   clip: ImageClip | TextClip;
   patch(p: ClipPatch): void;
@@ -120,15 +155,11 @@ function ClipFields(props: { clip: Clip; patch(p: ClipPatch): void }): React.JSX
 
   return (
     <>
-      <label className="fv-ve-inspector-field">
-        <span className="fv-ve-inspector-label">{t("video.inspector.text")}</span>
-        <textarea
-          className="fv-ve-input"
-          rows={3}
-          value={clip.text}
-          onChange={(e) => patch({ text: e.target.value })}
-        />
-      </label>
+      <DraftText
+        label={t("video.inspector.text")}
+        value={clip.text}
+        onCommit={(text) => patch({ text })}
+      />
       <DraftSlider
         label={t("video.inspector.size")}
         value={clip.size}

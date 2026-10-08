@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { videoMessages } from "../messages";
 import { History } from "../model/history";
@@ -48,16 +48,37 @@ afterEach(() => {
 });
 
 describe("Inspector", () => {
-  it("edits a text clip's words as one more step", async () => {
+  it("records typed text as one undo step on blur", async () => {
+    mockEngines({});
+    const { user, session } = renderEditor();
+    await user.click(await screen.findByRole("button", { name: v["video.addText"] }));
+    select(clipOf("text"));
+    const run = vi.spyOn(History.prototype, "run");
+    const text = inspector().getByRole("textbox", { name: v["video.inspector.text"] });
+    await user.type(text, "Hello");
+    expect(run).not.toHaveBeenCalled();
+    expect((text as HTMLTextAreaElement).value).toBe(`${v["video.defaultText"]}Hello`);
+    fireEvent.blur(text);
+    expect(run).toHaveBeenCalledOnce();
+    expect(clipOf("text").textContent).toContain(`${v["video.defaultText"]}Hello`);
+    act(() => session().history!.undo());
+    expect(clipOf("text").textContent).toContain(v["video.defaultText"]);
+    expect(clipOf("text").textContent).not.toContain("Hello");
+  });
+
+  it("records text on Enter and keeps Shift+Enter as a new line", async () => {
     mockEngines({});
     const { user } = renderEditor();
     await user.click(await screen.findByRole("button", { name: v["video.addText"] }));
     select(clipOf("text"));
     const run = vi.spyOn(History.prototype, "run");
     const text = inspector().getByRole("textbox", { name: v["video.inspector.text"] });
-    fireEvent.change(text, { target: { value: "Hello" } });
+    await user.clear(text);
+    await user.type(text, "a{Shift>}{Enter}{/Shift}b");
+    expect(run).not.toHaveBeenCalled();
+    await user.keyboard("{Enter}");
     expect(run).toHaveBeenCalledOnce();
-    expect(clipOf("text").textContent).toContain("Hello");
+    expect((text as HTMLTextAreaElement).value).toBe("a\nb");
   });
 
   it("runs the volume only on release, as one step", async () => {
