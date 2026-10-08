@@ -232,3 +232,60 @@ a {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.api {
+  max-width: 72rem;
+}
+
+.api h1,
+.api h2,
+.api h3 {
+  font-family: var(--ak-font-display);
+}
+
+.api-import,
+.api-signature {
+  padding: var(--ak-space-sm) var(--ak-space-md);
+  overflow-x: auto;
+  background: var(--ak-surface);
+  border: 1px solid var(--ak-border);
+  border-radius: var(--ak-radius-md);
+  font-family: var(--ak-font-mono);
+  font-size: 0.875rem;
+}
+
+.api-card {
+  padding: var(--ak-space-md) 0;
+  border-top: 1px solid var(--ak-border);
+}
+
+.api-deprecated {
+  color: var(--ak-text-muted);
+}
+
+.api-table-wrap {
+  overflow-x: auto;
+}
+
+.api-table {
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.api-table th,
+.api-table td {
+  padding: var(--ak-space-xxs) var(--ak-space-sm);
+  border: 1px solid var(--ak-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.api-table code {
+  font-family: var(--ak-font-mono);
+}
+
+.api-required {
+  margin-left: var(--ak-space-xs);
+  font-size: 0.75rem;
+  color: var(--ak-accent);
+}

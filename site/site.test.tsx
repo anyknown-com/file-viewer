@@ -1,6 +1,7 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import api from "./generated/api.json";
 import { THEME_KEY } from "./prefs";
 import { Site } from "./site";
 
@@ -75,4 +76,33 @@ it("shows the Connect your app h1 on #/guide/connect", async () => {
   render(<Site />);
   await go("#/guide/connect");
   expect(screen.getByRole("heading", { level: 1, name: "Connect your app" })).toBeTruthy();
+});
+
+it("shows the FileViewer card with a required file prop on #/api", async () => {
+  render(<Site />);
+  await go("#/api");
+  const card = document.getElementById("api-FileViewer");
+  expect(card).not.toBeNull();
+  const row = within(card as HTMLElement)
+    .getByText("file", { selector: "code" })
+    .closest("tr");
+  expect(within(row as HTMLElement).getByText("required")).toBeTruthy();
+});
+
+it("scrolls to #api-kindOf on #/api/kindOf", async () => {
+  const scroll = vi.fn<() => void>();
+  Element.prototype.scrollIntoView = scroll;
+  render(<Site />);
+  await go("#/api/kindOf");
+  expect(document.getElementById("api-kindOf")).not.toBeNull();
+  expect(scroll).toHaveBeenCalled();
+});
+
+it("lists the first message key in the Messages table", async () => {
+  render(<Site />);
+  await go("#/api");
+  const first = api.messages[0]?.key ?? "";
+  const heading = screen.getByRole("heading", { level: 2, name: "Messages" });
+  const table = (heading.parentElement as HTMLElement).querySelector("tbody tr td");
+  expect(table?.textContent).toBe(first);
 });

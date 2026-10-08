@@ -1,3 +1,4 @@
+import { ApiPage } from "./docs/api-page";
 import { GuidePage } from "./docs/guide-page";
 import { Header } from "./header";
 import { HomePage } from "./home-page";
@@ -16,6 +17,8 @@ export function Site(): React.JSX.Element {
           <HomePage locale={locale} theme={theme === "system" ? undefined : theme} />
         ) : route.page === "guide" ? (
           <GuidePage guideKey={route.key} />
+        ) : route.page === "api" ? (
+          <ApiPage anchor={route.anchor} />
         ) : (
           <div className="site-not-found">
             <h1>Page not found</h1>

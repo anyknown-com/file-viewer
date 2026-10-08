@@ -13,3 +13,8 @@ it("routes anything else to not-found", () => {
 it("routes #/guide/<key> to the guide page", () => {
   expect(parseRoute("#/guide/connect")).toEqual({ page: "guide", key: "connect" });
 });
+
+it("routes #/api and #/api/<name> to the api page", () => {
+  expect(parseRoute("#/api")).toEqual({ page: "api" });
+  expect(parseRoute("#/api/kindOf")).toEqual({ page: "api", anchor: "kindOf" });
+});

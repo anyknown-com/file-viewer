@@ -25,6 +25,7 @@ export function Header(): React.JSX.Element {
         <a href="#/">Playground</a>
         <a href="#/guide/getting-started">Getting started</a>
         <a href="#/guide/connect">Connect your app</a>
+        <a href="#/api">API</a>
       </nav>
       <div className="site-tools">
         <fieldset className="site-theme" aria-label="Theme">
