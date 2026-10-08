@@ -6,12 +6,14 @@ import { adjustMessages } from "../messages";
 import { defaultAdjustment, KIND_KEY, randomSeed } from "../settings";
 import { CurvesPanel } from "./curves-panel";
 import { GenericPanel } from "./generic-panel";
+import { HueSaturationPanel } from "./hue-saturation-panel";
 import { LevelsPanel } from "./levels-panel";
 
 function KindPanel({ layer, api }: { layer: Layer; api: EditorApi }): React.JSX.Element {
   const key = layer.adjustment ? KIND_KEY[layer.adjustment.kind] : null;
   if (key === "levels") return <LevelsPanel layer={layer} api={api} />;
   if (key === "curves") return <CurvesPanel layer={layer} api={api} />;
+  if (key === "hueSaturation") return <HueSaturationPanel layer={layer} api={api} />;
   return <GenericPanel layer={layer} api={api} />;
 }
 
