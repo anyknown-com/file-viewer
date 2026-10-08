@@ -91,11 +91,8 @@ describe("exportAudio", () => {
     const blob = await exportAudio({ opened: t, edit, choice, signal: signal() });
     expect(blob.type).toBe("audio/mp4");
     const back = await readBack(blob);
-    // Chrome's macOS AAC encoder emits 2112 priming frames at timestamp 0 that mediabunny does
-    // not trim, plus padding to the 1024-frame packet: the file runs up to ~90 ms long.
-    const extra = back.t.duration - outputDuration(edit);
-    expect(extra).toBeGreaterThan(-0.03);
-    expect(extra).toBeLessThan(0.03 + (2112 + 2 * 1024) / RATE);
+    // The encoder priming is trimmed and the last packet cut: within one AAC frame.
+    expect(Math.abs(back.t.duration - outputDuration(edit))).toBeLessThanOrEqual(1024 / RATE);
   });
 
   it("refuses before reading when the estimate is over the limit", async () => {

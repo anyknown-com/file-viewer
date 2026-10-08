@@ -10,7 +10,7 @@ import {
   WavOutputFormat,
 } from "mediabunny";
 import { ViewerError } from "../contract/errors";
-import { createBlobSink, keepFirstError, toMediaError } from "../media";
+import { type AacTrack, addAacTrack, createBlobSink, keepFirstError, toMediaError } from "../media";
 import { type AudioEdit, outputDuration } from "./edit";
 import {
   estimateBytes,
@@ -57,14 +57,29 @@ export async function exportAudio(o: {
     format: container(choice.format),
     target: new StreamTarget(stream.writable),
   });
+  let aac: AacTrack | null = null;
   try {
     signal.throwIfAborted();
-    const source = new AudioSampleSource({
-      codec: format.codec,
-      bitrate: choice.bitrate ?? undefined,
-      transform: { sampleRate: outputSampleRate(choice.format, rate) },
-    });
-    output.addAudioTrack(source);
+    let add: AddPlanes;
+    if (choice.format === "aac") {
+      // AAC is encoded by our own encoder so its priming is trimmed (see addAacTrack).
+      const track = addAacTrack(output, {
+        inputRate: rate,
+        sampleRate: outputSampleRate("aac", rate),
+        numberOfChannels: channels,
+        bitrate: choice.bitrate ?? format.defaultBitrate!,
+      });
+      aac = track;
+      add = (planes) => track.add(planes);
+    } else {
+      const source = new AudioSampleSource({
+        codec: format.codec,
+        bitrate: choice.bitrate ?? undefined,
+        transform: { sampleRate: outputSampleRate(choice.format, rate) },
+      });
+      output.addAudioTrack(source);
+      add = (planes, t0) => addPlanes(source, planes, t0, rate);
+    }
     await output.start();
     let written = 0;
     for (const seg of edit.segments) {
@@ -72,7 +87,7 @@ export async function exportAudio(o: {
       for await (const sample of new AudioSampleSink(opened.track).samples(seg.in, seg.out)) {
         try {
           signal.throwIfAborted();
-          written += await addSlice(source, sample, seg, written, rate, edit);
+          written += await addSlice(add, sample, seg, written, rate, edit);
         } finally {
           sample.close();
         }
@@ -80,21 +95,27 @@ export async function exportAudio(o: {
         o.onProgress?.(totalFrames === 0 ? 1 : Math.min(1, written / totalFrames));
       }
     }
+    await aac?.finish();
     await output.finalize();
     return sink.toBlob(format.mime);
   } catch (e) {
     await output.cancel().catch(() => undefined);
     if (signal.aborted) throw signal.reason;
     throw toMediaError(stream.error() ?? e, "decode_failed");
+  } finally {
+    aac?.close();
   }
 }
+
+/** Takes mixed planar frames that start at output time `t0` (seconds). */
+type AddPlanes = (planes: Float32Array[], t0: number) => Promise<void>;
 
 /**
  * Adds the frames of `sample` that fall in `[seg.in, seg.out)` at output frame `written`,
  * mixed to at most two channels and with the gains applied. Returns the frames added.
  */
 async function addSlice(
-  source: AudioSampleSource,
+  add: AddPlanes,
   sample: AudioSample,
   seg: { in: number; out: number },
   written: number,
@@ -118,12 +139,23 @@ async function addSlice(
   const mixed = downmixToStereo(planes);
   const t0 = written / rate;
   applyGains(mixed, t0, rate, edit);
-  const data = new Float32Array(frames * mixed.length);
-  mixed.forEach((p, c) => data.set(p, c * frames));
+  await add(mixed, t0);
+  return frames;
+}
+
+async function addPlanes(
+  source: AudioSampleSource,
+  planes: Float32Array[],
+  t0: number,
+  rate: number,
+): Promise<void> {
+  const frames = planes[0]!.length;
+  const data = new Float32Array(frames * planes.length);
+  planes.forEach((p, c) => data.set(p, c * frames));
   const out = new AudioSample({
     data,
     format: "f32-planar",
-    numberOfChannels: mixed.length,
+    numberOfChannels: planes.length,
     sampleRate: rate,
     timestamp: t0,
   });
@@ -132,5 +164,4 @@ async function addSlice(
   } finally {
     out.close();
   }
-  return frames;
 }

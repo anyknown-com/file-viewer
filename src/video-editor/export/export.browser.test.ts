@@ -126,9 +126,10 @@ describe("runExport", () => {
         expect(audio).not.toBeNull();
         const expected = ticksToSeconds(projectDuration(project));
         expect(Math.abs((await video.computeDuration()) - expected)).toBeLessThan(1 / project.fps);
-        // An AAC encoder adds priming and pads the last packet (about 0.07 s with Chrome on macOS),
-        // so the file's duration, which counts the audio track too, may run a little longer.
-        expect(Math.abs((await input.computeDuration()) - expected)).toBeLessThan(0.1);
+        // The file's duration counts the audio track too: within one AAC frame of the project.
+        expect(Math.abs((await input.computeDuration()) - expected)).toBeLessThanOrEqual(
+          1024 / 48_000,
+        );
       } finally {
         input.dispose();
       }

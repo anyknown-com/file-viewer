@@ -12,6 +12,7 @@
 - **`maxOutputBytes` 在 sink 裡硬擋。** 開始前估大小、擋按鈕是 07 / 08 的事（各格式的估法不同）；sink 這邊再擋一道：寫入的結尾超過上限就丟 `ViewerError("output_too_large")`。mediabunny 會把這個寫入錯誤記下來，在下一次 flush 時丟出來（`StreamTarget._writeError`），所以它會從 `add()` / `finalize()` 冒出來，editor 不會呼叫 `onSave`。
 - **錯誤碼只用 00-overview §3 已有的 `ViewerErrorCode`，不加新碼。** 錯誤訊息的 i18n key 由 02 為每個碼各定一個，本 plan 不加 key。abort 不轉成 `ViewerError`，直接丟 `signal.reason`，呼叫端照慣例忽略 abort。
 - **測試分兩層。** Node 環境（`// @vitest-environment node`，jsdom 的 `Blob` 不可靠）跑解析、錯誤碼、sink 與 WAV 來回，用 `vi.stubGlobal` 模擬「有 decoder API 但不支援」。Chromium（`*.browser.test.ts`）跑真的 WebCodecs 編碼後再讀回來。編碼器用 VP9 放進 MP4 容器：playwright 的 Chromium 不一定有 H.264 / AAC 編碼器，而這裡要驗的是容器的回頭寫（mfra 與 mdat 檔頭），不是 codec。H.264 輸出由 07 在三個真瀏覽器上驗。
+- **AAC 的 encoder priming 由 `src/media/aac-track.ts` 的 `addAacTrack` 處理。** Chromium 的 AAC encoder 在開頭加 2112 個 priming frames，mediabunny 1.61.1 的 `AudioSampleSource` / `AudioBufferSource` 不扣，檔案會多約 44 ms 靜音。07 / 08 的 AAC 改用 `EncodedAudioPacketSource` 加自己的 `AudioEncoder`：每個 packet 往前平移 priming（mediabunny 把負的起點寫成 elst），最後一個 packet 的 `duration` 裁到最後一個輸入 frame；`aac-track.browser.test.ts` 驗開頭 ≤ 1 ms、長度差 ≤ 1 個 AAC frame。Opus 不經它（Ogg 本來就對）。
 - 宿主的事（H1，storage `docs/plans/22-file-viewer-host.md` Phase 2）：SDK `files.reader` 包成 `ByteSource`（`vaultSource`）、Blob 上傳只用 `slice`、用配額算 `maxOutputBytes`。本 plan 不碰。
 
 ## 契約

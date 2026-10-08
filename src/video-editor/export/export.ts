@@ -4,14 +4,20 @@
  */
 import { AudioBufferSource, CanvasSource, Mp4OutputFormat, Output, StreamTarget } from "mediabunny";
 import { isAbortError } from "../../contract/errors";
-import { createBlobSink, keepFirstError, toMediaError } from "../../media";
+import {
+  type AacTrack,
+  addAacTrack,
+  createBlobSink,
+  keepFirstError,
+  toMediaError,
+} from "../../media";
 import type { AssetStore } from "../engine/assets";
 import { audioSegments } from "../engine/audio-plan";
 import { FrameCache } from "../engine/frame-cache";
 import { ensureFonts, type FrameSources, renderFrame } from "../engine/render-frame";
 import { type Project, projectDuration } from "../model/project";
 import { frameTicks, TICKS_PER_SECOND } from "../model/time";
-import { mixAudio } from "./audio-mix";
+import { MIX_SAMPLE_RATE, mixAudio } from "./audio-mix";
 import type { ExportPreset } from "./settings";
 
 export type ExportProgress = { done: number /* 0–1 */; etaSeconds: number | null };
@@ -54,10 +60,24 @@ export async function runExport(o: {
   const videoSource = new CanvasSource(canvas, { codec: "avc", bitrate: preset.videoBitrate });
   output.addVideoTrack(videoSource, { frameRate: preset.fps });
   const duration = projectDuration(p);
-  let audioSource: AudioBufferSource | null = null;
+  let addAudio: ((buffer: AudioBuffer) => Promise<void>) | null = null;
+  let aac: AacTrack | null = null;
   if (hasAudio(p, assets, duration)) {
-    audioSource = new AudioBufferSource({ codec: o.audioCodec, bitrate: 128_000 });
-    output.addAudioTrack(audioSource);
+    if (o.audioCodec === "aac") {
+      // AAC is encoded by our own encoder so its priming is trimmed (see addAacTrack).
+      const track = addAacTrack(output, {
+        inputRate: MIX_SAMPLE_RATE,
+        sampleRate: MIX_SAMPLE_RATE,
+        numberOfChannels: 2,
+        bitrate: 128_000,
+      });
+      aac = track;
+      addAudio = (b) => track.add([b.getChannelData(0), b.getChannelData(1)]);
+    } else {
+      const source = new AudioBufferSource({ codec: o.audioCodec, bitrate: 128_000 });
+      output.addAudioTrack(source);
+      addAudio = (b) => source.add(b);
+    }
   }
 
   const step = frameTicks(preset.fps);
@@ -76,7 +96,7 @@ export async function runExport(o: {
         const from = s * TICKS_PER_SECOND;
         const to = Math.min(from + TICKS_PER_SECOND, duration);
         // oxlint-disable-next-line no-await-in-loop -- each second's audio is mixed and added in order.
-        if (audioSource) await audioSource.add(await mixAudio(p, assets, from, to));
+        if (addAudio) await addAudio(await mixAudio(p, assets, from, to));
       }
       // oxlint-disable-next-line no-await-in-loop -- frames are drawn and encoded in output order.
       await renderFrame(ctx, p, t, sources);
@@ -86,14 +106,17 @@ export async function runExport(o: {
       const elapsed = (performance.now() - began) / 1000;
       o.onProgress({ done, etaSeconds: (elapsed / done) * (1 - done) });
     }
+    await aac?.finish();
     await output.finalize();
   } catch (e) {
     // Closing a stream that has already errored throws; the first error is the one to report.
     await output.cancel().catch(() => undefined);
+    aac?.close();
     frames.dispose();
     if (isAbortError(e)) throw new DOMException("aborted", "AbortError");
     throw toMediaError(stream.error() ?? e, "decode_failed");
   }
+  aac?.close();
   frames.dispose();
   return sink.toBlob("video/mp4");
 }

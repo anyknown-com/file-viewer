@@ -163,9 +163,11 @@ describe("video editor end to end", () => {
     const input = new Input({ source: new BlobSource(req.blob), formats: ALL_FORMATS });
     const video = await input.getPrimaryVideoTrack();
     const frame = 1 / ((await video!.computePacketStats()).averagePacketRate || 30);
-    // The video track, not the file: the audio track's AAC priming adds its own offset to the file's length.
-    expect(Math.abs((await video!.computeDuration()) - 2)).toBeLessThanOrEqual(frame * 1.5);
-    expect(await input.getPrimaryAudioTrack()).not.toBeNull();
+    // The whole file, audio included: the AAC priming is trimmed, so the video sets the length.
+    expect(Math.abs((await input.computeDuration()) - 2)).toBeLessThanOrEqual(frame * 1.5);
+    const audio = await input.getPrimaryAudioTrack();
+    expect(audio).not.toBeNull();
+    expect(Math.abs((await audio!.computeDuration()) - 2)).toBeLessThanOrEqual(1024 / 48_000);
     expect(onClose).toHaveBeenCalledTimes(1);
   }, 120_000);
 });
