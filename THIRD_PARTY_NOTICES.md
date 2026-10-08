@@ -43,3 +43,6 @@ SOFTWARE.
 - zod 4.6.5, MIT, https://github.com/colinhacks/zod
 - @base-ui/react 1.8.0, MIT, https://github.com/mui/base-ui
 - mediabunny 1.61.1, MPL-2.0, used unmodified as an npm dependency, https://github.com/Vanilagy/mediabunny/tree/v1.61.1
+- remark-parse 11.0.0, MIT, https://github.com/remarkjs/remark
+- remark-gfm 4.0.1, MIT, https://github.com/remarkjs/remark-gfm
+- unified 11.0.5, MIT, https://github.com/unifiedjs/unified

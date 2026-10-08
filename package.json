@@ -29,6 +29,10 @@
       "types": "./dist/comp/index.d.ts",
       "default": "./dist/comp/index.js"
     },
+    "./markdown": {
+      "types": "./dist/markdown/index.d.ts",
+      "default": "./dist/markdown/index.js"
+    },
     "./styles.css": "./dist/styles.css"
   },
   "publishConfig": {
@@ -52,6 +56,9 @@
     "@base-ui/react": "^1.8.0",
     "fflate": "^0.8.3",
     "mediabunny": "1.61.1",
+    "remark-gfm": "^4.0.1",
+    "remark-parse": "^11.0.0",
+    "unified": "^11.0.5",
     "zod": "^4.6.5"
   },
   "devDependencies": {

@@ -4,6 +4,7 @@ export default defineConfig({
   entry: {
     index: "src/index.ts",
     "comp/index": "src/comp/index.ts",
+    "markdown/index": "src/markdown/index.ts",
   },
   format: ["esm"],
   platform: "neutral",
