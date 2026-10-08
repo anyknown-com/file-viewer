@@ -1905,3 +1905,47 @@ button.fv-diagram {
   display: flex;
   gap: var(--ak-space-xs);
 }
+
+/* image-adjust */
+.fv-ie-adj-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ak-space-sm);
+  padding: var(--ak-space-sm);
+  border-block-end: 1px solid var(--ak-border);
+}
+
+.fv-ie-adj-title {
+  margin: 0;
+  color: var(--ak-text);
+  font-size: inherit;
+  font-weight: 600;
+}
+
+.fv-ie-adj-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ak-space-sm);
+}
+
+.fv-ie-adj-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ak-space-xs);
+}
+
+.fv-ie-adj-label {
+  color: var(--ak-text-muted);
+}
+
+.fv-ie-adj-color {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ak-space-sm);
+  color: var(--ak-text-muted);
+}
+
+.fv-ie-adj-badge {
+  flex: none;
+}
