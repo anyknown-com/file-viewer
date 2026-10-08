@@ -12,9 +12,9 @@ import {
   readSelection,
   reselect,
   selectionBounds,
-  selectionInLayer,
   writeSelection,
 } from "./mask";
+import { selectionInLayer } from "./mask-sample";
 import { loadLayerAlpha } from "./load";
 import { expandSelection, featherSelection, gaussianKernel, featherSigma } from "./morph";
 
