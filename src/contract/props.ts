@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { Locale, Messages } from "../i18n/messages";
 import type { ByteSource, FileRef } from "./byte-source";
 import type { ViewerError } from "./errors";
+import type { ImageResolver } from "./image-resolver";
 import type { Limits } from "./limits";
 import type { SaveHandler } from "./save";
 
@@ -28,7 +29,7 @@ export type FileViewerProps = CommonProps & {
   onSave?: SaveHandler;
   onDirtyChange?: (dirty: boolean) => void;
   onEditingChange?: (editing: boolean) => void; // 按「編輯」時 true；編輯器 onClose 時 false
-  markdown?: { resolveImage?: (src: string, alt: string) => string | null };
+  markdown?: { resolveImage?: ImageResolver };
   excalidraw?: { assetPath?: string };
   editor?: { maxOutputBytes?: number; assets?: AssetProvider };
 };

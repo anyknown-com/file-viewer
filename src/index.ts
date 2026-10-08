@@ -6,6 +6,7 @@ export type { ViewKind, EditKind, KindResult } from "./contract/kinds";
 export { DEFAULT_LIMITS } from "./contract/limits";
 export type { Limits } from "./contract/limits";
 export type { SaveMode, SaveRequest, SaveHandler } from "./contract/save";
+export type { ImageResolution, ImageResolver } from "./contract/image-resolver";
 export { ViewerError } from "./contract/errors";
 export type { ViewerErrorCode } from "./contract/errors";
 export type { Locale, Messages } from "./i18n/messages";
