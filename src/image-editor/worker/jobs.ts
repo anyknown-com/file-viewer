@@ -1,4 +1,5 @@
 import { decodePng, encodePng, type PngImage } from "../../comp/index"; // 09
+import { contentFill } from "../tools/heal/content-fill";
 import { spotHeal } from "../tools/heal/spot-heal";
 import { wandMask } from "../tools/select/wand";
 
@@ -19,6 +20,8 @@ export const jobs = {
     wandMask(input, signal),
   heal: (input: Parameters<typeof spotHeal>[0], signal: AbortSignal): Uint8Array =>
     spotHeal(input, signal),
+  contentFill: (input: Parameters<typeof contentFill>[0], signal: AbortSignal): Uint8Array =>
+    contentFill(input, signal),
 };
 
 export type JobKind = keyof typeof jobs;

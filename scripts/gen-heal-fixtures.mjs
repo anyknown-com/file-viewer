@@ -1,5 +1,5 @@
-// Regenerates src/image-editor/tools/heal/__fixtures__/* from Compositor's C kernel
-// (Compositor/Rendering/HealPixels.c @11d8d7a). Run by hand when the fixtures change, not in CI:
+// Regenerates src/image-editor/tools/heal/__fixtures__/* from Compositor's C kernels
+// (Compositor/Rendering/HealPixels.c and ContentFill.c @11d8d7a). Run by hand when the fixtures change, not in CI:
 //   COMPOSITOR=$SCRATCH/compositor node scripts/gen-heal-fixtures.mjs
 import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -54,6 +54,21 @@ int main(int argc, char **argv) {
 }
 `;
 
+// content_fill(rgba, stride, mask, maskStride, width, height), in place.
+const fillHarness = `#include <stdio.h>
+#include <stdlib.h>
+#include "ContentFill.h"
+int main(int argc, char **argv) {
+  size_t w = (size_t)atol(argv[1]), n = w * w;
+  uint8_t *rgba = malloc(n * 4), *hole = malloc(n);
+  FILE *f = fopen(argv[2], "rb"); fread(rgba, 1, n * 4, f); fclose(f);
+  f = fopen(argv[3], "rb"); fread(hole, 1, n, f); fclose(f);
+  if (content_fill(rgba, w * 4, hole, w, (int)w, (int)w) != 1) return 1;
+  f = fopen(argv[4], "wb"); fwrite(rgba, 1, n * 4, f); fclose(f);
+  return 0;
+}
+`;
+
 const tmp = mkdtempSync(join(tmpdir(), "heal-fixtures-"));
 try {
   writeFileSync(join(tmp, "harness.c"), harness);
@@ -87,6 +102,22 @@ try {
       ]);
     }
   }
+  writeFileSync(join(tmp, "fill.c"), fillHarness);
+  const fill = join(tmp, "fill");
+  execFileSync("cc", [
+    "-O2",
+    `-I${rendering}`,
+    join(tmp, "fill.c"),
+    join(rendering, "ContentFill.c"),
+    "-o",
+    fill,
+  ]);
+  execFileSync(fill, [
+    "64",
+    join(out, "heal-input.rgba"),
+    join(out, "heal-mask.r8"),
+    join(out, "content-fill.rgba"),
+  ]);
 } finally {
   rmSync(tmp, { recursive: true, force: true });
 }
