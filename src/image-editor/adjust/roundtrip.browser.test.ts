@@ -2,11 +2,13 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { encodePng, readProject, validateLikeCompositor, writeProject } from "../../comp/index";
 import type { AdjustmentSettings, EditorApi, Layer } from "../api";
 import type { DocStore } from "../doc/store";
+import { internalsOf } from "../editor-api";
 import { setEffects } from "../effects/commands";
 import { defaultEffect, EFFECT_NAMES } from "../effects/defaults";
 import { resetRegistry } from "../registry";
 import { makeDoc } from "../test/make-doc";
-import { mountEditor } from "../test/mount-editor";
+import { setupGl } from "../test/setup-gl";
+import { createUiSlot } from "../ui-slot";
 import { addAdjustmentLayer, setAdjustment } from "./commands";
 import { FIELDS, getPath, resolveAdjustment, setPath } from "./panels/fields";
 import { registerAdjust } from "./install";
@@ -67,7 +69,11 @@ function tweak(s: AdjustmentSettings): AdjustmentSettings {
 
 describe("save and reload", () => {
   it("keeps all 12 adjustments and 6 effects, and undo/redo returns to the same manifest", async () => {
-    m = await mountEditor(makeDoc({ width: 64, height: 64, layers: [{ id: BASE, name: "Base" }] }));
+    // No editor UI: nothing here looks at the canvas, and on CI's software GL the first frame of
+    // 12 adjustment and 6 effect passes (and 13 layer thumbnails) alone takes seconds.
+    const doc = makeDoc({ width: 64, height: 64, layers: [{ id: BASE, name: "Base" }] });
+    const { api, store } = setupGl(document.createElement("canvas"), doc, createUiSlot());
+    m = { api, store, unmount: () => internalsOf(api).worker.terminate() };
     const ids: string[] = [];
     for (const kind of ADJUSTMENT_KINDS) {
       const id = uuid(100 + ids.length);
