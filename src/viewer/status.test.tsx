@@ -95,8 +95,8 @@ describe("Status", () => {
 
 describe("viewerMessages", () => {
   it("has the same 3 keys in both locales", () => {
-    const en = Object.keys(viewerMessages.en).sort();
+    const en = Object.keys(viewerMessages.en);
     expect(en).toHaveLength(3);
-    expect(Object.keys(viewerMessages["zh-TW"]).sort()).toEqual(en);
+    expect(new Set(Object.keys(viewerMessages["zh-TW"]))).toEqual(new Set(en));
   });
 });
