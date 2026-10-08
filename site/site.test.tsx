@@ -70,3 +70,9 @@ it("shows the Getting started h1 on #/guide/getting-started", async () => {
   await go("#/guide/getting-started");
   expect(screen.getByRole("heading", { level: 1, name: "Getting started" })).toBeTruthy();
 });
+
+it("shows the Connect your app h1 on #/guide/connect", async () => {
+  render(<Site />);
+  await go("#/guide/connect");
+  expect(screen.getByRole("heading", { level: 1, name: "Connect your app" })).toBeTruthy();
+});

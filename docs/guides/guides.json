@@ -6,6 +6,12 @@
     "note": "Install, CSS, show a file, let people edit, bring your own bytes, limits and errors, language."
   },
   {
+    "key": "connect",
+    "file": "docs/guides/connect.md",
+    "title": "Connect your app",
+    "note": "Content Security Policy, Vite, theme, fonts."
+  },
+  {
     "key": "readme",
     "file": "README.md",
     "title": "Package README",

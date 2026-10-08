@@ -1,7 +1,8 @@
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import list from "../../docs/guides/guides.json";
+import { parseHeaders } from "../read-headers";
 import { GUIDES, guideByKey, guideKeyOfFile } from "./content";
 
 const root = process.cwd();
@@ -34,4 +35,30 @@ it("maps link targets to guide keys", () => {
   expect(guideKeyOfFile("./CHANGELOG.md")).toBe("changelog");
   expect(guideKeyOfFile("../../README.md")).toBe("readme");
   expect(guideKeyOfFile("./nope.md")).toBeUndefined();
+});
+
+describe("connect.md", () => {
+  const connect = readFileSync(join(root, "docs/guides/connect.md"), "utf8");
+  const csp = connect.slice(
+    connect.indexOf("## Content Security Policy"),
+    connect.indexOf("## Theme"),
+  );
+
+  it("quotes the site's own Content-Security-Policy", () => {
+    const headers = parseHeaders(readFileSync(join(root, "site/public/_headers"), "utf8"));
+    const line = connect.split("\n").find((l) => l.trim().startsWith("Content-Security-Policy:"));
+    expect(line?.trim()).toBe(`Content-Security-Policy: ${headers["Content-Security-Policy"]}`);
+  });
+
+  it("has the four sections", () => {
+    for (const heading of ["Content Security Policy", "Theme", "Fonts", "Vite"]) {
+      expect(connect).toContain(`\n## ${heading}\n`);
+    }
+  });
+
+  it("explains the PDF iframe rule", () => {
+    for (const s of ["<iframe>", "<embed>", "frame-src blob:", "object-src 'none'"]) {
+      expect(csp).toContain(s);
+    }
+  });
 });
