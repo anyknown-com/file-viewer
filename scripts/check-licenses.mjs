@@ -3,17 +3,32 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-export const ALLOWED = ["MIT", "ISC", "BSD-2-Clause", "BSD-3-Clause", "Apache-2.0", "0BSD"];
+export const ALLOWED = [
+  "MIT",
+  "ISC",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "Apache-2.0",
+  "0BSD",
+  "CC0-1.0",
+  "Unlicense",
+  "Zlib",
+];
 export const FONT_PACKAGE = /^@fontsource(-variable)?\//;
+// Packages whose package.json has no license field, checked by hand against their LICENSE file.
+export const OVERRIDES = {
+  khroma: "MIT", // khroma 2.1.0: LICENSE file is The MIT License
+};
 
-function isAllowed(license, name) {
+function isAllowed(reported, name) {
+  const license = OVERRIDES[name] ?? reported;
   if (license === "MPL-2.0" && name === "mediabunny") return true;
   if (license === "OFL-1.1" && FONT_PACKAGE.test(name)) return true;
   const options = license
     .replace(/^\(|\)$/g, "")
     .split(/\s+OR\s+/)
-    .map((option) => option.trim());
-  return options.some((option) => ALLOWED.includes(option));
+    .map((option) => option.replace(/^\(|\)$/g, "").split(/\s+AND\s+/));
+  return options.some((parts) => parts.every((part) => ALLOWED.includes(part.trim())));
 }
 
 export function checkLicenses(report, deps, notices) {

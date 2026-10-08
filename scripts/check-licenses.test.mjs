@@ -31,6 +31,19 @@ describe("checkLicenses", () => {
     expect(checkLicenses(pkg("OFL-1.1", "other-font"), [], "")).toHaveLength(1);
     expect(checkLicenses(pkg("GPL-3.0", "@fontsource/inter"), [], "")).toHaveLength(1);
   });
+  it("allows CC0-1.0, Unlicense and Zlib", () => {
+    expect(checkLicenses(pkg("CC0-1.0", "a"), [], "")).toEqual([]);
+    expect(checkLicenses(pkg("Unlicense", "b"), [], "")).toEqual([]);
+    expect(checkLicenses(pkg("Zlib", "c"), [], "")).toEqual([]);
+  });
+  it("passes an AND expression only when every part is allowed", () => {
+    expect(checkLicenses(pkg("(MIT AND Zlib)", "pako"), [], "")).toEqual([]);
+    expect(checkLicenses(pkg("(MIT AND GPL-3.0)", "z"), [], "")).toHaveLength(1);
+  });
+  it("uses the hand-checked override for khroma only", () => {
+    expect(checkLicenses(pkg("Unknown", "khroma"), [], "")).toEqual([]);
+    expect(checkLicenses(pkg("Unknown", "other"), [], "")).toHaveLength(1);
+  });
   it("passes an empty report", () => {
     expect(checkLicenses({}, [], "")).toEqual([]);
   });
