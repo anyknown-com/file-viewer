@@ -1,1 +1,40 @@
-/* fv-* classes. Filled by 02 contract. */
+/* fv-* classes. Each plan appends its own section at the end (02-contract). */
+
+/* == root (02) == */
+.fv-root {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  color: var(--ak-text);
+  background: var(--ak-bg);
+  font-family: var(--ak-font-body);
+  font-size: var(--ak-type-t3);
+  line-height: var(--ak-type-body);
+}
+
+.fv-root[data-theme="light"] {
+  color-scheme: light;
+}
+
+.fv-root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+.fv-root *,
+.fv-root *::before,
+.fv-root *::after {
+  box-sizing: border-box;
+}
+
+.fv-root :focus-visible {
+  outline: var(--ak-focus-ring-width) solid var(--ak-focus-ring);
+  outline-offset: 2px;
+}
+
+.fv-portal {
+  display: contents;
+}
