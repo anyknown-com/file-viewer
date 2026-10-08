@@ -3,7 +3,22 @@ import userEvent from "@testing-library/user-event";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, expect, it, vi } from "vitest";
+import { createElement } from "react";
+import type * as Viewer from "@anyknown/file-viewer";
+import type { FileViewerProps } from "@anyknown/file-viewer";
 import { Playground } from "./playground";
+
+const viewerProps: FileViewerProps[] = [];
+vi.mock("@anyknown/file-viewer", async (importOriginal) => {
+  const actual = await importOriginal<typeof Viewer>();
+  return {
+    ...actual,
+    FileViewer: (props: FileViewerProps) => {
+      viewerProps.push(props);
+      return createElement(actual.FileViewer, props);
+    },
+  };
+});
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -48,4 +63,19 @@ it("opens a sample with the same open as a picked file", async () => {
     await screen.findByText(/Nothing is uploaded; the bytes stay on your device\./),
   ).toBeTruthy();
   expect(fetch).toHaveBeenCalledWith("/samples/notes.txt");
+});
+
+it("offers the dropped files to the editors as assets", async () => {
+  const { container } = render(<Playground locale="en" />);
+  const files = [
+    new File(["one"], "one.txt", { type: "text/plain" }),
+    new File(["two"], "two.png", { type: "image/png" }),
+  ];
+  fireEvent.drop(container.querySelector(".pg-drop")!, { dataTransfer: { files } });
+  await screen.findByText("one");
+  const assets = viewerProps.at(-1)!.editor!.assets!;
+  expect(await assets.list()).toEqual([
+    { id: "0", name: "one.txt", mime: "text/plain", size: 3 },
+    { id: "1", name: "two.png", mime: "image/png", size: 3 },
+  ]);
 });

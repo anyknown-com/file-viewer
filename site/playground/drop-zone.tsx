@@ -1,10 +1,10 @@
 import { useState, type DragEvent, type ReactNode } from "react";
 
 export function DropZone({
-  onFile,
+  onFiles,
   children,
 }: {
-  onFile: (file: File) => void;
+  onFiles: (files: File[]) => void;
   children: ReactNode;
 }): React.JSX.Element {
   const [dragging, setDragging] = useState(false);
@@ -27,8 +27,8 @@ export function DropZone({
       onDrop={(e) => {
         e.preventDefault();
         setDragging(false);
-        const file = e.dataTransfer.files[0];
-        if (file) onFile(file);
+        const files = Array.from(e.dataTransfer.files);
+        if (files.length > 0) onFiles(files);
       }}
     >
       {children}

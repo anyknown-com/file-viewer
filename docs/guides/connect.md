@@ -79,6 +79,15 @@ Diagrams (`.excalidraw` files and `excalidraw` fences in Markdown) need Excalidr
 
 Without `assetPath`, Excalidraw loads its fonts from `esm.sh`. The policy above blocks that request and the browser reports a violation.
 
+## Video editor
+
+The video editor takes its options from the `editor` prop of `FileViewer`.
+
+- `editor.assets` is an `AssetProvider`. Its `list()` returns the videos, audio files and images your app offers, and `open(id)` returns a `ByteSource` for one of them (`blobSource(file)` wraps a `File`). They appear in the editor's media bin next to the opened file.
+- `editor.maxOutputBytes` caps the size of the exported MP4. The editor estimates the size before it starts and refuses an export that would go over.
+
+The editor needs no wider CSP and opens no workers. It reads and writes everything in the page, and an export is handed to `onSave` as an `.mp4` Blob in `export` mode.
+
 ## Vite
 
 Version 0.1 only needs the Excalidraw fonts copied. This website does it with a small plugin, `site/excalidraw-assets.ts`:

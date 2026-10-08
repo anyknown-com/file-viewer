@@ -1,7 +1,14 @@
 // The playground: drop or pick a file, view and edit it with FileViewer, save as a download.
 // Self-contained: it imports only the published package, Base UI, React and files in this folder,
 // so a standalone tool page can mount the same component later.
-import { FileViewer, type FileRef, type Locale, type SaveRequest } from "@anyknown/file-viewer";
+import {
+  FileViewer,
+  blobSource,
+  type AssetProvider,
+  type FileRef,
+  type Locale,
+  type SaveRequest,
+} from "@anyknown/file-viewer";
 import { useRef, useState } from "react";
 import { DiscardDialog } from "./discard-dialog";
 import { DropZone } from "./drop-zone";
@@ -25,6 +32,22 @@ export function Playground({
   const [pending, setPending] = useState<(() => void) | null>(null);
   const nextKey = useRef(0);
   const input = useRef<HTMLInputElement>(null);
+  // Every file dropped here, offered to the editors as extra assets (the video editor's media bin).
+  const dropped = useRef<File[]>([]);
+  const [assets] = useState<AssetProvider>(() => ({
+    list: async () =>
+      dropped.current.map((file, i) => ({
+        id: String(i),
+        name: file.name,
+        mime: file.type,
+        size: file.size,
+      })),
+    open: async (id) => {
+      const file = dropped.current[Number(id)];
+      if (!file) throw new Error(`No dropped file ${id}`);
+      return blobSource(file);
+    },
+  }));
 
   const show = (ref: FileRef, size: number) => {
     nextKey.current += 1;
@@ -36,6 +59,10 @@ export function Playground({
     else action();
   };
   const open = (file: File) => guard(() => show(fileRefOf(file), file.size));
+  const drop = (files: File[]) => {
+    dropped.current.push(...files);
+    open(files[0]!);
+  };
   const close = () =>
     guard(() => {
       setOpened(null);
@@ -53,7 +80,7 @@ export function Playground({
   );
 
   return (
-    <DropZone onFile={open}>
+    <DropZone onFiles={drop}>
       <input
         ref={input}
         type="file"
@@ -92,6 +119,7 @@ export function Playground({
               locale={locale}
               theme={theme}
               excalidraw={{ assetPath: "/excalidraw-assets/" }}
+              editor={{ assets: assets }}
               onSave={save}
               onDirtyChange={setDirty}
             />
