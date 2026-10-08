@@ -62,7 +62,8 @@
     "check:licenses": "node scripts/check-licenses.mjs",
     "site:dev": "vite --config site/vite.config.ts",
     "site:test": "vitest run --config site/vitest.config.ts",
-    "site:build": "pnpm build && vite build --config site/vite.config.ts"
+    "site:build": "pnpm build && vite build --config site/vite.config.ts",
+    "site:smoke": "node scripts/site-smoke.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

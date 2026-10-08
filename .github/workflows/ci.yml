@@ -24,6 +24,8 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm turbo run build typecheck typecheck:site lint fmt:check check:entry test test:browser check:licenses
       - run: pnpm site:test
+      - run: pnpm site:build
+      - run: pnpm site:smoke
       # Not cached: it packs a tarball and resolves the exports map from
       # outside the package, which is exactly what must not go stale.
       - run: pnpm verify:pack
