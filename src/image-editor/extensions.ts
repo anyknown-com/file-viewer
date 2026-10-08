@@ -1,3 +1,5 @@
+import { registerSelectPaint } from "./tools/register";
+
 let installed = false;
 
 // Idempotent; ImageEditor calls it on mount. 11, 12 and 13 each add one import and one call
@@ -5,4 +7,5 @@ let installed = false;
 export function installExtensions(): void {
   if (installed) return;
   installed = true;
+  registerSelectPaint();
 }

@@ -1,6 +1,8 @@
 import type { AudioMessages } from "../audio-editor/messages";
+import type { AdjustMessages } from "../image-editor/adjust/messages";
 import type { ExcalidrawMessages } from "../excalidraw/messages";
 import type { ImageMessages } from "../image-editor/messages";
+import type { SelectPaintMessages } from "../image-editor/tools/messages";
 import type { MarkdownMessages } from "../markdown/messages";
 import type { VideoMessages } from "../video-editor/messages";
 import type { ViewerMessages } from "../viewer/messages";
@@ -17,10 +19,12 @@ export type MessageTable<K extends string> = Record<Locale, Record<K, string>>;
 export type Messages = CommonMessages &
   ViewerMessages &
   ImageMessages &
+  SelectPaintMessages &
   MarkdownMessages &
   ExcalidrawMessages &
   AudioMessages &
-  VideoMessages;
+  VideoMessages &
+  AdjustMessages;
 
 export function format(template: string, vars?: Vars): string {
   if (!vars) return template;
