@@ -813,7 +813,40 @@
 
 .fv-audio-wave-slot {
   position: relative;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   min-block-size: 0;
+}
+
+.fv-audio-overview {
+  display: grid;
+  gap: var(--ak-space-xs);
+  padding: var(--ak-space-xs) var(--ak-space-sm);
+  border-block-end: 1px solid var(--ak-border);
+}
+
+.fv-audio-overview .fv-audio-canvas {
+  block-size: 3rem;
+  cursor: grab;
+  touch-action: none;
+}
+
+.fv-audio-wave {
+  position: relative;
+  min-block-size: 0;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.fv-audio-wave .fv-audio-canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.fv-audio-canvas {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
 }
 
 .fv-audio-status {

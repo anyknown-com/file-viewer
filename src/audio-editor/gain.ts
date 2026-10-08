@@ -4,7 +4,7 @@ const SEAM_SECONDS = 0.005;
 const SQRT_HALF = 0.7071;
 
 /** Output times where adjacent segments are not contiguous in the source. */
-function seamTimes(state: AudioEdit): number[] {
+export function seamTimes(state: AudioEdit): number[] {
   const times: number[] = [];
   let t = 0;
   for (let i = 0; i < state.segments.length - 1; i++) {

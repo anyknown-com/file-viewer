@@ -11,6 +11,9 @@ import { scanPeaks } from "./scan";
 
 vi.mock("./open-track");
 vi.mock("./scan");
+// jsdom has no canvas 2d context, ResizeObserver or layout; the canvases are covered by view.test.ts.
+vi.mock("./waveform", () => ({ Waveform: () => null }));
+vi.mock("./overview", () => ({ Overview: () => null }));
 
 let dispose: ReturnType<typeof vi.fn<() => void>>;
 
