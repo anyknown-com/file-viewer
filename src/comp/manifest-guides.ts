@@ -15,4 +15,5 @@ export const canvasGuideSchema = record({
   axis: z.enum(["horizontal", "vertical"]),
   position: z.number(),
 });
+/** A guide line on the canvas. */
 export type CanvasGuide = z.output<typeof canvasGuideSchema>;

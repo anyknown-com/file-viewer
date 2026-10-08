@@ -7,10 +7,14 @@ import { validateLikeCompositor } from "./validate";
 import { readZip } from "./zip-read";
 import { writeZip } from "./zip-write";
 
+/** A .comp.zip project: its manifest, image assets and optional preview. */
 export type Project = {
+  /** The parsed manifest.json. */
   manifest: Manifest;
-  assets: Map<string, Uint8Array>; // "images/<ID>.png" / "images/<ID>.mask.png" → PNG bytes
-  preview?: Uint8Array; // QuickLook/Preview.jpg
+  /** PNG bytes by entry name: "images/<ID>.png" and "images/<ID>.mask.png". */
+  assets: Map<string, Uint8Array>;
+  /** The QuickLook/Preview.jpg bytes, when the archive has one. */
+  preview?: Uint8Array;
 };
 
 const MANIFEST = "manifest.json";
@@ -39,6 +43,7 @@ function assertAssets(m: Manifest, assets: { has(name: string): boolean }): stri
   return used;
 }
 
+/** Reads and validates a .comp.zip project from its bytes. Throws ProjectError when it is not a valid project. */
 export function readProject(bytes: Uint8Array): Project {
   const entries = readZip(bytes);
   const manifestBytes = entries.get(MANIFEST);
@@ -63,6 +68,7 @@ export function readProject(bytes: Uint8Array): Project {
   return preview ? { manifest, assets, preview } : { manifest, assets };
 }
 
+/** Validates a project and writes it as a .comp.zip Blob. Throws ProjectError when the project is invalid. */
 export function writeProject(p: Project): Blob {
   assertValid(p.manifest);
   const used = assertAssets(p.manifest, p.assets);
@@ -74,6 +80,7 @@ export function writeProject(p: Project): Blob {
   return writeZip(entries);
 }
 
+/** Makes a one-layer project from RGBA pixels. */
 export function fromImage(
   image: { width: number; height: number; rgba: Uint8Array },
   layerName: string,

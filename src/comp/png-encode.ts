@@ -2,6 +2,7 @@ import { Zlib } from "fflate";
 import { crc32 } from "./crc32";
 import type { PngImage } from "./png-decode";
 
+/** Pixel layout of an encoded PNG: gray, RGB or RGBA. */
 export type PngColor = "gray" | "rgb" | "rgba";
 
 const COLOR_TYPE = { gray: 0, rgb: 2, rgba: 6 } as const;
@@ -55,6 +56,7 @@ function score(filtered: Uint8Array): number {
   return sum;
 }
 
+/** Encodes a PNG row by row so large images need not be held in memory. push() takes whole rows; end() returns the file as chunks. */
 export function createPngEncoder(header: { width: number; height: number; color: PngColor }): {
   push(rows: Uint8Array): void;
   end(): Uint8Array[];
@@ -124,6 +126,7 @@ function concat(parts: Uint8Array[]): Uint8Array {
   return out;
 }
 
+/** Encodes pixels as a PNG, dropping the alpha channel when every pixel is opaque. */
 export function encodePng(image: PngImage): Uint8Array {
   const { width, height, channels, data } = image;
   let color: PngColor = "gray";
@@ -151,6 +154,7 @@ export function encodePng(image: PngImage): Uint8Array {
   return concat(encoder.end());
 }
 
+/** Encodes a one-channel mask as a PNG; a mask of a single value is stored as 1x1. */
 export function encodeMask(mask: PngImage): Uint8Array {
   if (mask.channels !== 1) throw new Error("a mask must have one channel");
   const first = mask.data[0];

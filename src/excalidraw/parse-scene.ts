@@ -24,7 +24,7 @@ function altOf(elements: unknown[]): string {
   return texts.join(" ");
 }
 
-// Reads a .excalidraw document without loading Excalidraw.
+/** Reads a .excalidraw document without loading Excalidraw: the scene and a text description of it, or { ok: false } when the JSON is not a scene. */
 export function parseScene(json: string): ParsedScene {
   let data: unknown;
   try {

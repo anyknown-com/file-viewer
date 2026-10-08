@@ -1,3 +1,4 @@
+/** Why opening, editing or saving failed. */
 export type ViewerErrorCode =
   | "unsupported"
   | "too_large"
@@ -10,7 +11,9 @@ export type ViewerErrorCode =
   | "save_failed"
   | "render_failed";
 
+/** The error type the viewer reports through onError. */
 export class ViewerError extends Error {
+  /** Machine-readable reason, for example "too_large". */
   readonly code: ViewerErrorCode;
 
   constructor(code: ViewerErrorCode, options?: { message?: string; cause?: unknown }) {

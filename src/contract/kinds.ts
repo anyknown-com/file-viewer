@@ -23,7 +23,15 @@ import { resolveLimits, type Limits } from "./limits";
 
 export type { ViewKind, EditKind } from "./formats";
 export type FileInfo = { name: string; mime?: string; size: number };
-export type KindResult = { view: ViewKind | null; edit: EditKind | null; tooLarge: boolean };
+/** What kindOf found out about a file. */
+export type KindResult = {
+  /** The viewer for the file, or null when it cannot be displayed. */
+  view: ViewKind | null;
+  /** The editor that can change the file, or null when there is none. */
+  edit: EditKind | null;
+  /** True when the file is over its size limit and will not be opened. */
+  tooLarge: boolean;
+};
 
 const EXT_TABLES: [ViewKind, Readonly<Record<string, string>>][] = [
   ["image", IMAGE_EXT],
@@ -81,6 +89,7 @@ export function formatOf(file: { name: string; mime?: string }): ViewKind | null
   return mime.startsWith("text/") ? "text" : null;
 }
 
+/** The MIME type for a file: its own when given, otherwise guessed from the extension. */
 export function mimeOf(file: { name: string; mime?: string }): string {
   if (isComp(file.name)) return "application/zip";
   const hit = extEntry(file);
@@ -105,6 +114,7 @@ function limitFor(kind: ViewKind, limits: Limits): number {
   return limits.previewBytes;
 }
 
+/** Decides how a file opens: its view kind, whether an editor can change it, and whether it is over the size limit. */
 export function kindOf(file: FileInfo, limits?: Partial<Limits>): KindResult {
   const resolved = resolveLimits(limits);
   const kind = editKindOf(file, resolved);

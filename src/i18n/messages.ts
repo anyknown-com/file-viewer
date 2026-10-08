@@ -7,10 +7,13 @@ import type { ViewerMessages } from "../viewer/messages";
 import { en, type CommonKey, type CommonMessages } from "./en";
 import { zhTW } from "./zh-tw";
 
+/** A language the built-in text is available in. */
 export type Locale = "en" | "zh-TW";
 export type Vars = Record<string, string | number>;
+/** A table of strings per Locale for one area's keys. */
 export type MessageTable<K extends string> = Record<Locale, Record<K, string>>;
 // Each area adds "& <Area>Messages" here with import type (02-contract).
+/** Every built-in string key with its text; pass a Partial of it as messages to override. */
 export type Messages = CommonMessages &
   ViewerMessages &
   ImageMessages &

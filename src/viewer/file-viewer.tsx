@@ -91,6 +91,7 @@ function ViewBody(props: {
   );
 }
 
+/** Opens one file read-only, or with an editor when the kind has one and onSave is set. */
 export function FileViewer(props: FileViewerProps): React.JSX.Element {
   const onErrorRef = useRef(props.onError);
   // oxlint-disable-next-line react/refs -- the one render-time ref write: keeps `report` stable so inline onError never reloads the file.

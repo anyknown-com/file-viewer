@@ -4,7 +4,8 @@ import type { Manifest } from "./manifest";
 import { validateLikeCompositor } from "./validate";
 import { readHeadEntries } from "./zip-head";
 
-export type ReadRange = (start: number, end: number) => Promise<Uint8Array>; // [start, end)
+/** Reads the bytes in [start, end) of the archive. */
+export type ReadRange = (start: number, end: number) => Promise<Uint8Array>;
 
 /** Manifest (and preview) from the first zip entries only; null = read the whole file instead. */
 export async function readHead(

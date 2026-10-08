@@ -122,4 +122,5 @@ export const layerAdjustmentSchema = record({
   noiseMonochromatic: optional(z.boolean()),
   noiseSeed: optional(uint32Schema),
 });
+/** A layer's color and tone adjustments. */
 export type LayerAdjustment = z.output<typeof layerAdjustmentSchema>;

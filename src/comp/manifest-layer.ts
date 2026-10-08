@@ -37,6 +37,7 @@ export const blendModeSchema = z.enum([
   "Color",
   "Luminosity",
 ]);
+/** How a layer is blended with the layers below it. */
 export type BlendMode = z.output<typeof blendModeSchema>;
 
 // LayerTransform.swift `LayerSampling`.
@@ -55,6 +56,7 @@ export const layerTransformSchema = record({
   flipY: z.boolean(),
   sampling: layerSamplingSchema,
 });
+/** A layer's position, size, rotation and resampling. */
 export type LayerTransform = z.output<typeof layerTransformSchema>;
 
 // ProjectStore.swift `ProjectLayerRecord`.
@@ -78,4 +80,5 @@ export const layerRecordSchema = record({
   effects: optional(layerEffectsSchema),
   text: optional(layerTextStyleSchema),
 });
+/** One layer or folder in the manifest. */
 export type LayerRecord = z.output<typeof layerRecordSchema>;

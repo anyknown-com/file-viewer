@@ -24,6 +24,7 @@ export const manifestSchema = record({
   layers: z.array(layerRecordSchema),
   guides: optional(z.array(canvasGuideSchema)),
 });
+/** The parsed manifest.json of a project: canvas, layers and guides. */
 export type Manifest = z.output<typeof manifestSchema>;
 
 /** Reads manifest.json. Layers come back in tree order (LayerGroups.swift `LayerHierarchy.entries`). */

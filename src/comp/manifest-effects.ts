@@ -86,4 +86,5 @@ export const layerEffectsSchema = record({
   outerGlow: optional(outerGlowEffectSchema),
   innerGlow: optional(innerGlowEffectSchema),
 });
+/** A layer's effects, such as shadow and glow. */
 export type LayerEffects = z.output<typeof layerEffectsSchema>;

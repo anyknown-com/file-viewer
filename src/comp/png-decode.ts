@@ -2,7 +2,17 @@ import { unzlibSync } from "fflate";
 import { crc32 } from "./crc32";
 import { ProjectError } from "./errors";
 
-export type PngImage = { width: number; height: number; channels: 1 | 4; data: Uint8Array };
+/** Decoded pixels of a PNG. */
+export type PngImage = {
+  /** Width in pixels. */
+  width: number;
+  /** Height in pixels. */
+  height: number;
+  /** Values per pixel: 1 for a gray mask, 4 for RGBA. */
+  channels: 1 | 4;
+  /** Pixel values, row by row, top to bottom. */
+  data: Uint8Array;
+};
 
 // Compositor Document/DocumentLimits.swift maxSide.
 const MAX_SIDE = 30000;
@@ -76,6 +86,7 @@ function parseHeader(data: Uint8Array): Header {
   return header;
 }
 
+/** Reads a PNG's width and height from its header, without decoding the pixels. Throws ProjectError "bad_png" when the header is invalid. */
 export function pngSize(bytes: Uint8Array): { width: number; height: number } {
   if (bytes.length < 33) throw bad("too short for IHDR");
   checkSignature(bytes);
@@ -185,6 +196,7 @@ function pixel(
   }
 }
 
+/** Decodes a PNG into pixels; "layer" gives RGBA, "mask" gives one gray channel. Throws ProjectError "bad_png" when the file is invalid. */
 export function decodePng(bytes: Uint8Array, kind: "layer" | "mask"): PngImage {
   checkSignature(bytes);
   let pos = 8;

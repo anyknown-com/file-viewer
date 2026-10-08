@@ -2,7 +2,17 @@ import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import { unified } from "unified";
 
-export type Fence = { index: number; start: number; end: number; json: string };
+/** One excalidraw code fence found in a Markdown document. */
+export type Fence = {
+  /** Position of the fence among the document's excalidraw fences, from 0. */
+  index: number;
+  /** Offset in the source where the fence starts. */
+  start: number;
+  /** Offset in the source where the fence ends. */
+  end: number;
+  /** The diagram text inside the fence. */
+  json: string;
+};
 
 type MdNode = {
   type: string;
@@ -12,6 +22,7 @@ type MdNode = {
   position?: { start: { offset?: number }; end: { offset?: number } };
 };
 
+/** Finds every excalidraw code fence in a Markdown document, in order. */
 export function findFences(source: string): Fence[] {
   const tree = unified().use(remarkParse).use(remarkGfm).parse(source) as MdNode;
   const fences: Fence[] = [];
@@ -35,6 +46,7 @@ function lineStartOf(source: string, offset: number): number {
   return source.lastIndexOf("\n", offset - 1) + 1;
 }
 
+/** Replaces the body of one fence with new text, keeping its markers, line endings and list or quote prefix. */
 export function replaceFence(source: string, fence: Fence, content: string): string {
   const openLineStart = lineStartOf(source, fence.start);
   const nlAt = source.indexOf("\n", fence.start);
@@ -60,6 +72,7 @@ export function replaceFence(source: string, fence: Fence, content: string): str
   return source.slice(0, bodyStart) + body + source.slice(bodyEnd);
 }
 
+/** Replaces every fence body with its index, so the rest of the document can be rendered without the diagram text. */
 export function maskFences(source: string, fences: Fence[]): string {
   let out = source;
   for (const f of fences.toReversed()) out = replaceFence(out, f, String(f.index));

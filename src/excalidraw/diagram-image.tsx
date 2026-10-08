@@ -4,13 +4,20 @@ import type { Theme } from "../contract/props";
 import { setAssetPath } from "./asset-path";
 import { parseScene } from "./parse-scene";
 
+/** Props of DiagramImage. */
 export type DiagramImageProps = {
+  /** The .excalidraw document text. */
   json: string;
+  /** Color scheme the diagram is drawn in. */
   theme: Theme;
+  /** Folder Excalidraw loads its fonts from. */
   assetPath?: string;
+  /** Alternative text for the image. */
   alt: string;
-  loading: ReactNode; // shown until the image is ready
-  broken: ReactNode; // shown when the export fails
+  /** Shown until the image is ready. */
+  loading: ReactNode;
+  /** Shown when the export fails. */
+  broken: ReactNode;
 };
 
 async function renderSvg(json: string, theme: Theme): Promise<Blob> {
@@ -29,7 +36,7 @@ async function renderSvg(json: string, theme: Theme): Promise<Blob> {
   return new Blob([new XMLSerializer().serializeToString(svg)], { type: "image/svg+xml" });
 }
 
-// Renders a scene as a static <img>; the Excalidraw editor never mounts here.
+/** Renders a scene as a static image; the Excalidraw editor never mounts here. */
 export default function DiagramImage({
   json,
   theme,

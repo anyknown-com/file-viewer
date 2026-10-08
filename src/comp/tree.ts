@@ -3,9 +3,12 @@ import type { LayerRecord } from "./manifest-layer";
 
 export type TreeEntry = { layer: LayerRecord; depth: number; visible: boolean };
 
-// LayerGroups.swift `LayerHierarchy.entries` with `collapsed` always empty: children grouped by
-// `parentID` in array order, visited from the root; a folder is followed by its descendants;
-// `topFirst` reverses each run of siblings; deeper than 64 levels stops.
+/**
+ * Flattens layers into display order with their depth and whether they are visible.
+ * (LayerGroups.swift `LayerHierarchy.entries` with `collapsed` always empty: children grouped by
+ * `parentID` in array order, visited from the root; a folder is followed by its descendants;
+ * `topFirst` reverses each run of siblings; deeper than 64 levels stops.)
+ */
 export function treeEntries(layers: LayerRecord[], topFirst: boolean): TreeEntry[] {
   const children = new Map<string | undefined, LayerRecord[]>();
   for (const layer of layers) {

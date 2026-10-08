@@ -10,9 +10,13 @@ import { InLinkContext } from "./in-link";
 import { MarkdownImage } from "./markdown-image";
 import { markdownSchema } from "./sanitize-schema";
 
+/** Props of MarkdownView. */
 export type MarkdownViewProps = Omit<CommonProps, "file"> & {
+  /** The Markdown text to render. */
   source: string;
+  /** Maps image references in the text to URLs or links; without it images are not loaded. */
   resolveImage?: ImageResolver;
+  /** Renders an excalidraw code fence; without it the fence shows its raw text. */
   renderDiagram?: (fence: Fence) => ReactNode;
 };
 
@@ -103,6 +107,7 @@ function MarkdownContent({ source, resolveImage, renderDiagram }: ContentProps):
   );
 }
 
+/** Renders Markdown as sanitized HTML, with an optional hook for excalidraw diagrams. */
 export function MarkdownView(props: MarkdownViewProps): React.JSX.Element {
   const { source, resolveImage, renderDiagram, ...root } = props;
   return (

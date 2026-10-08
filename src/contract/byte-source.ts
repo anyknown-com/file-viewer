@@ -1,6 +1,8 @@
 import { isAbortError, toViewerError, ViewerError } from "./errors";
 
+/** Random-access read of a file's bytes, so large files need not be loaded whole. */
 export interface ByteSource {
+  /** Total size in bytes. */
   readonly size: number;
   /** [start, end); integers with 0 <= start <= end <= size, else RangeError. Result length is end - start. */
   read(start: number, end: number, signal?: AbortSignal): Promise<Uint8Array<ArrayBuffer>>;
@@ -8,7 +10,15 @@ export interface ByteSource {
   blob?(signal?: AbortSignal): Promise<Blob>;
 }
 
-export type FileRef = { name: string; mime?: string; source: ByteSource };
+/** A file to open: its name, optional MIME type and byte source. */
+export type FileRef = {
+  /** File name, used to pick the viewer and to name saved results. */
+  name: string;
+  /** MIME type when the host knows it; otherwise it is guessed from the name. */
+  mime?: string;
+  /** Where the bytes come from. */
+  source: ByteSource;
+};
 
 export const READ_CHUNK_BYTES = 4 * 1024 * 1024;
 
@@ -24,6 +34,7 @@ function checkRange(size: number, start: number, end: number): void {
   }
 }
 
+/** Wraps a Blob or File as a ByteSource without copying it. */
 export function blobSource(blob: Blob): ByteSource {
   return {
     size: blob.size,
@@ -41,6 +52,7 @@ export function blobSource(blob: Blob): ByteSource {
   };
 }
 
+/** Wraps an in-memory Uint8Array as a ByteSource. */
 export function bytesSource(bytes: Uint8Array<ArrayBuffer>): ByteSource {
   return {
     size: bytes.byteLength,

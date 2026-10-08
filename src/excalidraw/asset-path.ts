@@ -4,7 +4,7 @@ declare global {
   }
 }
 
-// Excalidraw reads this global to find its fonts; it must be set before the first export.
+/** Sets the folder Excalidraw loads its fonts from. Call it before the first diagram renders; an empty value keeps the current path. */
 export function setAssetPath(path: string | undefined): void {
   if (path && window.EXCALIDRAW_ASSET_PATH !== path) window.EXCALIDRAW_ASSET_PATH = path;
 }

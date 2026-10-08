@@ -44,6 +44,7 @@ export const layerTextStyleSchema = record({
   colorRuns: optional(z.array(textColorRunSchema)),
   fontRuns: optional(z.array(textFontRunSchema)),
 });
+/** The text content and style of a text layer. */
 export type LayerTextStyle = z.output<typeof layerTextStyleSchema>;
 
 // ShapeTool.swift `ShapeKind`.
@@ -60,4 +61,5 @@ export const layerShapeStyleSchema = record({
   start: optional(pairSchema),
   end: optional(pairSchema),
 });
+/** The shape kind and style of a shape layer. */
 export type LayerShapeStyle = z.output<typeof layerShapeStyleSchema>;
