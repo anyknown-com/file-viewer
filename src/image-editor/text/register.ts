@@ -1,4 +1,11 @@
-import { registerMessages, registerPropertyPanel, registerTool } from "../registry";
+import {
+  registerLayerDecor,
+  registerMessages,
+  registerPropertyPanel,
+  registerTool,
+} from "../registry";
+import { redrawAfterTransform } from "../shapes/layer";
+import { shapeTool } from "../shapes/shape-tool";
 import { textShapeMessages } from "./messages";
 import { TextControls } from "./panel";
 import { textTool } from "./type-tool";
@@ -6,6 +13,8 @@ import { textTool } from "./type-tool";
 export function registerTextShapes(): void {
   registerMessages(textShapeMessages);
   registerTool(textTool);
+  registerTool(shapeTool);
+  registerLayerDecor({ id: "shape-resize", onTransformEnd: redrawAfterTransform });
   // With another tool, a selected text layer still shows its properties (the text tool's own panel has them).
   registerPropertyPanel({
     id: "text",
