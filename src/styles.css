@@ -925,6 +925,30 @@
   display: none;
 }
 
+.fv-audio-panel {
+  display: grid;
+  gap: var(--ak-space-sm);
+  inline-size: min(16rem, 80vw);
+}
+
+.fv-audio-panel-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--ak-space-sm);
+  font-size: var(--ak-type-t2);
+}
+
+.fv-audio-panel-row output {
+  color: var(--ak-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.fv-audio-panel-note {
+  margin: 0;
+  color: var(--ak-text-muted);
+  font-size: var(--ak-type-t2);
+}
+
 @container (max-width: 639px) {
   .fv-audio-tools {
     flex-wrap: nowrap;

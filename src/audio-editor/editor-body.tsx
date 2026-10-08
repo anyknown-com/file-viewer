@@ -1,13 +1,10 @@
-import { useCallback, useMemo, useReducer, useRef, useState } from "react";
+import { useMemo, useReducer, useState } from "react";
 import type { EditorProps } from "../contract/editor";
-import type { ViewerError } from "../contract/errors";
 import { commonMessages } from "../i18n/messages";
 import { useT } from "../i18n/use-t";
-import { toMediaError } from "../media";
 import { Button } from "../primitives/button";
 import { DiscardDialog } from "../primitives/dialog";
 import { CloseIcon } from "../primitives/glyphs";
-import { useRoot } from "../primitives/root-context";
 import { type AudioEdit, cut, initialEdit, keep, outputDuration, type Range, split } from "./edit";
 import { RedoIcon, UndoIcon } from "./glyphs";
 import {
@@ -18,24 +15,17 @@ import {
   isDirty,
 } from "./history";
 import { audioMessages } from "./messages";
-import { type OpenedTrack, openTrack } from "./open-track";
-import type { Peaks } from "./peaks";
+import { NormalizePopover } from "./normalize-popover";
 import { Overview } from "./overview";
-import { scanPeaks } from "./scan";
 import { SelectionLayer } from "./selection-layer";
+import { SilencePopover } from "./silence-popover";
 import { Tools } from "./tools";
+import { useTrackLoad } from "./use-track-load";
 import { clampView, fitView, type View, zoom } from "./view";
+import { VolumePopover } from "./volume-popover";
 import { Waveform } from "./waveform";
 import { createZoomWindow } from "./zoom-window";
 
-type Load =
-  | { status: "opening" }
-  | { status: "scanning"; opened: OpenedTrack; progress: number; peaks: Peaks | null }
-  | { status: "ready"; opened: OpenedTrack; peaks: Peaks }
-  | { status: "error"; error: ViewerError };
-
-/** How often the half-scanned peak table is copied out so the waveform fills in while it runs. */
-const SNAPSHOT_MS = 500;
 const ZOOM_STEP = 2;
 
 /** `+` / `-` zoom around the middle, `0` fits the whole timeline; null for other keys. */
@@ -67,70 +57,16 @@ function reducer(h: History | null, a: Action): History | null {
 export function EditorBody(props: EditorProps): React.JSX.Element {
   const t = useT(audioMessages);
   const tc = useT(commonMessages);
-  const root = useRoot();
-  const reportRef = useRef(root.report);
-  // oxlint-disable-next-line react/refs -- kept out of the ref callback deps so a new onError never reopens the file.
-  reportRef.current = root.report;
-  const [load, setLoad] = useState<Load>({ status: "opening" });
   const [history, dispatchRaw] = useReducer(reducer, null);
   const [discardOpen, setDiscardOpen] = useState(false);
   const [rawView, setView] = useState<View>({ start: 0, secondsPerPixel: 0, width: 0 });
   const [selection, setSelection] = useState<Range | null>(null);
   const [playhead, setPlayhead] = useState(0);
-  const source = props.file.source;
+  const [silence, setSilence] = useState<Range[]>([]);
 
-  const rootRef = useCallback(
-    (el: HTMLDivElement | null) => {
-      if (!el) return;
-      const ac = new AbortController();
-      const signal = ac.signal;
-      let opened: OpenedTrack | null = null;
-      const run = async () => {
-        try {
-          const o = await openTrack(source, signal);
-          if (signal.aborted) {
-            o.dispose();
-            return;
-          }
-          opened = o;
-          dispatchRaw({ type: "init", edit: initialEdit(o.duration) });
-          setLoad({ status: "scanning", opened: o, progress: 0, peaks: null });
-          let snappedAt = performance.now();
-          const peaks = await scanPeaks(o, {
-            signal,
-            onProgress: (b) => {
-              const now = performance.now();
-              const snap = now - snappedAt >= SNAPSHOT_MS ? b.finish() : null;
-              if (snap) snappedAt = now;
-              setLoad((l) => ({
-                status: "scanning",
-                opened: o,
-                progress: b.progress(),
-                peaks: snap ?? (l.status === "scanning" ? l.peaks : null),
-              }));
-            },
-          });
-          if (!signal.aborted) setLoad({ status: "ready", opened: o, peaks });
-        } catch (e) {
-          if (signal.aborted) return;
-          const error = toMediaError(e, "decode_failed");
-          setLoad({ status: "error", error });
-          reportRef.current(error);
-        }
-      };
-      void run();
-      return () => {
-        ac.abort();
-        opened?.dispose();
-      };
-    },
-    [source],
+  const { rootRef, load, opened, peaks, progress } = useTrackLoad(props.file.source, (o) =>
+    dispatchRaw({ type: "init", edit: initialEdit(o.duration) }),
   );
-
-  const live = load.status === "scanning" || load.status === "ready" ? load : null;
-  const opened = live && live.opened;
-  const peaks = live && live.peaks;
-  const progress = load.status === "scanning" ? load.progress : 1;
   const zoomWindow = useMemo(() => opened && createZoomWindow(opened.track), [opened]);
   const duration = history ? outputDuration(history.present) : 0;
   const view = useMemo(() => clampView(rawView, duration), [rawView, duration]);
@@ -244,7 +180,7 @@ export function EditorBody(props: EditorProps): React.JSX.Element {
                     state={history.present}
                     selection={selection}
                     playhead={playhead}
-                    silence={[]}
+                    silence={silence}
                     onSelect={setSelection}
                     onSeek={setPlayhead}
                   />
@@ -269,7 +205,21 @@ export function EditorBody(props: EditorProps): React.JSX.Element {
             canRedo={history.future.length > 0}
             onUndo={() => dispatch({ type: "undo" })}
             onRedo={() => dispatch({ type: "redo" })}
-          />
+          >
+            <VolumePopover selection={selection} state={history.present} onApply={apply} />
+            <NormalizePopover
+              peaks={peaks}
+              selection={selection}
+              state={history.present}
+              onApply={apply}
+            />
+            <SilencePopover
+              peaks={peaks}
+              state={history.present}
+              onMark={setSilence}
+              onApply={apply}
+            />
+          </Tools>
         )}
       </div>
       <DiscardDialog open={discardOpen} onOpenChange={setDiscardOpen} onDiscard={props.onClose} />
