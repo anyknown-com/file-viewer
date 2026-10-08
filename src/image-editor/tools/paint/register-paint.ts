@@ -1,5 +1,6 @@
 import { registerMenuItem, registerTool } from "../../registry";
 import { brushTool, eraserTool } from "./brush-tool";
+import { cloneTool } from "./clone";
 import { defaultColors, swapColors } from "./color-swatches";
 import { eyedropperTool } from "./eyedropper";
 import { gradientTool } from "./gradient";
@@ -9,6 +10,7 @@ export function registerPaintTools(): void {
   registerTool(eraserTool);
   registerTool(gradientTool);
   registerTool(eyedropperTool);
+  registerTool(cloneTool);
   registerMenuItem({
     id: "paint.swapColors",
     menu: "hidden",
