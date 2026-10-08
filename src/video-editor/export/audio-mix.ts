@@ -25,12 +25,14 @@ export async function mixAudio(
   }
 
   for (const seg of audioSegments(p, withAudio, from, to)) {
+    // oxlint-disable-next-line no-await-in-loop -- one segment at a time keeps a single decoder open.
     const track = (await assets.media(seg.assetId)).audio;
     if (!track) continue;
     const gain = new GainNode(ctx, { gain: seg.gain });
     gain.connect(ctx.destination);
     const segStart = ticksToSeconds(seg.at - from);
     const segEnd = segStart + (seg.to - seg.from);
+    // oxlint-disable-next-line no-await-in-loop -- buffers are scheduled one segment at a time, in order.
     for await (const wrapped of new AudioBufferSink(track).buffers(seg.from, seg.to)) {
       const node = new AudioBufferSourceNode(ctx, { buffer: wrapped.buffer });
       node.connect(gain);

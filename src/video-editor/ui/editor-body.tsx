@@ -4,10 +4,12 @@ import { commonMessages } from "../../i18n/messages";
 import { useT } from "../../i18n/use-t";
 import { Progress } from "../../primitives/progress";
 import { videoMessages } from "../messages";
+import { DEFAULT_MAX_OUTPUT_BYTES } from "../export/settings";
 import { addText, deleteClips, splitAt } from "../model/edits";
 import type { History } from "../model/history";
 import { AssetPanel } from "./asset-panel";
 import { CloseGuard } from "./close-guard";
+import { ExportDialog } from "./export-dialog";
 import { Inspector } from "./inspector";
 import { type KeyAction, keyAction } from "./keyboard";
 import { Notice, noticeReason } from "./notice";
@@ -62,6 +64,9 @@ export function VideoEditorBody(props: EditorProps): React.JSX.Element {
   const [session, setSession] = useState<EditorSession | null>(null);
   const [narrow, setNarrow] = useState(false);
   const [guardOpen, setGuardOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const abortExport = useRef<(() => void) | null>(null);
   const source = props.file.source;
   const provider = props.assets;
 
@@ -105,7 +110,7 @@ export function VideoEditorBody(props: EditorProps): React.JSX.Element {
   const history = session?.history ?? null;
 
   const requestClose = () => {
-    if (history?.dirty) setGuardOpen(true);
+    if (exporting || history?.dirty) setGuardOpen(true);
     else props.onClose();
   };
 
@@ -138,8 +143,21 @@ export function VideoEditorBody(props: EditorProps): React.JSX.Element {
           onAddText={() =>
             session.run(addText(history.project, state.playhead, t("video.defaultText")))
           }
-          // The export dialog arrives with Phase 04.
-          onExport={() => undefined}
+          onExport={() => setExportOpen(true)}
+        />
+        <ExportDialog
+          session={session}
+          fileName={props.file.name}
+          open={exportOpen}
+          maxOutputBytes={props.maxOutputBytes ?? DEFAULT_MAX_OUTPUT_BYTES}
+          onSave={props.onSave}
+          onError={props.onError}
+          onDone={props.onClose}
+          onOpenChange={setExportOpen}
+          onExportingChange={(next, abort) => {
+            setExporting(next);
+            abortExport.current = abort;
+          }}
         />
         <div className="fv-ve-assets">
           <AssetPanel session={session} />
@@ -169,8 +187,11 @@ export function VideoEditorBody(props: EditorProps): React.JSX.Element {
       {body}
       <CloseGuard
         open={guardOpen}
-        exporting={false}
-        onConfirm={props.onClose}
+        exporting={exporting}
+        onConfirm={() => {
+          abortExport.current?.();
+          props.onClose();
+        }}
         onCancel={() => setGuardOpen(false)}
       />
     </div>
