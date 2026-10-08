@@ -78,14 +78,16 @@ vec4 over(vec4 b, vec4 s) {
 }
 void main() {
   vec2 px = gl_FragCoord.xy;
-  vec2 uv = px / u_outSize;
+  // Output-space surfaces are read texel for texel: normalized coordinates drift off the texel
+  // centers when a side is not a power of two, and half-float values then change on readback.
+  ivec2 ip = ivec2(px);
   vec2 doc = (u_docFromPx * vec3(px, 1.0)).xy;
-  vec4 acc = texture(u_acc, uv);
+  vec4 acc = texelFetch(u_acc, ip, 0);
   float f = 1.0;
 ${folders}
-  if (u_hasCover == 1) f *= texture(u_cover, uv).a;
+  if (u_hasCover == 1) f *= texelFetch(u_cover, ip, 0).a;
   float m = u_hasMask == 1 ? maskAt(u_mask, u_maskMat, u_maskSize, u_maskEdge, doc) : 1.0;
-  vec4 surface = texture(u_src, (px + u_srcOffset) / u_srcSize);
+  vec4 surface = u_kind == 0 || u_kind == 2 ? vec4(0.0) : texelFetch(u_src, ip + ivec2(round(u_srcOffset)), 0);
   if (u_kind == 0 || u_kind == 1) {
     vec4 s = u_kind == 0 ? layerAt(doc) : surface;
     o = over(acc, s * (m * u_opacity * f));
