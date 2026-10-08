@@ -1,3 +1,4 @@
+import type { ViewerMessages } from "../viewer/messages";
 import { en, type CommonKey, type CommonMessages } from "./en";
 import { zhTW } from "./zh-tw";
 
@@ -5,7 +6,7 @@ export type Locale = "en" | "zh-TW";
 export type Vars = Record<string, string | number>;
 export type MessageTable<K extends string> = Record<Locale, Record<K, string>>;
 // Each area adds "& <Area>Messages" here with import type (02-contract).
-export type Messages = CommonMessages;
+export type Messages = CommonMessages & ViewerMessages;
 
 export function format(template: string, vars?: Vars): string {
   if (!vars) return template;

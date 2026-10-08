@@ -13,6 +13,7 @@ const codes = [
   "webcodecs_unavailable",
   "output_too_large",
   "save_failed",
+  "render_failed",
 ];
 
 describe("format", () => {

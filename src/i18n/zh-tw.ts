@@ -19,4 +19,5 @@ export const zhTW: CommonMessages = {
   "error.webcodecs_unavailable": "這個瀏覽器不支援編輯器需要的 WebCodecs。",
   "error.output_too_large": "輸出的檔案會超過上限，請改用較低的畫質。",
   "error.save_failed": "存檔失敗。",
+  "error.render_failed": "顯示這個檔案時出了問題。",
 };

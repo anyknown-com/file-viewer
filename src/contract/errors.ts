@@ -7,7 +7,8 @@ export type ViewerErrorCode =
   | "webgl_unavailable"
   | "webcodecs_unavailable"
   | "output_too_large"
-  | "save_failed";
+  | "save_failed"
+  | "render_failed";
 
 export class ViewerError extends Error {
   readonly code: ViewerErrorCode;

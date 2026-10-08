@@ -19,6 +19,7 @@ export const en = {
   "error.webcodecs_unavailable": "This browser doesn't support WebCodecs, which the editor needs.",
   "error.output_too_large": "The result would be larger than allowed. Try a lower quality.",
   "error.save_failed": "Couldn't save the file.",
+  "error.render_failed": "Something went wrong while showing this file.",
 } satisfies Record<string, string> & Record<`error.${ViewerErrorCode}`, string>;
 
 export type CommonKey = keyof typeof en;
