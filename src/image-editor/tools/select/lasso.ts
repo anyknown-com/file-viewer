@@ -1,3 +1,4 @@
+import { withFloat } from "./float-tool";
 import type { EditorApi, Point, Rect, ToolSpec, ViewTransform } from "../../api";
 import { apply } from "../geom";
 import { LassoGlyph, PolygonLassoGlyph } from "../glyphs";
@@ -97,7 +98,7 @@ function outline(ctx: CanvasRenderingContext2D, view: ViewTransform, points: Poi
 
 const freehand = new WeakMap<EditorApi, { edit: PolygonEdit; e: PointerEvent }>();
 
-export const lassoTool: ToolSpec = {
+const lassoBase: ToolSpec = {
   id: "select.lasso",
   label: "image.select.lasso",
   icon: LassoGlyph,
@@ -153,7 +154,7 @@ function closePolygon(api: EditorApi, e: { shiftKey: boolean; altKey: boolean })
   else api.requestRender();
 }
 
-export const polygonLassoTool: ToolSpec = {
+const polygonBase: ToolSpec = {
   id: "select.polygon",
   label: "image.select.polygon",
   icon: PolygonLassoGlyph,
@@ -197,3 +198,6 @@ export const polygonLassoTool: ToolSpec = {
     outline(ctx, view, s.cursor && pts.length > 0 ? [...pts, s.cursor] : pts);
   },
 };
+
+export const lassoTool: ToolSpec = withFloat(lassoBase);
+export const polygonLassoTool: ToolSpec = withFloat(polygonBase);

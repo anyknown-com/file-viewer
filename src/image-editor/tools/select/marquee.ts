@@ -2,6 +2,7 @@ import type { EditorApi, Point, Rect, ToolSpec, ViewTransform } from "../../api"
 import { isMac } from "../../shortcut";
 import { EllipseMarqueeGlyph, RectMarqueeGlyph } from "../glyphs";
 import { apply } from "../geom";
+import { withFloat } from "./float-tool";
 import { clickDeselect, finishShape } from "./finish";
 import { opFromEvent, readSelection, selectionOf, selectOptions, writeSelection } from "./mask";
 import { SelectPanel } from "./select-panel";
@@ -152,5 +153,5 @@ function marquee(shape: "rect" | "ellipse"): ToolSpec {
   };
 }
 
-export const rectMarqueeTool: ToolSpec = marquee("rect");
-export const ellipseMarqueeTool: ToolSpec = marquee("ellipse");
+export const rectMarqueeTool: ToolSpec = withFloat(marquee("rect"));
+export const ellipseMarqueeTool: ToolSpec = withFloat(marquee("ellipse"));

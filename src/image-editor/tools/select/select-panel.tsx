@@ -4,6 +4,8 @@ import { NumberField } from "../../../primitives/number-field";
 import { ToggleGroup } from "../../../primitives/toggle-group";
 import type { EditorApi } from "../../api";
 import { selectPaintMessages } from "../messages";
+import { floating, setFloatAngle, setFloatScale } from "./floating";
+import { useToolState } from "../state";
 import { type MaskOp, selectOptions, setSelectOptions } from "./mask";
 
 const MODES: readonly {
@@ -22,6 +24,8 @@ const MODES: readonly {
 
 export function SelectPanel({ api }: { api: EditorApi }): React.JSX.Element {
   const t = useT(selectPaintMessages);
+  useToolState(api);
+  const float = floating(api);
   const [opts, setOpts] = useState(() => selectOptions(api));
   const update = (patch: Partial<typeof opts>): void => {
     setSelectOptions(api, patch);
@@ -42,6 +46,24 @@ export function SelectPanel({ api }: { api: EditorApi }): React.JSX.Element {
         max={250}
         onChange={(feather) => update({ feather })}
       />
+      {float && (
+        <>
+          <NumberField
+            label={t("image.select.scale")}
+            value={Math.round(float.scale * 100)}
+            min={1}
+            max={1000}
+            onChange={(v) => setFloatScale(api, v / 100)}
+          />
+          <NumberField
+            label={t("image.select.angle")}
+            value={float.angle}
+            min={-180}
+            max={180}
+            onChange={(v) => setFloatAngle(api, v)}
+          />
+        </>
+      )}
     </>
   );
 }
