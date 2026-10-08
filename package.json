@@ -1,0 +1,52 @@
+{
+  "name": "@anyknown/file-viewer",
+  "version": "0.0.1",
+  "description": "View and edit files in the browser: bytes in, Blob out, no server.",
+  "homepage": "https://github.com/anyknown-com/file-viewer",
+  "bugs": {
+    "url": "https://github.com/anyknown-com/file-viewer/issues"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/anyknown-com/file-viewer.git"
+  },
+  "type": "module",
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "files": [
+    "dist",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./styles.css": "./dist/styles.css"
+  },
+  "scripts": {
+    "build": "tsdown"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    },
+    "@anyknown/ui": {
+      "optional": true
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "packageManager": "pnpm@10.30.3",
+  "devDependencies": {
+    "tsdown": "^0.23.0",
+    "typescript": "^5.9.3"
+  }
+}

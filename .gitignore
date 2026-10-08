@@ -1,0 +1,9 @@
+node_modules
+dist
+site/dist
+.wrangler
+.DS_Store
+*.tsbuildinfo
+.turbo
+.env
+*.log
