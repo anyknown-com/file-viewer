@@ -36,6 +36,12 @@
   "ignorePatterns": ["**/dist/**", "**/node_modules/**", "**/*.d.ts"],
   "overrides": [
     {
+      "files": ["scripts/**"],
+      "rules": {
+        "no-console": "off"
+      }
+    },
+    {
       "files": ["**/*.test.ts", "**/*.test.tsx"],
       "rules": {
         "max-lines": "off"
