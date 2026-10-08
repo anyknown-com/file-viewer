@@ -1,0 +1,26 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "agentGuidance": false,
+  "remoteCache": { "apiUrl": "https://turbo.anyknown.com", "teamSlug": "anyknown-file-viewer" },
+  "tasks": {
+    "build": {
+      "inputs": ["src/**", "!src/**/*.test.*", "tsconfig.json", "tsdown.config.ts"],
+      "outputs": ["dist/**"]
+    },
+    "typecheck": {
+      "inputs": [
+        "src/**",
+        "tsconfig.json",
+        "tsconfig.comp.json",
+        "vitest.config.ts",
+        "tsdown.config.ts"
+      ]
+    },
+    "lint": { "inputs": ["src/**", "scripts/**", ".oxlintrc.json"] },
+    "fmt:check": { "inputs": ["$TURBO_DEFAULT$", "!**/*.md"] },
+    "check:entry": { "cache": false },
+    "test": { "inputs": ["src/**", "scripts/**", "vitest.config.ts"] },
+    "test:browser": { "inputs": ["src/**", "vitest.config.ts"] },
+    "verify:pack": { "cache": false }
+  }
+}
