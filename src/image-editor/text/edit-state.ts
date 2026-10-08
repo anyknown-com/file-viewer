@@ -2,6 +2,7 @@
 import type { LayerTextStyle } from "../../comp/index";
 import { ViewerError } from "../../contract/errors";
 import type { EditorApi, LayerId, ViewTransform } from "../api";
+import { missingFonts } from "./fonts";
 import { createTextLayer, deleteTextLayer, updateTextLayer } from "./layer";
 
 /** `layerId` null = new text with no layer yet; `missing` non-null = asking about missing fonts. */
@@ -49,8 +50,28 @@ function canon(v: unknown): unknown {
   entries.sort(([a], [b]) => (a < b ? -1 : 1));
   return Object.fromEntries(entries.map(([k, x]) => [k, canon(x)]));
 }
-const sameStyle = (a: LayerTextStyle, b: LayerTextStyle) =>
+export const sameStyle = (a: LayerTextStyle, b: LayerTextStyle) =>
   JSON.stringify(canon(a)) === JSON.stringify(canon(b));
+
+/**
+ * Starts editing text layer `id`; with missing fonts it first asks (TextPanel's dialog). `view`
+ * null = the text tool's drawOverlay fills it in on the next frame.
+ */
+export function beginEdit(api: EditorApi, id: LayerId, view: ViewTransform | null = null): void {
+  const layer = api.doc().manifest.layers.find((l) => l.id === id);
+  if (!layer?.text) return;
+  const missing = missingFonts(layer.text);
+  const end = layer.text.content.length;
+  if (missing.length === 0) setRenderHidden(api, id, true);
+  textEditing.set({
+    layerId: id,
+    style: layer.text,
+    origin: layer.transform.origin,
+    selection: [end, end],
+    view,
+    missing: missing.length > 0 ? missing : null,
+  });
+}
 
 /** Ends editing: commits the change as one undo step (none when nothing changed). */
 export async function endEdit(api: EditorApi): Promise<void> {

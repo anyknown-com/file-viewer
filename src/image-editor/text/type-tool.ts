@@ -1,13 +1,12 @@
 // The text tool (T): click for point text, drag for a paragraph box, click a text layer to edit it.
 import type { EditorApi, Layer, LayerId, Mat2D, Point, ToolSpec, ViewTransform } from "../api";
 import { apply, invert } from "../tools/geom";
-import { endEdit, setRenderHidden, textEditing, type TextEditing } from "./edit-state";
-import { missingFonts } from "./fonts";
+import { beginEdit, endEdit, textEditing, type TextEditing } from "./edit-state";
 import { TextIcon } from "./glyphs";
 import { resizeTextBox } from "./layer";
-import { TextPanel } from "./panel";
+import { getNextTextStyle, TextPanel } from "./panel";
 import { rasterSize } from "./raster";
-import { defaultTextStyle, MAX_BOX, MIN_BOX, TEXT_PADDING } from "./style";
+import { MAX_BOX, MIN_BOX, TEXT_PADDING } from "./style";
 
 const HANDLE_REACH = 6; // screen px
 const DRAG_MIN = 4; // document px
@@ -108,23 +107,6 @@ function textLayerAt(api: EditorApi, p: Point): LayerId | null {
   return null;
 }
 
-/** Starts editing text layer `id`; with missing fonts it first asks (TextPanel's dialog). */
-export function beginEdit(api: EditorApi, id: LayerId): void {
-  const layer = layerOf(api, id);
-  if (!layer?.text) return;
-  const missing = missingFonts(layer.text);
-  const end = layer.text.content.length;
-  if (missing.length === 0) setRenderHidden(api, id, true);
-  textEditing.set({
-    layerId: id,
-    style: layer.text,
-    origin: layer.transform.origin,
-    selection: [end, end],
-    view: lastView,
-    missing: missing.length > 0 ? missing : null,
-  });
-}
-
 /** Commits a dragged box handle, then keeps editing with the layer's new box. */
 async function resizeBox(
   api: EditorApi,
@@ -140,7 +122,7 @@ async function resizeBox(
   textEditing.set({ ...now, style, origin: layer.transform.origin });
 }
 
-export { endEdit };
+export { beginEdit, endEdit };
 
 export const textTool: ToolSpec = {
   id: "text",
@@ -157,7 +139,7 @@ export const textTool: ToolSpec = {
       return;
     }
     const hit = textLayerAt(api, p);
-    if (hit !== null) beginEdit(api, hit);
+    if (hit !== null) beginEdit(api, hit, lastView);
     else drag = { kind: "create", start: p, at: p };
   },
   onPointerMove(p, _e, api) {
@@ -193,13 +175,13 @@ export const textTool: ToolSpec = {
       textEditing.set({
         ...base,
         selection: [0, 0],
-        style: { ...defaultTextStyle(), boxSize },
+        style: { ...getNextTextStyle(), boxSize },
         origin: [x, y],
       });
       return;
     }
     const origin: [number, number] = [p.x - TEXT_PADDING, p.y - TEXT_PADDING];
-    textEditing.set({ ...base, selection: [0, 0], style: defaultTextStyle(), origin });
+    textEditing.set({ ...base, selection: [0, 0], style: getNextTextStyle(), origin });
   },
   onKeyDown(e, api) {
     if (e.key !== "Escape" || !textEditing.get()) return false;
