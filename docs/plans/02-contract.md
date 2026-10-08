@@ -2,20 +2,20 @@
 
 狀態：planned（2026-10-08）；blocker：Phase 01 無（在 `../ui` 做），Phase 02–04 要 01 scaffold Phase 02 做完（`pnpm test`、`pnpm test:browser`、`pnpm check`、`check:licenses` 都在）；model：主 agent（Phase 01），sonnet（Phase 02–04）；push：Phase 01 在 `../ui` 自己 push 並打 tag，file-viewer 這邊整份做完 push 一次。
 
-本份定稿 00-overview §3。03–13 只能在這裡定的型別上「加」（加欄位、加 union 成員、加 i18n key、加 CSS 段），不能改名、不能改簽名。
+本份定稿 00-overview §3。03–13 只能在這裡定的型別上「加」（加欄位、加 union 成員、加 i18n key、加 CSS 段），不能改名、不能改簽名。符號名、路徑、簽名、擁有者以 00-overview §9 為準；下面「契約」的每個符號都對得到 §9.1–§9.3。
 
 ## 判斷
 
 - **`ByteSource` 定稿成 `read(start, end, signal?) → Promise<Uint8Array<ArrayBuffer>>`。** 00-overview §3 寫的是 `Uint8Array`；收窄成 `Uint8Array<ArrayBuffer>`（TS 5.7 起的泛型），是因為 `new Blob([...])` 只吃 `ArrayBuffer` 底的 view，`ArrayBufferLike`（可能是 `SharedArrayBuffer`）要先複製一次。宿主解密出來的本來就是 `ArrayBuffer`，收窄不增加宿主負擔，全套件的 `readBlob` 與 mediabunny source 都省一次複製。`read` 的規則寫死：`0 ≤ start ≤ end ≤ size` 的整數，否則丟 `RangeError`；回傳長度必須剛好 `end - start`；`signal` 已中止時以 `signal.reason` reject。storage 14 §1 的 `ByteSource` 沒有 `signal`，本份加上，因為元件卸載時要能一次取消所有讀取（00-overview §3 規則）。
 - **`bytesSource` 的 `read` 回傳複本**（`bytes.slice`），不回 `subarray`：editor 可能把結果 transfer 給 worker，transfer 一個 subarray 會把宿主整塊 buffer detach 掉。`bytesSource` 本來就只給小檔用，多一次複製可以接受。
-- **整檔讀取只有一個實作：`readBlob`**（`src/contract/byte-source.ts`，不從 `.` 匯出）。先試 `source.blob()`；沒有就每次 4 MiB 循序 `read`，片段直接組成 `Blob`，不併成一整塊。03 的 viewer、04 的 markdown、10 的 `.comp.zip` 開檔都呼叫它。讀到長度不對、或 `read` 丟出非中止的錯誤，一律包成 `ViewerError("read_failed")`。中止的錯誤原樣往上丟，UI 不把中止當錯誤顯示。
+- **整檔讀取只有一個實作：`readBlob`**（`src/contract/byte-source.ts`，不從 `.` 匯出）。先試 `source.blob()`；沒有就每次 4 MiB 循序 `read`，片段直接組成 `Blob`，不併成一整塊。03 的 `src/viewer/load.ts`、04 的 `ExcalidrawFileEditor`、07 的圖片素材、10 的 `.comp.zip` 開檔都呼叫它；其他 plan 不另寫整檔讀取。讀到長度不對、或 `read` 丟出非中止的錯誤，一律包成 `ViewerError("read_failed")`。中止的錯誤原樣往上丟，UI 不把中止當錯誤顯示。
 - **`kindOf` 依副檔名優先，副檔名不認得才看 mime**（storage 11 §2、13 §3、14 §2、15 §2 的規則合起來）。唯一的例外沿用 storage 15：`.webm` 只有在 mime 是 `audio/webm` 時算 audio，其餘算 video。表格只列瀏覽器真的畫得出來的格式，所以 `image/heic` 這類 mime 回 `null`，不像 storage 的 `previewKind` 一律收 `image/*`。
 - **`kindOf` 的回傳多一個 `tooLarge: boolean`**（對 §3 是「加」）。§3 的 `{ view, edit }` 分不出「格式不支援」和「格式支援但太大」，03 卻要分別顯示 `unsupported` 與 `too_large`。
 - **`Limits` 多一個 `projectBytes`（預設 1 GiB）**（對 §3 是「加」）。`.comp.zip` 要整檔讀進記憶體再解每一層，上限沿用 storage 13 §3。影片與音訊的編輯不設大小上限，因為 editor 只做隨機 `read`（storage 14 §2）；輸出的上限是 `maxOutputBytes`，由 06 檢查。
-- **能編輯的判斷寫在 02，「本版有沒有出這個 editor」另外一個集合管。** `editKindOf` 是完整的規則，02 一次寫完並測完。`kindOf` 只回 `SHIPPED_EDITORS` 裡有的 kind。02 出貨時這個集合是空的，之後各 plan 交付 editor 時在這個集合加一個值：04 加 `"markdown"` 和 `"excalidraw"`，07 加 `"video"`，08 加 `"audio"`，10 在五份影像 plan 一起驗收的那一步加 `"image"`，作用就是 storage 13 的 `IMAGE_EDITOR_ENABLED`。這樣外部開發者在 v0.1 呼叫 `kindOf`，不會拿到一個還不存在的 editor。
-- **`.comp.zip` 在 02 的 `view` 是 `null`。** 10 要做檔頭預覽時，在 `ViewKind` 加 `"comp"`，並在 `formatOf` 加這條規則（只加不改）。
-- **錯誤只有一個類別 `ViewerError`。** 錯誤碼照 §3，`message` 預設等於 code。UI 依 code 查 `error.<code>` 字串顯示。唯一的例外是 `save_failed`：宿主的 `onSave` reject 時，UI 顯示宿主給的 `error.message`；message 是空的才用 `error.save_failed`。
-- **i18n 依區域切檔，型別合成一份。** 00-overview §7 原本是一份 `en.ts` 放全部字串。改成每個區域（`common`、`viewer`、`markdown`、`video`…）各有一張表，放在自己的目錄裡，跟著自己的 chunk 載入。理由：五份影像 plan 的字串會有幾百條，兩種語言如果全放進入口，會吃掉入口檢查的 64 KiB 上限（01 契約）。`Messages` 型別在 `src/i18n/messages.ts` 用 `import type` 把各區的型別交集起來，型別匯入不會進 bundle。所以宿主的 `messages?: Partial<Messages>` 照樣能覆寫任何一條字串。
+- **能編輯的判斷寫在 02，「本版有沒有出這個 editor」由 03 的 `editors` 管。** `editKindOf` 是完整的規則，02 一次寫完並測完，不看任何登錄表。02 的 `kindOf` 先回 `edit: editKindOf(...)`；`kindOf` 的 `edit` 改成只在 `src/viewer/editors.ts` 的 `editors[kind]` 有登錄時才回，是 03 第 8 步加的（00-overview §3「編輯器開關」）。02 沒有任何出貨旗標或集合。因此 02 的測試只透過 `editKindOf` 驗編輯規則，不斷言 `kindOf(...).edit`，03 第 8 步改 `kindOf` 時 02 的測試不用改。`EditorProps` 也不在 02：它由 03 第 8 步定義在 `src/contract/editor.ts`（形狀見 00-overview §3）。
+- **`.comp.zip` 在 02 的 `view` 是 `null`。** 10 第 9 步要做檔頭預覽時，在 `src/contract/formats.ts` 的 `ViewKind` 加 `"comp"`，並讓 `kindOf` 對 `.comp.zip` 回 `view: "comp"`（只加不改；同一個 commit 在 `bodies` 加 `comp`）。
+- **錯誤只有一個類別 `ViewerError`。** 錯誤碼照 §3，`message` 預設等於 code。02 定九個碼；`"render_failed"` 由 03 第 4 步加進 `ViewerErrorCode`，同一步在 `src/i18n/en.ts`、`zh-tw.ts` 加 `error.render_failed`。UI 依 code 查 `error.<code>` 字串顯示。唯一的例外是 `save_failed`：宿主的 `onSave` reject 時，UI 顯示宿主給的 `error.message`；message 是空的才用 `error.save_failed`。
+- **i18n 依區域切檔，型別合成一份。** 00-overview §7 原本是一份 `en.ts` 放全部字串。改成每個區域（`common`、`viewer`、`markdown`、`video`…）各有一張表，放在自己的目錄裡，跟著自己的 chunk 載入。理由：五份影像 plan 的字串會有幾百條，兩種語言如果全放進入口，會吃掉入口檢查的 64 KiB 上限（01 契約）。`Messages` 型別在 `src/i18n/messages.ts` 用 `import type` 把各區的型別交集起來，型別匯入不會進 bundle。所以宿主的 `messages?: Partial<Messages>` 照樣能覆寫任何一條字串。各區域的檔與表名見 00-overview §9.2。
 - **檔名用 `zh-tw.ts`，不是 §7 寫的 `zh-TW.ts`。** 01 的 lint 規定檔名一律 kebab-case。locale 的值仍是 `"zh-TW"`。
 - **不做複數、不做 RTL。** 字串用 `{name}` 插值，數量相關的句子要寫成不需要複數變化的說法。
 - **根元素 `ViewerRoot`（內部元件，不從 `.` 匯出）。** `FileViewer` 和每個從 subpath 單獨匯出的 editor，最外層都包一層 `ViewerRoot`。它做四件事：
@@ -28,9 +28,9 @@
 - **主題。** `theme` 不給，就不寫 `data-theme`，跟著宿主頁面與 OS 走。給了就寫上，同時設 `color-scheme`，原生的捲軸與表單控制項才會跟著變。
   - `tokens.css` 的 `[data-theme="dark"]` 本來就對任何子樹有效。
   - `[data-theme="light"]` 目前只在 `<html>` 上有效，所以 Phase 01 先改 ui 的 generator，補一段子樹選擇器，發 ui 的下一個 minor（寫這份時是 0.11.0）。本套件的 peer 範圍從那一版開始。
-  - Phase 04 第 4 步在真的 Chromium 裡驗：頁面是深色，`.fv-root[data-theme="light"]` 仍拿到淺色的 `--ak-bg`。
-- **基本元件只做 03–13 都會用到的：`Button`、`Icon`、`Spinner`、`Tooltip`、`Menu`、`Slider`、`Dialog`、`ConfirmDialog`、`DiscardDialog`。**
-  - 外觀對照 `../ui/src/components/{button,tooltip,dropdown,slider,dialog}/` 的樣子，用 plain CSS 加 `--ak-*` 重寫。不 import ui 的任何 JS（01 的 lint 擋 `@anyknown/*`）。
+  - Phase 04 第 6 步在真的 Chromium 裡驗：頁面是深色，`.fv-root[data-theme="light"]` 仍拿到淺色的 `--ak-bg`。
+- **基本元件全部由 02 提供（00-overview §9.3），其他 plan 不在 `src/primitives/` 新增檔案；** 缺元件時回報主 agent，由 02 的檔增補。清單：`Icon`、四個圖示、`Button`、`Spinner`、`Tooltip`、`Menu`、`Slider`、`Dialog`、`ConfirmDialog`、`DiscardDialog`、`Popover`、`ToggleGroup`、`RadioGroup`、`Switch`、`Progress`、`Select`、`NumberField`、`ContextMenu`、`Menubar`。各 plan 寫的「AlertDialog」都是 `ConfirmDialog`。
+  - 外觀對照 `../ui/src/components/{button,tooltip,dropdown,slider,dialog,popover,segmented,radio,progress,select}/` 的樣子（沒有對應目錄的就照同一套 `--ak-*` 自己配），用 plain CSS 加 `--ak-*` 重寫。不 import ui 的任何 JS（01 的 lint 擋 `@anyknown/*`）。
   - 圖示不加套件，用 24 單位 viewBox、stroke 2 的 inline SVG（同 ui 的 `ICON_STROKE`）。02 只畫四個（close、edit、alert、file）；其他 plan 的圖示放在各自目錄的 `glyphs.tsx`。
 - **`styles.css` 只有一個檔，每份 plan 在檔尾加一段。** 01 的 tsdown 只複製 `src/styles.css`（`copy: [{ from: "src/styles.css", to: "dist" }]`）。改成多檔加 `@import`，要動 01 的 build 設定，換來的只是檔案分開，不值得。
   - 每段開頭寫 `/* == <area> (<plan 編號>) == */`；
@@ -53,19 +53,19 @@
 | `contract/errors.ts` | `ViewerErrorCode`、`ViewerError`、`toViewerError`、`isAbortError` | `ViewerErrorCode`、`ViewerError` |
 | `contract/limits.ts` | `Limits`、`DEFAULT_LIMITS`、`resolveLimits` | `Limits`、`DEFAULT_LIMITS` |
 | `contract/byte-source.ts` | `ByteSource`、`FileRef`、`blobSource`、`bytesSource`、`readBlob`、`READ_CHUNK_BYTES` | `ByteSource`、`FileRef`、`blobSource`、`bytesSource` |
-| `contract/formats.ts` | `ViewKind`、`EditKind`（型別放這裡，`kinds.ts` 再匯出，避免 `kinds.ts` ↔ `shipped-editors.ts` 互相 import）、`IMAGE_EXT`、`VIDEO_EXT`、`AUDIO_EXT`、`TEXT_EXT`、`MARKDOWN_EXT`、`EXCALIDRAW_EXT`、`PDF_EXT`（`Record<副檔名, mime>`）、`*_MIME`（`ReadonlySet<string>`）、`EDITABLE_IMAGE_EXT`、`COMP_SUFFIX` | 無 |
+| `contract/formats.ts` | `ViewKind`、`EditKind`（型別放這裡，`kinds.ts` 再匯出）、`IMAGE_EXT`、`VIDEO_EXT`、`AUDIO_EXT`、`TEXT_EXT`、`MARKDOWN_EXT`、`EXCALIDRAW_EXT`、`PDF_EXT`（`Record<副檔名, mime>`）、`*_MIME`（`ReadonlySet<string>`）、`EDITABLE_IMAGE_EXT`、`COMP_SUFFIX` | 無 |
 | `contract/kinds.ts` | `ViewKind`、`EditKind`、`KindResult`、`FileInfo`、`kindOf`、`mimeOf`、`formatOf`、`editKindOf`、`extOf` | `ViewKind`、`EditKind`、`KindResult`、`kindOf`、`mimeOf` |
-| `contract/shipped-editors.ts` | `SHIPPED_EDITORS` | 無 |
 | `contract/save.ts` | `SaveMode`、`SaveRequest`、`SaveHandler`、`splitName`、`suggestedName` | `SaveMode`、`SaveRequest`、`SaveHandler` |
-| `contract/props.ts` | `Theme`、`CommonProps`、`RootProps`、`EditorProps`、`FileViewerProps`、`AssetInfo`、`AssetProvider` | 除了 `RootProps` 都匯出 |
+| `contract/props.ts` | `Theme`、`CommonProps`、`RootProps`、`FileViewerProps`、`AssetInfo`、`AssetProvider` | 除了 `RootProps` 都匯出 |
+| `contract/editor.ts` | `EditorProps`（**03 第 8 步建，02 不寫**；形狀見 00-overview §3；`.` 用 `export type` 匯出） | 03 第 8 步加 |
 | `i18n/en.ts`、`i18n/zh-tw.ts` | `en`、`CommonKey`、`CommonMessages`、`zhTW` | 無 |
 | `i18n/messages.ts` | `Locale`、`MessageTable`、`Messages`、`Vars`、`format`、`translate`、`commonMessages` | `Locale`、`Messages` |
 | `i18n/use-t.ts` | `useT` | 無 |
 | `primitives/root-context.ts` | `RootContextValue`、`RootContext`、`useRoot` | 無 |
 | `primitives/root.tsx` | `ViewerRoot` | 無 |
 | `primitives/cx.ts` | `cx` | 無 |
-| `primitives/{icon,glyphs,button,spinner,tooltip,menu,slider,dialog}.tsx` | 見下方「基本元件」 | 無 |
-| `styles.css` | `fv-root`、`fv-portal`、`fv-icon*`、`fv-button*`、`fv-spinner`、`fv-tooltip*`、`fv-menu*`、`fv-slider*`、`fv-dialog*` | `./styles.css` |
+| `primitives/{icon,glyphs,button,spinner,tooltip,menu,slider,dialog,popover,toggle-group,radio-group,switch,progress,select,number-field,context-menu,menubar}.tsx` | 見下方「基本元件」 | 無 |
+| `styles.css` | `fv-root`、`fv-portal`、`fv-icon*`、`fv-button*`、`fv-spinner`、`fv-tooltip*`、`fv-menu*`、`fv-slider*`、`fv-dialog*`、`fv-popover*`、`fv-toggle-group*`、`fv-radio*`、`fv-switch*`、`fv-progress*`、`fv-select*`、`fv-number-field*`、`fv-menubar*` | `./styles.css` |
 
 型別與簽名（定稿；之後只加）：
 
@@ -90,19 +90,21 @@ export type Limits = { previewBytes: number; textBytes: number; docBytes: number
 export const DEFAULT_LIMITS: Readonly<Limits>; // 64 MiB / 1 MiB / 8 MiB / 1 GiB
 export function resolveLimits(partial?: Partial<Limits>): Limits; // undefined 的欄位用預設
 
-// contract/kinds.ts
-export type ViewKind = "image" | "video" | "audio" | "pdf" | "text" | "markdown" | "excalidraw";
+// contract/formats.ts（kinds.ts 再匯出）
+export type ViewKind = "image" | "video" | "audio" | "pdf" | "text" | "markdown" | "excalidraw"; // 10 第 9 步加 "comp"
 export type EditKind = "markdown" | "excalidraw" | "image" | "video" | "audio";
+export const EDITABLE_IMAGE_EXT: ReadonlySet<string>; // jpg jpeg png webp avif bmp
+export const COMP_SUFFIX = ".comp.zip";
+
+// contract/kinds.ts
+export type { ViewKind, EditKind } from "./formats";
 export type FileInfo = { name: string; mime?: string; size: number };
 export type KindResult = { view: ViewKind | null; edit: EditKind | null; tooLarge: boolean };
-export function kindOf(file: FileInfo, limits?: Partial<Limits>): KindResult;
+export function kindOf(file: FileInfo, limits?: Partial<Limits>): KindResult; // 02：edit = editKindOf(...)；03 第 8 步改成只回 editors 有登錄的 kind
 export function mimeOf(file: { name: string; mime?: string }): string;
 export function extOf(name: string): string;                                     // 內部：小寫、不含點；".comp.zip" 回 "comp.zip"
 export function formatOf(file: { name: string; mime?: string }): ViewKind | null; // 內部：不看大小
-export function editKindOf(file: FileInfo, limits: Limits): EditKind | null;      // 內部：不看 SHIPPED_EDITORS
-
-// contract/shipped-editors.ts
-export const SHIPPED_EDITORS: ReadonlySet<EditKind>; // 02：空；04 加 markdown、excalidraw；07 video；08 audio；10 image
+export function editKindOf(file: FileInfo, limits: Limits): EditKind | null;      // 內部：不看 editors 登錄
 
 // contract/save.ts
 export type SaveMode = "replace" | "copy" | "export";
@@ -114,7 +116,7 @@ export function suggestedName(original: string, ext: string, mode: SaveMode): st
 // contract/errors.ts
 export type ViewerErrorCode =
   | "unsupported" | "too_large" | "read_failed" | "decode_failed" | "codec_unsupported"
-  | "webgl_unavailable" | "webcodecs_unavailable" | "output_too_large" | "save_failed";
+  | "webgl_unavailable" | "webcodecs_unavailable" | "output_too_large" | "save_failed"; // 03 第 4 步加 "render_failed"
 export class ViewerError extends Error {
   readonly code: ViewerErrorCode;
   constructor(code: ViewerErrorCode, options?: { message?: string; cause?: unknown });
@@ -133,18 +135,14 @@ export type CommonProps = {
   onError?: (e: ViewerError) => void;
 };
 export type RootProps = Omit<CommonProps, "file"> & { className?: string; children: ReactNode }; // 內部
-export type EditorProps = CommonProps & {
-  onSave: SaveHandler;
-  onClose: () => void;
-  onDirtyChange?: (dirty: boolean) => void;
-  maxOutputBytes?: number;
-};
+// EditorProps 不在這裡：03 第 8 步定義在 contract/editor.ts
 export type FileViewerProps = CommonProps & {
   onSave?: SaveHandler;
   onDirtyChange?: (dirty: boolean) => void;
-  markdown?: { resolveImage?: (src: string, alt: string) => string | null }; // 04
+  markdown?: { resolveImage?: (src: string, alt: string) => string | null }; // 04 P01-2 改成回 ImageResolution（型別在 contract/image-resolver.ts）
   excalidraw?: { assetPath?: string };                                       // 04：轉給 window.EXCALIDRAW_ASSET_PATH
-  editor?: { maxOutputBytes?: number; assets?: AssetProvider };              // 06–08、10
+  editor?: { maxOutputBytes?: number; assets?: AssetProvider };              // 07、08、10
+  // onEditingChange?: (editing: boolean) => void  ← 03 第 8 步加
 };
 export type AssetInfo = { id: string; name: string; mime: string; size: number };
 export type AssetProvider = { list(): Promise<AssetInfo[]>; open(id: string): Promise<ByteSource> };
@@ -193,7 +191,7 @@ export function useRoot(): RootContextValue; // 在 ViewerRoot 外呼叫丟 Erro
   - 大小在上限內：`view` 是那個 kind，`tooLarge` 是 false。
   - 超過上限：`view` 是 `null`，`tooLarge` 是 true。
   - 格式不認得：`view` 是 `null`，`tooLarge` 是 false。
-  - `edit` = `editKindOf(...)`，但只有在 `SHIPPED_EDITORS` 裡有那個值時才回，否則回 `null`。
+  - `edit` = `editKindOf(file, resolveLimits(limits))`。（03 第 8 步會改成：只有 `editors[kind]` 有登錄才回，否則 `null`。）
 - `editKindOf` 的規則：
   - markdown 或 excalidraw 格式、而且 ≤ `docBytes`：回同名的 kind。
   - 副檔名在 `EDITABLE_IMAGE_EXT`（jpg、jpeg、png、webp、avif、bmp）、而且 ≤ `previewBytes`：回 `"image"`。
@@ -213,12 +211,12 @@ i18n：
 
 - key 的命名是 `<area>.<name>`。各區域與負責的 plan：
   - `common.*`、`discard.*`、`error.*`：02；
-  - `viewer.*`：03；
-  - `markdown.*`、`excalidraw.*`：04；
-  - `media.*`：06；
-  - `video.*`：07；
-  - `audio.*`：08；
-  - `image.*`：10–13。
+  - `viewer.*`：03（`src/viewer/messages.ts`）；
+  - `markdown.*`（`src/markdown/messages.ts`）、`excalidraw.*`（`src/excalidraw/messages.ts`）：04；
+  - `video.*`：07（`src/video-editor/messages.ts`）；
+  - `audio.*`：08（`src/audio-editor/messages.ts`）；
+  - `image.*`：10–13（`src/image-editor/messages.ts`、`tools/messages.ts`、`adjust/messages.ts`、`text/messages.ts`）；
+  - 06 不加 key，錯誤一律用 `error.<code>`。
 - 每個區域一個檔 `src/<dir>/messages.ts`，內容有：
   - `const en = {…} satisfies Record<string, string>`；
   - `export type <Area>Key = keyof typeof en`；
@@ -280,6 +278,34 @@ export function Dialog(props: { open: boolean; onOpenChange: (open: boolean) => 
 export function ConfirmDialog(props: { open: boolean; onOpenChange: (open: boolean) => void; title: string;
   description: string; confirmLabel: string; cancelLabel: string; danger?: boolean; onConfirm: () => void }): React.JSX.Element;
 export function DiscardDialog(props: { open: boolean; onOpenChange: (open: boolean) => void; onDiscard: () => void }): React.JSX.Element;
+// popover.tsx
+export function Popover(props: { trigger: React.ReactElement; label: string; children: ReactNode }): React.JSX.Element; // label = trigger 的 aria-label
+// toggle-group.tsx
+export function ToggleGroup<T extends string>(props: {
+  label: string; value: T; options: readonly { value: T; label: string; icon?: ReactNode }[]; onChange: (v: T) => void;
+}): React.JSX.Element;
+// radio-group.tsx
+export function RadioGroup<T extends string>(props: {
+  label: string; value: T; options: readonly { value: T; label: string; description?: string; disabled?: boolean }[]; onChange: (v: T) => void;
+}): React.JSX.Element;
+// switch.tsx
+export function Switch(props: { label: string; checked: boolean; onCheckedChange: (checked: boolean) => void; disabled?: boolean }): React.JSX.Element;
+// progress.tsx
+export function Progress(props: { label: string; value: number | null }): React.JSX.Element; // 0–1；null = 不定進度（線性、不回彈）
+// select.tsx
+export function Select<T extends string>(props: {
+  label: string; value: T; groups: readonly (readonly { value: T; label: string }[])[]; onChange: (v: T) => void;
+}): React.JSX.Element; // 組與組之間畫分隔線
+// number-field.tsx
+export function NumberField(props: {
+  label: string; value: number; min?: number; max?: number; step?: number; onChange: (v: number) => void; onCommit?: (v: number) => void;
+}): React.JSX.Element; // 標籤可拖曳（Base UI ScrubArea）
+// context-menu.tsx（MenuItem 從 ./menu import）
+export function ContextMenu(props: { items: readonly MenuItem[]; children: React.ReactElement }): React.JSX.Element;
+// menubar.tsx
+export function Menubar(props: {
+  menus: readonly { id: string; label: string; items: readonly (MenuItem & { shortcut?: string })[] }[];
+}): React.JSX.Element;
 ```
 
 依賴（02 加入）：
@@ -306,10 +332,18 @@ export function DiscardDialog(props: { open: boolean; onOpenChange: (open: boole
 - `Tooltip`：`--ak-surface-raised` 底，`--ak-type-t1` 字。
 - `Menu`：同一個底色，項目被選中時用 `--ak-ink-n8` 的底；`danger` 的項目用 `--ak-danger` 字色。
 - `Slider`：4 px 的軌道，14 px 的圓形把手。
+- `Popover`：外觀同 `Menu` 的 popup（`--ak-surface-raised` 底、`--ak-border` 框、`--ak-shadow-float`），內距 `--ak-space-md`。
+- `ToggleGroup`：一排相連的按鈕，選中的用 `--ak-ink-n8` 底；高 32 px。
+- `RadioGroup`：圓形單選鈕在左，label 在右，`description` 在 label 下方用 `--ak-text-muted`。
+- `Switch`：36 × 20 px 的軌道，開啟時 `--ak-accent` 底，把手 16 px。
+- `Progress`：4 px 高的線性軌道；`value` 為 `null` 時，40% 寬的指示條用 `left` 從 -40% 滑到 100%，循環播放，不回彈。
+- `Select`：trigger 外觀同 secondary `Button`，高 32 px；popup 同 `Menu`；組間 1 px `--ak-border` 分隔線。
+- `NumberField`：高 32 px 的輸入框，標籤在左、可拖曳（游標 `ew-resize`）。
+- `ContextMenu`、`Menubar`：popup 外觀同 `Menu`；`Menubar` 的頂列項目高 32 px，`shortcut` 靠右用 `--ak-text-faint`。
 
 ## Phase 01 — ui：`data-theme="light"` 對任何子樹都有效（主 agent 在 `../ui` 做）
 
-blocker：無；執行：主 agent。依 `../ui` 的 CLAUDE.md 與 git 規則，在 `/Users/solemnis/Documents/anyknown-com/ui` 的 `main` 上做。本 phase 是 file-viewer 這邊 Phase 04 第 4 步的前提，所以單獨 push 並發版。
+blocker：無；執行：主 agent。依 `../ui` 的 CLAUDE.md 與 git 規則，在 `/Users/solemnis/Documents/anyknown-com/ui` 的 `main` 上做。本 phase 是 file-viewer 這邊 Phase 04 第 6 步的前提，所以單獨 push 並發版。
 
 1. generator 加子樹淺色段，重新生成，補測試、文件、changelog。
    - 現況（寫這份時讀過）：
@@ -417,16 +451,13 @@ blocker：01 scaffold Phase 02；model：sonnet。這個 phase 不用 React，�
      - `IMAGE_MIME`、`VIDEO_MIME`、`AUDIO_MIME`、`PDF_MIME`、`MARKDOWN_MIME`、`EXCALIDRAW_MIME`、`TEXT_MIME`：型別是 `ReadonlySet<string>`，放「也認的 mime」。text 另外靠 `text/` 前綴判斷，`TEXT_MIME` 只放 `application/json`、`application/xml`。
      - `EDITABLE_IMAGE_EXT: ReadonlySet<string>`：`jpg jpeg png webp avif bmp`。
      - `COMP_SUFFIX = ".comp.zip"`。
-   - 新增 `src/contract/shipped-editors.ts`：
-     - `export const SHIPPED_EDITORS: ReadonlySet<EditKind> = new Set<EditKind>([]);`
-     - 上面加一行註解：`// 04 adds "markdown" and "excalidraw", 07 "video", 08 "audio", 10 "image" (02-contract).`
-     - `EditKind` 從 `./formats` 用 `import type` 引入（不從 `./kinds`，`kinds.ts` 會 import 本檔，01 的 lint 有 `import/no-cycle`）。
    - 新增 `src/contract/kinds.ts`：
      - `export type { ViewKind, EditKind } from "./formats"`；`FileInfo`、`KindResult` 的型別照契約；
      - `extOf`、`formatOf`、`editKindOf`、`kindOf`、`mimeOf`，規則照契約的「規則」段；
-     - `Limits`、`resolveLimits` 從 `./limits` import；`SHIPPED_EDITORS` 從 `./shipped-editors` import。
+     - `Limits`、`resolveLimits` 從 `./limits` import；`ViewKind`、`EditKind`、各 `*_EXT` / `*_MIME`、`EDITABLE_IMAGE_EXT`、`COMP_SUFFIX` 從 `./formats` import。
+     - `kindOf` 回傳的 `edit` 是 `editKindOf(file, resolveLimits(limits))`；不查任何登錄表（`editors` 過濾由 03 第 8 步加在 `kindOf` 裡）。
      - 檔案超過 300 行，就把 `mimeOf` 移到 `src/contract/mime.ts`，並由 `kinds.ts` 再匯出。
-   - 測試，新增 `src/contract/kinds.test.ts`。用 `kindOf` 測 view 與 tooLarge，用 `editKindOf(f, DEFAULT_LIMITS)` 測 edit。案例：
+   - 測試，新增 `src/contract/kinds.test.ts`。用 `kindOf` 測 view 與 tooLarge，用 `editKindOf(f, DEFAULT_LIMITS)`（從 `src/contract/kinds.ts` import）測 edit；**不斷言 `kindOf(...).edit`**（03 第 8 步會讓它依 `editors` 過濾）。案例：
      - `photo.JPG`，mime `""`，size 1：view `image`，`mimeOf` 是 `image/jpeg`；
      - `a.bin`，mime `image/png`：view `image`；
      - `a.png`，mime `application/octet-stream`：view `image`，`mimeOf` 是 `image/png`；
@@ -445,7 +476,7 @@ blocker：01 scaffold Phase 02；model：sonnet。這個 phase 不用 React，�
      - `big.png`，65 MiB：edit `null`；
      - `a.zip`，以及 `noext` 配 mime `""`：view `null`、tooLarge false，`mimeOf` 是 `application/octet-stream`；
      - `kindOf({ name: "a.png", size: 11 }, { previewBytes: 10 })`：tooLarge true；
-     - 每個案例都驗 `kindOf(f).edit === (e !== null && SHIPPED_EDITORS.has(e) ? e : null)`，其中 `e = editKindOf(f, DEFAULT_LIMITS)`。這樣寫，之後各 plan 往 `SHIPPED_EDITORS` 加值時，這個測試不用改。
+     - `editKindOf({ name: "a.png", size: 1 }, { ...DEFAULT_LIMITS, previewBytes: 0 })` 是 `null`（上限由參數決定）。
    - verify：`pnpm test src/contract/kinds.test.ts && pnpm check`
    - commit：`feat(contract): classify files into view and edit kinds`
 4. 存檔請求與命名。
@@ -500,7 +531,7 @@ blocker：Phase 02；model：sonnet。
    - verify：`pnpm test src/i18n && pnpm check`
    - commit：`feat(contract): add english and taiwanese mandarin messages`
 2. 宿主 props 型別。
-   - 新增 `src/contract/props.ts`。內容照契約的 `Theme`、`CommonProps`、`RootProps`、`EditorProps`、`FileViewerProps`、`AssetInfo`、`AssetProvider`，全部用 `import type` 引入：
+   - 新增 `src/contract/props.ts`。內容照契約的 `Theme`、`CommonProps`、`RootProps`、`FileViewerProps`、`AssetInfo`、`AssetProvider`（沒有 `EditorProps`，它在 03 第 8 步的 `src/contract/editor.ts`），全部用 `import type` 引入：
      - `ReactNode` 從 `react`；
      - `FileRef`、`ByteSource` 從 `./byte-source`；
      - `Limits` 從 `./limits`；
@@ -511,7 +542,7 @@ blocker：Phase 02；model：sonnet。
    - `package.json` 的 `peerDependencies` 手動加 `"react": "^19"`、`"react-dom": "^19"`。01 契約允許之後的 plan 改 `peerDependencies`。
    - 測試，新增 `src/contract/props.test.ts`（用 vitest 的 `expectTypeOf`），案例：
      - `FileViewerProps` 不帶 `onSave` 也成立；
-     - `EditorProps` 少了 `onClose` 時是型別錯誤（用 `// @ts-expect-error` 標）；
+     - `FileViewerProps` 的 `onSave` 型別是 `SaveHandler | undefined`；
      - `CommonProps["theme"]` 等於 `"light" | "dark" | undefined`；
      - `AssetProvider["open"]` 的回傳是 `Promise<ByteSource>`。
    - verify：`pnpm test src/contract/props.test.ts && pnpm check`
@@ -562,7 +593,7 @@ blocker：Phase 02；model：sonnet。
        - `SaveMode`、`SaveRequest`、`SaveHandler`；
        - `ViewerErrorCode`；
        - `Locale`、`Messages`；
-       - `Theme`、`CommonProps`、`EditorProps`、`FileViewerProps`、`AssetInfo`、`AssetProvider`。
+       - `Theme`、`CommonProps`、`FileViewerProps`、`AssetInfo`、`AssetProvider`（`EditorProps` 由 03 第 8 步加）。
      - 不匯出：`readBlob`、`formatOf`、`editKindOf`、`extOf`、`splitName`、`suggestedName`、`ViewerRoot`、`useT`、`useRoot`、primitives。它們是內部共用的，其他 plan 用相對路徑 import。
    - 測試，新增 `src/index.test.ts`：
      - `import * as api from "./index"`；
@@ -574,9 +605,9 @@ blocker：Phase 02；model：sonnet。
 
 phase 結尾的 verify：`pnpm test && pnpm test:browser && pnpm build && pnpm check`
 
-## Phase 04 — Base UI 基本元件、主題實測、plan README
+## Phase 04 — Base UI 基本元件、主題實測
 
-blocker：Phase 03；第 4 步另外要等 Phase 01 第 2 步（npm 上已經有 `@anyknown/ui@0.11.0`）；model：sonnet。
+blocker：Phase 03；第 6 步另外要等 Phase 01 第 2 步（npm 上已經有 `@anyknown/ui@0.11.0`）；model：sonnet。
 
 這個 phase 的每個元件測試檔，開頭都要：
 
@@ -696,7 +727,86 @@ blocker：Phase 03；第 4 步另外要等 Phase 01 第 2 步（npm 上已經有
      - `DiscardDialog` 放在 `ViewerRoot locale="zh-TW"` 裡：看得到「要放棄修改嗎？」，以及「放棄修改」「繼續編輯」兩顆按鈕；點「放棄修改」會呼叫 `onDiscard`。
    - verify：`pnpm test src/primitives && pnpm check`
    - commit：`feat(contract): add dialog, confirm dialog and discard dialog`
-4. 主題在真的瀏覽器裡鎖得住（要等 npm 上有 `@anyknown/ui@0.11.0`）。
+4. `Popover`、`ToggleGroup`、`RadioGroup`、`Switch`、`Progress`。
+   - 新增 `src/primitives/popover.tsx`，`Popover` 簽名見契約的「基本元件」。結構是 `@base-ui/react/popover` 的：
+     - `Popover.Root`
+     - └ `Popover.Trigger`，`render={trigger}`、`aria-label={label}`
+     - └ `Popover.Portal`，`container={useRoot().portal}`（`useRoot` 從 `src/primitives/root-context.ts` import）
+     -   └ `Popover.Positioner`，`positionMethod="fixed"`、`sideOffset={6}`、`className="fv-popover-positioner"`
+     -     └ `Popover.Popup`，`aria-label={label}`、`className="fv-popover"`，內容是 `{children}`
+   - 新增 `src/primitives/toggle-group.tsx`，`ToggleGroup<T extends string>`：
+     - `@base-ui/react/toggle-group` 的 `ToggleGroup`，`value={[value]}`、`multiple={false}`、`aria-label={label}`、`className="fv-toggle-group"`、`onValueChange={(next) => { const v = next[0]; if (v !== undefined) onChange(v as T); }}`。再按一次已選中的項目時 `next` 是空陣列，什麼都不做（維持選中）。
+     - 每個 option 一個 `@base-ui/react/toggle` 的 `Toggle`，`key={o.value}`、`value={o.value}`、`className="fv-toggle-group-item"`，children 是 `{o.icon}{o.label}`。
+   - 新增 `src/primitives/radio-group.tsx`，`RadioGroup<T extends string>`：
+     - `@base-ui/react/radio-group` 的 `RadioGroup`，`value`、`aria-label={label}`、`className="fv-radio-group"`、`onValueChange={(v) => onChange(v as T)}`。
+     - 同檔內部元件 `RadioItem`（不匯出），用 `useId()` 產生 `labelId`、`descId`，渲染 `<div className="fv-radio-item">`：`@base-ui/react/radio` 的 `Radio.Root`（`value`、`disabled`、`aria-labelledby={labelId}`、`aria-describedby={description ? descId : undefined}`、`className="fv-radio"`）裡放 `Radio.Indicator`（`className="fv-radio-indicator"`）；旁邊 `<span id={labelId} className="fv-radio-label">`，有 `description` 時再一個 `<span id={descId} className="fv-radio-description">`。
+   - 新增 `src/primitives/switch.tsx`，`Switch`：`<label className="fv-switch-row">` 裡放 `@base-ui/react/switch` 的 `Switch.Root`（`checked`、`onCheckedChange={(c) => onCheckedChange(c)}`、`disabled`、`aria-label={label}`、`className="fv-switch"`，內含 `Switch.Thumb className="fv-switch-thumb"`）加 `<span className="fv-switch-label">{label}</span>`。
+   - 新增 `src/primitives/progress.tsx`，`Progress`：`@base-ui/react/progress` 的 `Progress.Root`，`value={value}`、`min={0}`、`max={1}`、`aria-label={label}`、`className="fv-progress"`；裡面 `Progress.Track className="fv-progress-track"` > `Progress.Indicator className="fv-progress-indicator"`。
+   - `src/styles.css` 在 primitives 段的最後加：
+     - `.fv-popover-positioner`：`z-index: var(--ak-z-index-popup)`。
+     - `.fv-popover`：`padding: var(--ak-space-md); border: 1px solid var(--ak-border); border-radius: var(--ak-corner-float); background: var(--ak-surface-raised); color: var(--ak-text); box-shadow: var(--ak-shadow-float); transition: opacity var(--ak-motion-quick) var(--ak-motion-ease-out)`；`.fv-popover[data-starting-style]`、`.fv-popover[data-ending-style]`：`opacity: 0`。
+     - `.fv-toggle-group`：`display: inline-flex; border: 1px solid var(--ak-border-control); border-radius: var(--ak-corner-control); overflow: hidden`。
+     - `.fv-toggle-group-item`：`display: inline-flex; align-items: center; gap: var(--ak-space-xs); height: 30px; padding: 0 var(--ak-space-md); border: 0; background: var(--ak-surface); color: var(--ak-text); font: inherit; font-size: var(--ak-type-t2); cursor: pointer`；`.fv-toggle-group-item + .fv-toggle-group-item`：`border-left: 1px solid var(--ak-border-control)`；`.fv-toggle-group-item[data-pressed]`：`background: var(--ak-ink-n8)`。
+     - `.fv-radio-group`：`display: flex; flex-direction: column; gap: var(--ak-space-sm)`。
+     - `.fv-radio-item`：`display: grid; grid-template-columns: auto 1fr; column-gap: var(--ak-space-sm); align-items: center`。
+     - `.fv-radio`：`width: 16px; height: 16px; padding: 0; border: 1px solid var(--ak-border-control); border-radius: var(--ak-radius-full); background: var(--ak-surface)`；`.fv-radio[data-checked]`：`border-color: var(--ak-accent)`；`.fv-radio[data-disabled]`：`opacity: 0.5`。
+     - `.fv-radio-indicator`：`display: block; width: 8px; height: 8px; margin: auto; border-radius: var(--ak-radius-full); background: var(--ak-accent)`。
+     - `.fv-radio-label`：`font-size: var(--ak-type-t2)`；`.fv-radio-description`：`grid-column: 2; color: var(--ak-text-muted); font-size: var(--ak-type-t1)`。
+     - `.fv-switch-row`：`display: inline-flex; align-items: center; gap: var(--ak-space-sm); font-size: var(--ak-type-t2)`。
+     - `.fv-switch`：`position: relative; width: 36px; height: 20px; padding: 0; border: 0; border-radius: var(--ak-radius-full); background: var(--ak-ink-n18); cursor: pointer; transition: background-color var(--ak-motion-quick) var(--ak-motion-ease-out)`；`.fv-switch[data-checked]`：`background: var(--ak-accent)`；`.fv-switch[data-disabled]`：`opacity: 0.5; cursor: not-allowed`。
+     - `.fv-switch-thumb`：`position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: var(--ak-radius-full); background: var(--ak-surface); transition: left var(--ak-motion-quick) var(--ak-motion-ease-out)`；`.fv-switch-thumb[data-checked]`：`left: 18px`。
+     - `.fv-progress`：`width: 100%`；`.fv-progress-track`：`position: relative; height: 4px; overflow: hidden; border-radius: var(--ak-radius-full); background: var(--ak-ink-n14)`；`.fv-progress-indicator`：`height: 100%; border-radius: inherit; background: var(--ak-accent)`。
+     - `.fv-progress-indicator[data-indeterminate]`：`position: relative; width: 40%; animation: fv-progress-slide var(--ak-motion-loop) linear infinite`；`@keyframes fv-progress-slide { from { left: -40%; } to { left: 100%; } }`。
+   - 測試，新增 `src/primitives/popover.test.tsx`、`toggle-group.test.tsx`、`radio-group.test.tsx`、`switch.test.tsx`、`progress.test.tsx`，案例：
+     - Popover：`<Popover label="Volume" trigger={<Button>Open</Button>}>content</Popover>`，點 `getByRole("button", { name: "Volume" })` 之後 `await screen.findByText("content")` 找得到，而且 `closest(".fv-portal")` 不是 null；按 `{Escape}` 之後 `content` 消失（`waitFor`）。
+     - ToggleGroup：三個 option `a`、`b`、`c`，`value="a"`：`getByRole("group", { name: "Mode" })` 找得到，`a` 的 `aria-pressed` 是 `"true"`；點 `b` 呼叫 `onChange("b")`；再點已選中的 `a` 不呼叫 `onChange`。
+     - RadioGroup：`getByRole("radiogroup", { name: "Format" })` 找得到；`value` 對應的 radio `aria-checked` 是 `"true"`；點另一個 radio 呼叫 `onChange` 帶那個值；`disabled` 的 option 點了不呼叫；有 `description` 的 radio，`toHaveAccessibleDescription` 等於該文字。
+     - Switch：`getByRole("switch", { name: "Fast" })` 的 `aria-checked` 等於 `checked`；點一下呼叫 `onCheckedChange(!checked)`；`disabled` 時點了不呼叫。
+     - Progress：`value={0.5}` 時 `getByRole("progressbar", { name: "Export" })` 的 `aria-valuenow` 是 `"0.5"`；`value={null}` 時沒有 `aria-valuenow` 屬性，而且 `.fv-progress-indicator` 有 `data-indeterminate` 屬性。
+   - verify：`pnpm test src/primitives && pnpm check`
+   - commit：`feat(contract): add popover, toggle group, radio group, switch and progress primitives`
+5. `Select`、`NumberField`、`ContextMenu`、`Menubar`。
+   - 新增 `src/primitives/select.tsx`，`Select<T extends string>`。結構是 `@base-ui/react/select` 的：
+     - `Select.Root`，`value`、`items={groups.flat()}`（讓 `Select.Value` 顯示 label）、`onValueChange={(v) => { if (v !== null) onChange(v as T); }}`
+     - ├ `Select.Trigger`，`aria-label={label}`、`className="fv-select"`，裡面 `<Select.Value />` 加 `<Select.Icon className="fv-select-icon">`（`Icon` 的 `size="sm"`，path `M6 9l6 6 6-6`）
+     - └ `Select.Portal`，`container={useRoot().portal}`
+     -   └ `Select.Positioner`，`positionMethod="fixed"`、`alignItemWithTrigger={false}`、`sideOffset={4}`、`className="fv-select-positioner"`
+     -     └ `Select.Popup`，`className="fv-select-popup"` > `Select.List`
+     -       └ 每一組：`Select.Group`（第 2 組起，前面先放一個 `Select.Separator className="fv-select-separator"`）> 每個選項一個 `Select.Item`（`key={o.value}`、`value={o.value}`、`className="fv-select-item"`）> `Select.ItemText`（內容 `{o.label}`）
+   - 新增 `src/primitives/number-field.tsx`，`NumberField`。結構是 `@base-ui/react/number-field` 的：
+     - `NumberField.Root`，`value`、`min`、`max`、`step`、`className="fv-number-field"`、`onValueChange={(v) => { if (v !== null) onChange(v); }}`、`onValueCommitted={(v) => { if (v !== null) onCommit?.(v); }}`
+     - ├ `NumberField.ScrubArea`，`className="fv-number-field-scrub"`，裡面 `<span>{label}</span>` 加 `NumberField.ScrubAreaCursor`（內容 `↔`）
+     - └ `NumberField.Group` > `NumberField.Input`，`aria-label={label}`、`className="fv-number-field-input"`
+   - 新增 `src/primitives/context-menu.tsx`，`ContextMenu`（`MenuItem` 從 `src/primitives/menu.tsx` import）。結構是 `@base-ui/react/context-menu` 的：
+     - `ContextMenu.Root`
+     - ├ `ContextMenu.Trigger`，`render={children}`
+     - └ `ContextMenu.Portal`，`container={useRoot().portal}`
+     -   └ `ContextMenu.Positioner`，`positionMethod="fixed"`、`className="fv-menu-positioner"`
+     -     └ `ContextMenu.Popup`，`className="fv-menu"` > 每個 item 一個 `ContextMenu.Item`，屬性與 `src/primitives/menu.tsx` 的 `Menu.Item` 相同（`key={id}`、`disabled`、`onClick={onSelect}`、`className={cx("fv-menu-item", danger && "fv-menu-item-danger")}`）
+   - 新增 `src/primitives/menubar.tsx`，`Menubar`（`MenuItem` 從 `src/primitives/menu.tsx` import）：
+     - `@base-ui/react/menubar` 的 `Menubar`，`className="fv-menubar"`；每個 menu 一個 `@base-ui/react/menu` 的 `Menu.Root`，`key={id}`。
+     - `Menu.Trigger`，`className="fv-menubar-trigger"`，內容 `{label}`；`Menu.Portal`，`container={useRoot().portal}` > `Menu.Positioner`（`positionMethod="fixed"`、`sideOffset={4}`、`align="start"`、`className="fv-menu-positioner"`）> `Menu.Popup`（`className="fv-menu"`）。
+     - 每個 item 一個 `Menu.Item`，屬性同 `Menu`；有 `shortcut` 時，label 後面放 `<span className="fv-menubar-shortcut">{shortcut}</span>`（`.fv-menu-item` 是 flex，shortcut 用 `margin-left: auto`）。
+   - `src/styles.css` 在 primitives 段的最後加：
+     - `.fv-select`：同 `.fv-button` 的外觀再加 `justify-content: space-between; min-width: 120px`（直接在選擇器清單加 `.fv-select`，不重複宣告）。
+     - `.fv-select-positioner`：`z-index: var(--ak-z-index-popup)`。
+     - `.fv-select-popup`：`min-width: var(--anchor-width); padding: var(--ak-space-xs); border: 1px solid var(--ak-border); border-radius: var(--ak-corner-float); background: var(--ak-surface-raised); box-shadow: var(--ak-shadow-float); transition: opacity var(--ak-motion-quick) var(--ak-motion-ease-out)`；`[data-starting-style]`、`[data-ending-style]`：`opacity: 0`。
+     - `.fv-select-item`：同 `.fv-menu-item` 的外觀（加進該選擇器清單）；`.fv-select-item[data-highlighted]` 加進 `.fv-menu-item[data-highlighted]` 的選擇器清單。
+     - `.fv-select-separator`：`height: 1px; margin: var(--ak-space-xs) 0; background: var(--ak-border)`。
+     - `.fv-number-field`：`display: inline-flex; align-items: center; gap: var(--ak-space-sm); height: 32px`。
+     - `.fv-number-field-scrub`：`cursor: ew-resize; color: var(--ak-text-muted); font-size: var(--ak-type-t2); user-select: none`。
+     - `.fv-number-field-input`：`width: 72px; height: 32px; padding: 0 var(--ak-space-sm); border: 1px solid var(--ak-border-control); border-radius: var(--ak-corner-control); background: var(--ak-surface); color: var(--ak-text); font: inherit; font-size: var(--ak-type-t2)`。
+     - `.fv-menubar`：`display: flex; align-items: center; gap: var(--ak-space-xs); height: 36px; padding: 0 var(--ak-space-xs); border-bottom: 1px solid var(--ak-border)`。
+     - `.fv-menubar-trigger`：`height: 28px; padding: 0 var(--ak-space-sm); border: 0; border-radius: var(--ak-corner-small); background: transparent; color: var(--ak-text); font: inherit; font-size: var(--ak-type-t2); cursor: default`；`[data-popup-open]` 與 `:hover`：`background: var(--ak-ink-n8)`。
+     - `.fv-menubar-shortcut`：`margin-left: auto; padding-left: var(--ak-space-lg); color: var(--ak-text-faint); font-size: var(--ak-type-t1)`。
+   - 測試，新增 `src/primitives/select.test.tsx`、`number-field.test.tsx`、`context-menu.test.tsx`、`menubar.test.tsx`，案例：
+     - Select：`groups={[[a, b], [c]]}`，`value="a"`：`getByRole("combobox", { name: "Mode" })` 的文字含 `a` 的 label；點開之後 `getAllByRole("option")` 長度 3，而且在 `.fv-portal` 裡；`getAllByRole("separator")` 長度 1；點 `c` 呼叫 `onChange("c")`。
+     - NumberField：`getByRole("textbox", { name: "Opacity" })`（Base UI 的輸入框 role 為 `textbox`）的值是 `value` 的字串；輸入 `42` 再 `{Enter}` 後，`onChange` 收到 `42`、`onCommit` 收到 `42`；輸入超過 `max` 的值再 blur，`onCommit` 收到 `max`；`getByText("Opacity")` 所在元素有 class `fv-number-field-scrub`。
+     - ContextMenu：用 `fireEvent.contextMenu` 在 children 上觸發，兩個 `menuitem` 出現在 `.fv-portal` 裡；點第一個呼叫 `onSelect` 一次；`disabled` 的 item 點了不呼叫。
+     - Menubar：兩個 menu `File`、`Edit`；`getByRole("menubar")` 找得到；點 `File` 之後看到它的 `menuitem`，其中有 `shortcut` 的那個，文字含該快捷鍵；點 item 呼叫 `onSelect`；`Edit` 的 item 在 `File` 打開前不在 DOM。
+   - verify：`pnpm test src/primitives && pnpm check`
+   - commit：`feat(contract): add select, number field, context menu and menubar primitives`
+6. 主題在真的瀏覽器裡鎖得住（要等 npm 上有 `@anyknown/ui@0.11.0`）。
    - 執行 `pnpm add -D @anyknown/ui@0.11.0`。
    - `package.json` 的 `peerDependencies` 手動加 `"@anyknown/ui": ">=0.11.0"`。
    - 新增 `src/primitives/theme.browser.test.tsx`：
@@ -713,48 +823,6 @@ blocker：Phase 03；第 4 步另外要等 Phase 01 第 2 步（npm 上已經有
      - 用 `<html data-theme="dark">` 代替 OS 深色：兩種情況都是在 root 上放深色值，再由子樹繼承。Phase 01 加的 `[data-theme="light"]` 段處理的就是這種情況。
    - verify：`pnpm test:browser src/primitives/theme.browser.test.tsx && pnpm check`
    - commit：`test(contract): lock light and dark themes on the viewer subtree`
-5. 本 repo 的 plan README。
-   - 新增 `docs/plans/README.md`（中文），內容依序有：
-     - **怎麼寫 plan**：
-       - 檔頭結構：`# NN <name> — 一句話`，接著狀態行（planned / in-progress、日期、blocker、model、push）、`## 判斷`、`## 契約`、`## 形式`（沒有 UI 就省略）、`## Phase NN — 標題`（每個 phase 標 blocker、model）、`## 之後再做`。
-       - 一個 step 就是一個 commit，每個 commit 都要綠；phase 是可以獨立驗收、交給一個 subagent 做完的一段（2–6 步）。
-       - 契約只加不改：`00-overview.md` §3 與 `02-contract.md` 的契約。
-       - 不寫「以後可能」、不加設定項、不加抽象。
-     - **執行模式**（照抄本系列定的硬規則）：
-       - 每一步交給一個獨立的 subagent，它只讀 plan 頭部（狀態行、判斷、契約、形式）和自己那一步，做完 commit 就停。
-       - 所以每一步都要自足：
-         - 列出每個檔的完整 repo 路徑與要改成什麼（名稱與簽名）；
-         - 用到別步或別份 plan 的產物時，寫明哪個檔的哪個符號，不寫「同上」「見前一步」；
-         - 列出測試案例；
-         - 給一條可以直接執行的 verify 命令，以及 commit 訊息；
-         - 不留需要判斷的空白；只有做的時候才知道的事，寫明預設怎麼做。
-     - **給執行 subagent 的說明**：
-       - 只動自己那一步列出的檔。
-       - 需要套件就 `pnpm add`，並在回報裡列出。
-       - `package.json` 只准改 `dependencies`、`devDependencies`、`peerDependencies`，以及 plan 寫明的 scripts。其他設定檔不改。
-       - 不動 `../ui`、`../storage`、`../product`（唯讀參考）。
-       - 程式規則：
-         - 檔案 ≤ 300 行；kebab-case；禁用 `any`；
-         - 禁用 `useEffect` / `useLayoutEffect`，改用 ref callback 加 cleanup、事件處理器；
-         - 動畫不回彈；
-         - 樣式只用 `--ak-*` 加 plain CSS，class 一律 `fv-<area>-*`，寫在 `src/styles.css` 自己那一段；
-         - 互動元件用 `src/primitives/` 的基本元件，沒有的才直接用 `@base-ui/react`；
-         - 字串用 `useT(<area>Messages)`，en 與 zh-TW 都要寫；
-         - 不發網路請求、不開 `blob:` worker。
-       - 先跑該步的 verify，綠了才 commit。commit 訊息用英文 Conventional Commits，scope 是 plan 名。
-       - 不 push，不改 git author。
-       - 測試輸出導到 scratchpad，不寫進 repo。
-       - 同一條 verify 連續紅兩次就停，回報試過什麼。
-     - **回報格式**：
-       - 完成的步驟（或卡在哪一步、原因）；
-       - commit hash 與訊息；
-       - verify 最後一行；
-       - 偏離 plan 的地方（沒有就寫「無」）；
-       - 需要主 agent 處理的事。
-     - **系列**：一行指向 `00-overview.md` §6 的表。
-   - verify：`pnpm fmt:check`
-   - commit：`docs(contract): add plan rules for this repo`
-
 phase 結尾的 verify：`pnpm test && pnpm test:browser && pnpm build && pnpm check && pnpm check:licenses`
 
 ## 之後再做

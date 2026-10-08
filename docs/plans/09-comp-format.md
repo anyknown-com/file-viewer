@@ -4,6 +4,18 @@
 來源：storage `docs/plans/17-image-project-format.md`（下稱 storage 17）。宿主相關的段落（storage 的 4 MiB chunk、GCM、`files.reader`）歸 H1，不在本份。
 下游：10 image-editor（讀寫專案、預覽、匯出 PNG）、12 / 13（manifest 型別）、H2 product（`ai-readable-docs` 的影像專案條目直接 import `@anyknown/file-viewer/comp`）。
 
+用到其他 plan 的東西（符號名、路徑以 `00-overview.md` §9 為準；本份是這些東西的使用方，不是擁有者）：
+
+| 東西 | 出處 | 本份怎麼用 |
+| --- | --- | --- |
+| `tsconfig.comp.json`（repo 根；`extends ./tsconfig.json`、`lib: ["ES2022"]`、`include: ["src/comp"]`） | 01 P01-2，§9.8；`pnpm typecheck` 已含 `tsc --noEmit -p tsconfig.comp.json` | Phase 01 第 1 步只在它的 `compilerOptions` 加 `"types": ["node"]`；不建 `src/comp/tsconfig.json`、不改 `scripts` |
+| `package.json` 的 `exports` 形狀 `{ "types", "default" }`、`tsdown.config.ts` 的 `entry` 寫法 | 01 P01-1，§4 | Phase 01 第 1 步加 `./comp` 與 `"comp/index"`；條件寫 `"default"`，不寫 `"import"` |
+| `.oxlintrc.json` 的 `overrides`（已有 `files: ["src/**"]` 那條，含 `@anyknown/*` 的 `patterns`） | 01 P01-2 | Phase 01 第 1 步在 `overrides` 尾端加 `src/comp/**` 的條目 |
+| `scripts/check-entry-deps.mjs`、`THIRD_PARTY_NOTICES.md`、`pnpm check:licenses` | 01 P02-1、P02-3，§9.8 | 不改；Phase 01 第 1 步在加 `fflate`、`zod` 的那個 commit 加 notices 行（§4 規則）；Phase 03 第 4 步用 `pnpm check` 驗入口 |
+| `ByteSource.read(start, end): Promise<Uint8Array<ArrayBuffer>>` | 02 P02-2，`src/contract/byte-source.ts`，§9.1 | 本份**不 import**（`src/comp/` 不 import `src/contract/`）；`ReadRange` 與它相容，10 以 `(s, e) => source.read(s, e)` 傳進 `readHead` |
+| `ViewerError`、`ViewerErrorCode`、`toViewerError` | 02 P02-1，`src/contract/errors.ts`，§9.1 | 本份不用；`ProjectError` 由 10 轉成 `ViewerError`（§9.6） |
+| `./comp` 的符號與擁有者 | §9.6 | 本份全部擁有；符號、簽名、步驟對照 §9.6 與下面的「契約」 |
+
 參考原始碼（每一步要對 Compositor 的，都先做這個；不放進 repo）：
 
 ```sh
@@ -18,7 +30,7 @@ git clone https://github.com/robbietilton/Compositor "$SCRATCH/compositor" && gi
 - **manifest 永遠是第一個 entry，STORE、不用 data descriptor**，所以讀的一方不看 central directory、從 offset 0 一個 local header 就拿到 manifest（`readHead`）。AI 與預覽只讀檔頭，不必整檔下載或解密。
 - **zip 自己寫，不用 fflate 寫**：fflate 的串流 `Zip` 一定設 bit 3（破壞從檔頭讀）；`zipSync` 要把全部 entry 拼成一塊 `Uint8Array`，幾百 MB 的專案多一份拷貝。自己寫的只產生檔頭，PNG bytes 原樣當 `Blob` 的片段。fflate（MIT）只用來壓縮 / 解壓：`inflateSync`（zip method 8，raw DEFLATE）、`zlibSync` / `unzlibSync` / `Zlib`（PNG 的 IDAT，帶 zlib 外殼）。
 - **PNG 自己編解**：瀏覽器的 `createImageBitmap` + canvas 讀回會預乘 alpha，半透明像素存一次掉一次。自己解才保證「打開再存，沒改的層 byte 相同、改過的層像素相同」。照片（JPEG 等）的解碼歸 10，不在這裡。
-- **`./comp` 不碰 DOM**：只用 ES2023 加 Node 22 與瀏覽器都有的 `Blob`、`TextEncoder`、`TextDecoder`、`crypto.randomUUID`。tsconfig 不含 DOM lib、oxlint 擋 DOM / Node 專屬的全域與 import，測試在 vitest 的 node 環境跑，最後用 `node` 直接 import 建好的套件驗一次。10 的 worker 與 product 的 runtime 都能用。
+- **`./comp` 不碰 DOM**：只用 ES2022 加 Node 22 與瀏覽器都有的 `Blob`、`TextEncoder`、`TextDecoder`、`crypto.randomUUID`。`tsconfig.comp.json`（01 建，`lib` 只有 ES2022、不含 DOM）、oxlint 擋 DOM / Node 專屬的全域與 import，測試在 vitest 的 node 環境跑，最後用 `node` 直接 import 建好的套件驗一次。10 的 worker 與 product 的 runtime 都能用。
 - **預覽圖 `QuickLook/Preview.jpg` 由呼叫端給 bytes**：產生 JPEG 要 canvas，那是 10 的事（長邊 ≤ 1024 px、白底、品質 0.8、畫布 > 50 MP 不寫，同 Compositor `IO/ImageExporter.swift` 的 `quickLookImages`）。本份只負責把它放在第二個 entry、讀的時候拿出來。
 - **和 storage 17 不一樣的地方**（都是小改，理由寫在這）：
   - `validateLikeCompositor(m)` 不收 `assetNames`：檔名規則（`<ID>.png`）不需要知道 zip 裡有什麼；「圖不存在」由 `readProject` / `writeProject` 回 `missing_asset`。這樣 `readHead`（拿不到 entry 清單）也能做完整驗證。
@@ -119,15 +131,16 @@ blocker：01 scaffold；model：sonnet。可和 Phase 02、03 平行的部分：
 
 1. **`./comp` subpath 骨架、錯誤型別、CRC-32。**
    - `pnpm add fflate@^0.8.3 zod@^4.4.3`（已在 `package.json` 的 `dependencies` 就不動）。
-   - `package.json`：`exports` 加 `"./comp": { "types": "./dist/comp/index.d.ts", "import": "./dist/comp/index.js" }`（照 01 寫 `"."` 那條的形狀；01 只建 `.` 與 `./styles.css`）；`scripts.check` 在 `tsc --noEmit` 後面加 `&& tsc -p src/comp/tsconfig.json`。
+   - `package.json`：`exports` 加 `"./comp": { "types": "./dist/comp/index.d.ts", "default": "./dist/comp/index.js" }`（條件寫 `"default"`，照 01 的 `"."` 那條，不寫 `"import"`；01 只建 `.` 與 `./styles.css`）。不改 `scripts`（01 的 `typecheck` 已含 `tsc --noEmit -p tsconfig.comp.json`，`check` 會跑到它）。
    - `tsdown.config.ts`：`entry` 加 `{ "comp/index": "src/comp/index.ts" }`（照 01 的 entry 寫法，輸出到 `dist/comp/index.js` 與 `.d.ts`）。
-   - `src/comp/tsconfig.json`：`extends: "../../tsconfig.json"`，`compilerOptions: { "lib": ["ES2023"], "types": ["node"], "noEmit": true }`，`include: ["./**/*.ts"]`。沒有 DOM lib，用到 `document`、`ImageData`、`OffscreenCanvas` 會編不過。
-   - `.oxlintrc.json` 的 `overrides` 加一條 `files: ["src/comp/**"]`：`no-restricted-imports` 擋 `react`、`react-dom`、`react/*`、`node:*`、`../*`（`src/comp/` 是平的，`../` 一定是出了這個目錄；`./fixtures/*` 不受影響）；`no-restricted-globals` 擋 `window`、`document`、`self`、`Buffer`、`process`、`createImageBitmap`、`OffscreenCanvas`、`Image`、`ImageData`。緊接著再加一條 `files: ["src/comp/**/*.test.ts"]`，把這兩條規則設成 `"off"`（測試可以用 `node:fs`、`node:child_process` 產生與檢查 fixture；後面的 override 蓋過前面的）。
+   - `pnpm add -D @types/node@^22`（已存在就不動）；`tsconfig.comp.json`（repo 根，01 建）的 `compilerOptions` 加 `"types": ["node"]`（01 的基底 `tsconfig.json` 是 `types: []`，沒有它 `Blob`、`TextEncoder`、`crypto`、測試檔的 `node:*` 都編不過）。`lib` 維持 01 的 `["ES2022"]`、沒有 DOM，用到 `document`、`ImageData`、`OffscreenCanvas` 會編不過。不建 `src/comp/tsconfig.json`。
+   - `.oxlintrc.json`（01 建）的 `overrides` 尾端加一條 `files: ["src/comp/**"]`：`no-restricted-imports` 擋 `react`、`react-dom`、`react/*`、`node:*`、`../*`、`@anyknown/*`（這條 override 會蓋掉 01 的 `src/**` 那條同名規則，所以 `@anyknown/*` 要重列）（`src/comp/` 是平的，`../` 一定是出了這個目錄；`./fixtures/*` 不受影響）；`no-restricted-globals` 擋 `window`、`document`、`self`、`Buffer`、`process`、`createImageBitmap`、`OffscreenCanvas`、`Image`、`ImageData`。緊接著再加一條 `files: ["src/comp/**/*.test.ts"]`，把這兩條規則設成 `"off"`（測試可以用 `node:fs`、`node:child_process` 產生與檢查 fixture；後面的 override 蓋過前面的）。
    - `src/comp/errors.ts`：契約裡的 `ProjectErrorCode`、`ProjectError`（`name = "ProjectError"`，`message` = `code` 加上 `details.join("; ")`，`details` 預設 `[]`）。
    - `src/comp/crc32.ts`：`crc32(bytes: Uint8Array, seed = 0): number`，標準 CRC-32（多項式 0xEDB88320，查表，表在 module 載入時算一次），回無號 32 位元；`seed` 讓呼叫端分段累算（`crc32(b, crc32(a)) === crc32(a + b)`）。
    - `src/comp/index.ts`：匯出 `ProjectError`、`type ProjectErrorCode`。
+   - `THIRD_PARTY_NOTICES.md`（01 建）：`## Runtime dependencies` 段（把 `None yet.` 換掉；已有別的依賴就接在後面）加 `fflate` 與 `zod` 各一行（套件名逐字出現，格式照該檔已有的行：名稱、版本、授權 MIT、來源 URL）；`## Code copied into this package` 段加 Compositor 一條（repo `https://github.com/robbietilton/Compositor`、commit `11d8d7a`、抄的路徑 `IO/ProjectStore.swift`、`IO/ImageExporter.swift`、`Document/*.swift` 的規則、MIT 全文、`Copyright (c) 2026 Wonder Assembly LLC`）。
    測試：`src/comp/crc32.test.ts`：`"123456789"` → `0xCBF43926`；空陣列 → 0；分段累算等於整段；`src/comp/errors.test.ts`：`code`、`details`、`instanceof Error`、`message` 含 details。
-   verify：`pnpm test src/comp && pnpm check && pnpm build && node --input-type=module -e "import { ProjectError } from '@anyknown/file-viewer/comp'; const e = new ProjectError('invalid', ['x']); if (e.code !== 'invalid') process.exit(1)"`
+   verify：`pnpm test src/comp && pnpm check && pnpm check:licenses && pnpm build && node --input-type=module -e "import { ProjectError } from '@anyknown/file-viewer/comp'; const e = new ProjectError('invalid', ['x']); if (e.code !== 'invalid') process.exit(1)"`
    commit：`feat(comp-format): add the ./comp subpath with project errors and crc32`
 
 2. **寫 zip。** `src/comp/zip-write.ts`：
@@ -285,12 +298,12 @@ blocker：Phase 01、02、03 全部；model：sonnet。
    verify：`pnpm test src/comp/summary.test.ts && pnpm check`
    commit：`feat(comp-format): summarize the layer tree for models with a golden fixture`
 
-4. **Node 端到端與入口檢查。** `scripts/smoke-comp.mjs`：從 `@anyknown/file-viewer/comp`（套件自我參照，需要先 `pnpm build`）import `fromImage`、`writeProject`、`readProject`、`readHead`、`summarize`、`stringifyManifest`；產生 2×2 的專案、寫出、`readProject`、用 `bytes.subarray` 包成 `ReadRange` 跑 `readHead`、印出 `summarize(…, "smoke.comp.zip")`；任何一步結果不符就 `process.exit(1)`。`package.json` 的 `scripts` 加 `"smoke:comp": "node scripts/smoke-comp.mjs"`；CI 不另加步驟（01 的 `verify:pack` 已 resolve 每條 exports）。另外確認 `scripts/check-entry-deps.mjs`（01）在 `dist/index.js` 的靜態 import 圖裡看不到 `fflate`、`zod`；看得到就是有人從 `.` 入口 import 了 `src/comp/`，修掉那個 import。
+4. **Node 端到端與入口檢查。** `scripts/smoke-comp.mjs`：從 `@anyknown/file-viewer/comp`（套件自我參照，需要先 `pnpm build`）import `fromImage`、`writeProject`、`readProject`、`readHead`、`summarize`、`stringifyManifest`；產生 2×2 的專案、寫出、`readProject`、用 `bytes.subarray` 包成 `ReadRange` 跑 `readHead`、印出 `summarize(…, "smoke.comp.zip")`；任何一步結果不符就 `process.exit(1)`。不改 `package.json` 的 `scripts`，直接用 `node scripts/smoke-comp.mjs` 跑；CI 不另加步驟（01 的 `verify:pack` 已 resolve 每條 exports）。另外確認 `scripts/check-entry-deps.mjs`（01）在 `dist/index.js` 的靜態 import 圖裡看不到 `fflate`、`zod`；看得到就是有人從 `.` 入口 import 了 `src/comp/`，修掉那個 import。
    測試：無新的 vitest 檔；這一步的完成標準就是 smoke 在純 Node（沒有 jsdom、沒有 DOM 全域）跑過。
-   verify：`pnpm build && pnpm smoke:comp && pnpm check`
+   verify：`pnpm build && node scripts/smoke-comp.mjs && pnpm check`
    commit：`test(comp-format): smoke the ./comp subpath in plain node`
 
-phase 結尾的 verify：`pnpm test src/comp && pnpm check && pnpm build && pnpm smoke:comp`
+phase 結尾的 verify：`pnpm test src/comp && pnpm check && pnpm build && node scripts/smoke-comp.mjs`
 
 ## 之後再做
 

@@ -1,19 +1,20 @@
 # 04 markdown-excalidraw — `.md` 排版、` ```excalidraw ` 畫成圖、點圖編輯；`.excalidraw` 單檔同一套
 
-狀態：planned（2026-10-08；選型沿用 storage 11，2026-10-05 CEO / CTO 定）；blocker：03 viewer-core 全部（`FileViewer` 的分派與「編輯」切換點）；與 05 平行；model：見各 Phase；push：本 plan 做完一次。
+狀態：planned（2026-10-08；選型沿用 storage 11，2026-10-05 CEO / CTO 定）；blocker：03 viewer-core 全部（`bodies`、`editors`、`FileViewer` 的編輯模式）；與 05 平行；model：見各 Phase；push：本 plan 做完一次。
 
 這份從 storage `docs/plans/11-doc-viewer.md` 搬來，設計不重開。和 storage 11 不同的地方：
 
 - 路徑從 storage 的 `src/lib/`、`src/components/files/doc/` 改成本 repo 的 `src/markdown/`、`src/excalidraw/`、`src/viewer/`。
 - `saveText`（`files.list()` 確認舊檔還在 → 上傳 → `remove` → `reload` → `openPreview`）不在這裡。本套件只交出 `SaveRequest`，其餘都是宿主的事：**H1（storage 22 Phase 1）** 用 `onSave` 做 storage 11 第 5 步的 `saveText`，同一段也處理「舊檔已被別處刪掉 → toast、不上傳」。
-- Dialog / AlertDialog 從 shadcn 改成 `@base-ui/react`；樣式從 Tailwind token 改成 `--ak-*` 加 plain CSS（寫在 `src/styles.css`）。
+- Dialog / AlertDialog / Button / Spinner 用 02 的基本元件（`DiscardDialog`、`Button`、`Spinner`），不自己寫；樣式是 `--ak-*` 加 plain CSS（寫在 `src/styles.css`）。
+- 字串不傳 `copy` 物件，改用 02 的 `useT(markdownMessages)`、`useT(excalidrawMessages)`；「儲存」「取消」用 `common.*`，放棄修改的對話框用 `discard.*`。
 - 圖片多一條 `resolveImage` 回呼（00 §3）。storage 的做法是「圖片一律不載入」，現在變成本套件的預設值。
 - 字型改由本套件打包：`pnpm build` 把 Excalidraw 的字型複製進 `dist/excalidraw-assets/`，宿主從本套件複製這個目錄（理由見判斷）。
 - 走查（storage 11 第 6 步的 Story 6）換成本 repo 的 browser 測試和 `pnpm test:csp`。宿主各自的 e2e 由 H1 / H2 負責。
 
 ## 判斷
 
-- **Markdown 用 `react-markdown@10` + `remark-gfm` + `rehype-sanitize`，開 `skipHtml`，不裝 `rehype-raw`**（storage 11 §2）。輸出 React 元素、不走 `innerHTML`。`components` 直接把 excalidraw 區塊換成元件。
+- **Markdown 用 `react-markdown@10` + `remark-gfm` + `rehype-sanitize`，開 `skipHtml`，不裝 `rehype-raw`**（storage 11 §2）。輸出 React 元素、不走 `innerHTML`。`components` 直接把 excalidraw 區塊換成宿主給的元件。
 - **fence 用同一套 parser 先定位**（`unified` + `remark-parse` + `remark-gfm`）。交給 react-markdown 的是遮過的原文：每個 excalidraw 區塊的內容換成序號 `0`、`1`…（storage 11 §2）。內容一樣的兩張圖分得開，大段 JSON 也不用跑 markdown pipeline。
 - **存檔只改那一段**：`replaceFence` 只換內容行。開頭與收尾的 fence 標記、容器前綴（list 縮排、`> `）、換行符號、其他 byte 都不動（storage 11 §2）。
 - **讀的畫面不掛 Excalidraw 元件**：`exportToSvg` 的結果序列化成 `blob:` URL，放進 `<img>`。點圖才載入編輯器（storage 11 §2）。
@@ -34,40 +35,87 @@
   不給 `assetPath` 時就是 Excalidraw 的預設 CDN（esm.sh）。00 §3「本套件不發任何請求」的前提是宿主有給，05 的「接上你的 app」頁要寫清楚。
 - **Excalidraw 的 subset worker 不違反「不開 `blob:` worker」**：它是 `new Worker(new URL(import.meta.url), { type: "module" })` 開的同源 chunk（`subset-worker.chunk.js`）。開不起來時會退回主執行緒（`chunk-K2UTITRG.js` 的 `WorkerInTheMainChunkError` 分支）。
 - **Esc 交給 Excalidraw**（取消選取、離開工具），不拿來關編輯器；離開編輯器只能按「取消」鈕。storage 11 的「Esc 出來」是 shadcn Dialog 的行為，本套件不開 modal（00 §3「版面」），而且 Esc 在 Excalidraw 裡本來就有用途。
-- **`.md` 沒有頂列的「編輯」**：`kindOf` 對 `.md` 回 `edit: "markdown"`，但文字編輯是「之後」才做的事（00 §5）。v0.1 能編輯的只有圖，入口是點圖。所以 `edit === "markdown"` 時，03 的頂列「編輯」鈕不顯示。`.excalidraw` 照 03 的規則顯示頂列「編輯」。
-- **呈現元件只吃 props**：`MarkdownView`、`DiagramImage`、`DiagramEditor` 都不讀 03 的 context，文案用 `copy` 物件傳進來，所以 `./markdown`、`./excalidraw` 這兩個 subpath 可以單獨使用。接上 03 的工作只在 `src/viewer/markdown-body.tsx`、`src/viewer/excalidraw-body.tsx` 兩個檔裡做。
+- **`.md` 沒有頂列的「編輯」**：`markdown` 不在 `src/viewer/editors.ts` 登錄（00 §3「編輯器開關」），`kindOf` 對 `.md` 回 `edit: null`，頂列自然沒有「編輯」。v0.1 能編輯的只有圖，入口是點圖，由 `src/viewer/markdown-body.tsx` 自己開 `DiagramEditor`。`.excalidraw` 在 P03-2 登錄進 `editors`，頂列「編輯」由 03 提供。
+- **目錄依賴方向（00 §9）。** `src/markdown`、`src/excalidraw` 都只能 import `src/contract/`、`src/i18n/`、`src/primitives/`，彼此不 import，也不 import `src/viewer/`。所以 `MarkdownView` 不認得 Excalidraw：excalidraw 區塊由 `renderDiagram(fence)` 回呼畫（沒給時就畫成一般 code block，內容是原 JSON）。接上 Excalidraw 的工作只在 `src/viewer/markdown-body.tsx`、`src/viewer/excalidraw-body.tsx` 兩個檔裡做（00 §9 明列的例外）。
+- **每個 subpath 的元件自己包 `ViewerRoot`**（`MarkdownView`、`DiagramEditor`、`ExcalidrawFileEditor`；巢狀時 `ViewerRoot` 直接渲染 children，所以在 `FileViewer` 裡不會多一層）。`DiagramImage` 不需要 root（只吃 props）。`DiagramBlock` 只給 viewer 側用，不匯出，要在 `ViewerRoot` 裡面。
 - 不做（見「之後再做」）：在 UI 改 `.md` 文字、新建圖、相對路徑的圖片、程式碼上色。
 
 ## 契約
 
-只加不改 00 §3：
+**本 plan 擁有的符號**（00 §9 登記；其他 plan 用到時以這張表為準）：
 
-- `src/contract/image-resolver.ts`（新）：
-  ```ts
-  export type ImageResolution = string | { link: string } | null;
-  export type ImageResolver = (src: string, alt: string) => ImageResolution;
-  ```
-  `FileViewerProps["markdown"]` 的型別改成 `{ resolveImage?: ImageResolver }`。`ImageResolver` 只放寬了回傳型別，原本回 `string | null` 的宿主照樣能編譯。
-- `FileViewerProps` 加 `excalidraw?: { assetPath?: string }`。`assetPath` 是「裡面有 `fonts/` 的那個目錄」的 URL，例如 `"/excalidraw-assets/"`。
-- `src/index.ts` 再匯出 `ImageResolution`、`ImageResolver` 兩個型別。
-- `./markdown`（`src/markdown/index.ts`）：
-  - `MarkdownView`、`MarkdownViewProps`；
-  - `findFences`、`maskFences`、`replaceFence`、`Fence`；
-  - `MarkdownCopy`、`markdownCopy`。
-- `./excalidraw`（`src/excalidraw/index.ts`）：
-  - `DiagramImage`、`DiagramImageProps`；
-  - `DiagramEditor`、`DiagramEditorProps`、`DiagramEditorCopy`、`diagramEditorCopy`；
-  - `parseScene`、`setAssetPath`。
-- 簽名：
-  ```ts
-  type Fence = { index: number; start: number; end: number; json: string }; // start/end：整個 code block 在原文的 offset（mdast position）
-  type MarkdownViewProps = { source: string; theme: "light" | "dark"; copy: MarkdownCopy;
-    resolveImage?: ImageResolver; assetPath?: string; onEditDiagram?: (fence: Fence) => void; editLabel?: string };
-  type DiagramImageProps = { json: string; theme: "light" | "dark"; assetPath?: string; alt: string; broken: ReactNode }; // broken：export 失敗時顯示的內容
-  type DiagramEditorProps = { json: string; theme: "light" | "dark"; locale: Locale; copy: DiagramEditorCopy;
-    assetPath?: string; onSave: (json: string) => Promise<void>; onClose: () => void; onDirtyChange?: (dirty: boolean) => void };
-  ```
-- i18n key（en / zh-TW；寫進 02 的 `Messages`；02 若用扁平 key，就拿下面這串文字直接當 key）：
+| 符號 | 檔 | 步驟 |
+| --- | --- | --- |
+| `ImageResolution`、`ImageResolver` | `src/contract/image-resolver.ts`；`src/index.ts` 再匯出型別 | P01-2 |
+| `FileViewerProps["markdown"]` 改成 `{ resolveImage?: ImageResolver }` | `src/contract/props.ts` | P01-2 |
+| `markdownMessages`、`MarkdownKey`、`MarkdownMessages`（key 前綴 `markdown.*`） | `src/markdown/messages.ts`；`src/i18n/messages.ts` 的 `Messages` 加 `& MarkdownMessages` | P01-2 |
+| `excalidrawMessages`、`ExcalidrawKey`、`ExcalidrawMessages`（key 前綴 `excalidraw.*`） | `src/excalidraw/messages.ts`；`Messages` 加 `& ExcalidrawMessages` | P02-2 |
+| `./markdown` 的 `exports` 與 `tsdown.config.ts` 的 `entry` | `package.json`、`tsdown.config.ts`、`src/markdown/index.ts` | P01-1 |
+| `./excalidraw` 的 `exports` 與 `entry` | `package.json`、`tsdown.config.ts`、`src/excalidraw/index.ts` | P02-2 |
+| `bodies.markdown`、`bodies.excalidraw` | `src/viewer/bodies.tsx` | P01-4、P02-3 |
+| `editors.excalidraw` → `ExcalidrawFileEditor(props: EditorProps)` | `src/viewer/editors.ts`、`src/excalidraw/file-editor.tsx` | P03-2 |
+
+**用到別的 plan 的符號**（出處以 00 §9 為準；實作時直接從這些檔 import，不經 `src/index.ts`）：
+
+| 符號 | 檔 | 簽名 | 擁有 |
+| --- | --- | --- | --- |
+| `FileViewerProps`（含 `excalidraw?: { assetPath?: string }`、`onSave`、`onDirtyChange`、`onEditingChange`）、`CommonProps`、`Theme` | `src/contract/props.ts` | 00 §3 | 02 P03-2；`onEditingChange` 03 第 8 步 |
+| `EditorProps` | `src/contract/editor.ts` | `CommonProps & { onSave: SaveHandler; onClose: () => void; onDirtyChange?; maxOutputBytes?; assets? }` | 03 第 8 步 |
+| `SaveRequest`、`SaveHandler` | `src/contract/save.ts` | 00 §3 | 02 P02-4 |
+| `splitName`、`suggestedName` | `src/contract/save.ts` | `splitName(name): { stem; ext }`（`ext` 含點）；`suggestedName(original: string, ext: string, mode: SaveMode): string` | 02 P02-4 |
+| `ByteSource`、`FileRef`、`blobSource`、`bytesSource`、`readBlob` | `src/contract/byte-source.ts` | `readBlob(source: ByteSource, opts: { type: string; signal?: AbortSignal }): Promise<Blob>` | 02 P02-2 |
+| `mimeOf` | `src/contract/kinds.ts` | `mimeOf(file: { name: string; mime?: string }): string` | 02 P02-3 |
+| `ViewerError`、`toViewerError`、`isAbortError` | `src/contract/errors.ts` | `new ViewerError(code, { message?, cause? })`；`toViewerError(e: unknown, code: ViewerErrorCode): ViewerError`；`isAbortError(e: unknown): boolean` | 02 P02-1 |
+| `Messages`、`MessageTable`、`Locale`、`commonMessages` | `src/i18n/messages.ts` | `MessageTable<K> = Record<Locale, Record<K, string>>`；`commonMessages: MessageTable<CommonKey>`（含 `common.save`、`common.cancel`、`common.close`、`common.loading`、`discard.*`、`error.<code>`） | 02 P03-1 |
+| `useT` | `src/i18n/use-t.ts` | `useT<K extends string>(table: MessageTable<K>): (key: K, vars?: Vars) => string`（`Vars = Record<string, string \| number>`，`{name}` 由它代入） | 02 P03-3 |
+| `ViewerRoot` | `src/primitives/root.tsx` | `ViewerRoot(props: Omit<CommonProps, "file"> & { className?: string; children: ReactNode })`；巢狀時直接渲染 children | 02 P03-3 |
+| `useRoot` | `src/primitives/root-context.ts` | `useRoot(): { locale; overrides; limits; theme: Theme \| undefined; portal: HTMLElement \| null; report(e: ViewerError): void }`；在 `ViewerRoot` 外丟 Error | 02 P03-3 |
+| `Button` | `src/primitives/button.tsx` | `Button(props: ComponentProps<"button"> & { variant?: "primary" \| "secondary" \| "ghost" \| "danger"; icon?: ReactNode })` | 02 P04-1 |
+| `Spinner` | `src/primitives/spinner.tsx` | `Spinner(props: { label: string })`（`role="status"`、class `fv-spinner`） | 02 P04-1 |
+| `DiscardDialog` | `src/primitives/dialog.tsx` | `DiscardDialog(props: { open: boolean; onOpenChange(open: boolean): void; onDiscard(): void })`；字串固定用 `discard.*`（en：`Discard your changes?`、`Discard`、`Keep editing`） | 02 P04-3 |
+| `FileViewer` | `src/viewer/file-viewer.tsx` | `FileViewer(props: FileViewerProps): JSX.Element` | 03 第 6 步 |
+| `bodies`、`BodyProps` | `src/viewer/bodies.tsx` | `bodies: Record<ViewKind, ComponentType<BodyProps>>`；`BodyProps = { file: FileRef; loaded: Loaded; fail(e: ViewerError): void; viewer: FileViewerProps }` | 03 第 5 步 |
+| `Loaded` | `src/viewer/load.ts` | `{ blob: Blob; url: string \| null; text: string \| null }`；`markdown`、`excalidraw` 時 `text` 是字串 | 03 第 3 步 |
+| `editors`、`EditorRegistry` | `src/viewer/editors.ts` | 每行 `<kind>: lazy(() => import("../<dir>/index").then((m) => ({ default: m.<Editor> })))` | 03 第 8 步 |
+
+**本 plan 的型別與簽名：**
+
+```ts
+// src/contract/image-resolver.ts
+export type ImageResolution = string | { link: string } | null;
+export type ImageResolver = (src: string, alt: string) => ImageResolution;
+
+// src/markdown/fences.ts
+// start/end：整個 code block 在原文的 offset（mdast position）
+export type Fence = { index: number; start: number; end: number; json: string };
+
+// src/markdown/markdown-view.tsx
+export type MarkdownViewProps = Omit<CommonProps, "file"> & {
+  source: string;
+  resolveImage?: ImageResolver;
+  renderDiagram?: (fence: Fence) => ReactNode; // 沒給：excalidraw 區塊畫成一般 code block，內容是原 JSON
+};
+
+// src/excalidraw/diagram-image.tsx
+export type DiagramImageProps = {
+  json: string; theme: Theme; assetPath?: string; alt: string;
+  loading: ReactNode; // 圖還沒好時顯示
+  broken: ReactNode;  // export 失敗時顯示
+};
+
+// src/excalidraw/diagram-editor.tsx
+export type DiagramEditorProps = Omit<CommonProps, "file"> & {
+  json: string; assetPath?: string;
+  onSave: (json: string) => Promise<void>; onClose: () => void; onDirtyChange?: (dirty: boolean) => void;
+};
+
+// src/excalidraw/file-editor.tsx
+export function ExcalidrawFileEditor(props: EditorProps): JSX.Element;
+```
+
+- `./markdown`（`src/markdown/index.ts`）：`MarkdownView`、`MarkdownViewProps`、`findFences`、`maskFences`、`replaceFence`、`Fence`。
+- `./excalidraw`（`src/excalidraw/index.ts`）：`DiagramImage`、`DiagramImageProps`、`DiagramEditor`、`DiagramEditorProps`、`ExcalidrawFileEditor`、`parseScene`、`setAssetPath`。
+- i18n key（en / zh-TW；表在 `src/markdown/messages.ts`、`src/excalidraw/messages.ts`；用 `useT` 代入 `{alt}`、`{host}`）：
 
   | key | en | zh-TW |
   | --- | --- | --- |
@@ -75,42 +123,19 @@
   | `markdown.imageUntitled` | `Image` | `圖片` |
   | `markdown.imageLink` | `{alt} ({host})` | `{alt}（{host}）` |
   | `markdown.imageLinkTitle` | `Open image on {host}` | `在 {host} 開啟圖片` |
-  | `diagram.loading` | `Loading diagram…` | `載入圖…` |
-  | `diagram.broken` | `This diagram can't be read` | `這張圖讀不出來` |
-  | `diagram.edit` | `Edit diagram` | `編輯這張圖` |
-  | `diagram.save` | `Save` | `儲存` |
-  | `diagram.cancel` | `Cancel` | `取消` |
-  | `diagram.discardTitle` | `Discard your changes?` | `放棄這次的修改？` |
-  | `diagram.discard` | `Discard` | `放棄` |
-  | `diagram.keepEditing` | `Keep editing` | `繼續編輯` |
+  | `excalidraw.loading` | `Loading diagram…` | `載入圖…` |
+  | `excalidraw.broken` | `This diagram can't be read` | `這張圖讀不出來` |
+  | `excalidraw.edit` | `Edit diagram` | `編輯這張圖` |
 
-  字串裡的 `{alt}`、`{host}` 由本 plan 的程式用 `replaceAll` 代入，不依賴 02 有沒有格式化函式。
+  「儲存」「取消」「關閉」「載入中」用 `common.save`、`common.cancel`、`common.close`、`common.loading`；放棄修改的對話框用 02 的 `DiscardDialog`。
 - 存檔的 `SaveRequest`（00 §3）：
-  - `.md`：`{ blob: new Blob([newSource], { type: "text/markdown" }), mime: "text/markdown", ext: <原檔副檔名，".md" 或 ".markdown">, mode: "replace", suggestedName: file.name }`；
-  - `.excalidraw`：`{ blob, mime: "application/vnd.excalidraw+json", ext: ".excalidraw", mode: "replace", suggestedName: file.name }`。
-- 依賴（新增到 `dependencies`）：
+  - `.md`：`{ blob: new Blob([newSource], { type: "text/markdown" }), mime: "text/markdown", ext: splitName(file.name).ext, mode: "replace", suggestedName: suggestedName(file.name, ext, "replace") }`；
+  - `.excalidraw`：`{ blob, mime: "application/vnd.excalidraw+json", ext: ".excalidraw", mode: "replace", suggestedName: suggestedName(file.name, ".excalidraw", "replace") }`。
+- 依賴（新增到 `dependencies`；每個 `pnpm add` 的同一個 commit 都要在 `THIRD_PARTY_NOTICES.md` 的 `## Runtime dependencies` 加一行 `- <套件名> — MIT — <repo 網址>`，第一次加時把那段的 `None yet.` 換掉，否則 `pnpm check:licenses` 會紅）：
   - `react-markdown@^10.1.0`、`remark-gfm@^4.0.1`、`rehype-sanitize@^6.0.0`、`unified@^11.0.5`、`remark-parse@^11.0.0`；
   - `@excalidraw/excalidraw@0.18.1`（確切版本）。
 
-**接 01–03 的介面**（假設前面的 plan 已經提供；實際名稱不同時，以 repo 裡的檔為準，用步驟裡寫的 grep 找到對應位置）：
-
-- 01：
-  - `pnpm test`（jsdom，檔名 `*.test.ts(x)`）與 `pnpm test:browser`（Chromium，檔名 `*.browser.test.ts(x)`）；
-  - devDependency 裡有 `playwright`（vitest browser 的 provider）；
-  - `scripts/check-entry-deps.mjs` 的黑名單含 `@excalidraw`、`react-markdown`；
-  - `THIRD_PARTY_NOTICES.md` 有「runtime 依賴」一段；
-  - `package.json` 的 exports 已經為 `./markdown`、`./excalidraw` 留了位置，指向 `src/markdown/index.ts`、`src/excalidraw/index.ts` 的 build 產物；
-  - `src/styles.css` 是單一 plain CSS 檔。
-- 02：
-  - `src/contract/` 定義 `FileViewerProps`（含 `markdown?.resolveImage`）；
-  - `src/i18n/messages.ts` 的 `Messages` 型別，`src/i18n/en.ts`、`src/i18n/zh-TW.ts` 兩份內容，以及一個 key 對齊測試（在 `src/i18n/`）；
-  - `Locale` 型別；
-  - `src/primitives/button.tsx` 的 `Button`，接受一般 `<button>` 的 props。
-- 03：
-  - `src/viewer/` 對 `ViewKind` 做 switch 的分派元件；`case "markdown"` 和 `case "excalidraw"` 先當 text 顯示；
-  - 整檔讀取後交給 text 分支一個 `Blob`；
-  - 一個 viewer context，帶 `messages`、`locale`、`theme`（可能是 undefined）和宿主的 props；
-  - 頂列「編輯」鈕的條件（`onSave` 加上 `kind.edit`），以及編輯模式時對 `EditKind` 做 switch。
+**測試環境**（01 已提供）：`pnpm test`（jsdom，`*.test.ts(x)`）、`pnpm test:browser`（Chromium，`*.browser.test.ts(x)`）、`playwright` devDependency、`pnpm check`（含 `check:entry`，`scripts/check-entry-deps.mjs` 的黑名單含 `@excalidraw`、`react-markdown`、`remark-`、`rehype-`、`unified`）、`pnpm check:licenses`、`pnpm verify:pack`。`src/styles.css` 是單一 plain CSS 檔，每份 plan 在檔尾加一段 `/* == <area> (NN) == */`。
 
 ## 形式
 
@@ -132,15 +157,16 @@
   - Excalidraw 的選單裡沒有開檔、匯出、存檔、存成圖片、切換主題這幾項。
   - 存檔中：「儲存」轉成 spinner，兩顆鈕都停用。
   - 存檔失敗：頂列左側顯示 `error.message`，編輯器留在原地。
-  - 改過沒存就按「取消」：跳出 AlertDialog「放棄這次的修改？」，選項是「繼續編輯」和「放棄」。
+  - 改過沒存就按「取消」：跳出 02 的 `DiscardDialog`「放棄修改？」，選項是「繼續編輯」和「放棄修改」。
   - 存好之後回到文件，focus 停在同一張圖（同一個 `index`）。
 
 ## Phase 01 — Markdown 排版
 
 blocker：03 全部；model：sonnet。
 
-1. **fence 純函式。**
+1. **fence 純函式與 `./markdown` 出口。**
    - `pnpm add remark-parse@^11.0.0 remark-gfm@^4.0.1 unified@^11.0.5`。
+   - `THIRD_PARTY_NOTICES.md`：`## Runtime dependencies` 底下（把 `None yet.` 換掉）加三行：`- remark-parse — MIT — https://github.com/remarkjs/remark`、`- remark-gfm — MIT — https://github.com/remarkjs/remark-gfm`、`- unified — MIT — https://github.com/unifiedjs/unified`。
    - 新檔 `src/markdown/fences.ts`，型別 `Fence = { index: number; start: number; end: number; json: string }`。
    - `findFences(source: string): Fence[]`：
      - 用 `unified().use(remarkParse).use(remarkGfm).parse(source)` 走整棵 mdast（list、blockquote 裡的也要），收集 `type === "code"` 且 `lang === "excalidraw"` 的節點；
@@ -151,6 +177,8 @@ blocker：03 全部；model：sonnet。
      - 換行符號沿用開頭 fence 那一行的結尾（`\r\n` 或 `\n`）。
      - `fence` 以外的 byte 一個都不動。
    - `maskFences(source: string, fences: Fence[]): string`：從最後一個 fence 往前，逐一 `replaceFence(source, f, String(f.index))`。
+   - 新檔 `src/markdown/index.ts`：`export { findFences, maskFences, replaceFence } from "./fences"; export type { Fence } from "./fences";`。
+   - `package.json` 的 `exports` 加 `"./markdown": { "types": "./dist/markdown/index.d.ts", "default": "./dist/markdown/index.js" }`；`tsdown.config.ts` 的 `entry` 加 `"markdown/index": "src/markdown/index.ts"`。
    - 測試 `src/markdown/fences.test.ts`，案例：
      - 沒有 fence 回 `[]`；
      - 兩個 fence 的 `index` 是 0、1，`json` 正確；
@@ -164,24 +192,26 @@ blocker：03 全部；model：sonnet。
      - 兩段內容相同的 fence 各自替換，互不影響；
      - 替換後再跑一次 `findFences`：被換的那段 `json` 等於新內容，其他 fence 的原文 byte 不變，fence 以外的原文也不變；
      - `maskFences` 之後再跑 `findFences`，`json` 依序是 `"0"`、`"1"`。
-   - verify：`pnpm test src/markdown/fences.test.ts`
+   - verify：`pnpm test src/markdown/fences.test.ts && pnpm build && test -f dist/markdown/index.js && pnpm verify:pack && pnpm check:licenses`
    - commit：`feat(markdown-excalidraw): locate, mask and replace excalidraw fences`
 
-2. **圖片的宿主規則。**
-   - `pnpm add react-markdown@^10.1.0 rehype-sanitize@^6.0.0`。
+2. **圖片的宿主規則與字串。**
+   - `pnpm add react-markdown@^10.1.0 rehype-sanitize@^6.0.0`；`THIRD_PARTY_NOTICES.md` 加 `- react-markdown — MIT — https://github.com/remarkjs/react-markdown`、`- rehype-sanitize — MIT — https://github.com/rehypejs/rehype-sanitize`。
    - 新檔 `src/contract/image-resolver.ts`：`ImageResolution`、`ImageResolver`，形狀見契約。
-   - 02 定義 `FileViewerProps` 的那個檔（`grep -rn "resolveImage" src/contract`）把 `markdown` 欄位改成 `{ resolveImage?: ImageResolver }`。`src/index.ts` 加上 `export type { ImageResolution, ImageResolver } from "./contract/image-resolver"`。
-   - 新檔 `src/markdown/copy.ts`：
-     - `MarkdownCopy = { image: string; imageUntitled: string; imageLink: string; imageLinkTitle: string; diagramLoading: string; diagramBroken: string }`；
-     - `markdownCopy(messages: Messages): MarkdownCopy`，從 02 的 `Messages`（`src/i18n/messages.ts`）取出契約表裡的 `markdown.*` 四個 key，以及 `diagram.loading`、`diagram.broken`。
-   - 契約表的 `markdown.*`、`diagram.loading`、`diagram.broken` 加進 `src/i18n/messages.ts` 的型別、`src/i18n/en.ts` 和 `src/i18n/zh-TW.ts`。
-   - 新檔 `src/markdown/sanitize-schema.ts`：`markdownSchema`，就是 `rehype-sanitize` 的 `defaultSchema` 再加上 `protocols: { ...defaultSchema.protocols, src: null }`。
+   - `src/contract/props.ts`（02 定義 `FileViewerProps` 的檔）：`import type { ImageResolver } from "./image-resolver"`，把 `markdown` 欄位改成 `markdown?: { resolveImage?: ImageResolver }`。`src/index.ts` 加 `export type { ImageResolution, ImageResolver } from "./contract/image-resolver"`。
+   - 新檔 `src/markdown/messages.ts`（形狀照 02 契約 i18n 段）：
+     - `const en = { "markdown.image": "[Image: {alt}]", "markdown.imageUntitled": "Image", "markdown.imageLink": "{alt} ({host})", "markdown.imageLinkTitle": "Open image on {host}" } satisfies Record<string, string>`；
+     - `export type MarkdownKey = keyof typeof en`；`export type MarkdownMessages = Record<MarkdownKey, string>`；
+     - `export const markdownMessages: MessageTable<MarkdownKey> = { en, "zh-TW": { … } }`，zh-TW 照契約表；`MessageTable` 從 `src/i18n/messages.ts` `import type`。
+   - `src/i18n/messages.ts`：`import type { MarkdownMessages } from "../markdown/messages"`，`Messages` 型別的最後加 `& MarkdownMessages`。
+   - 新檔 `src/markdown/sanitize-schema.ts`：`markdownSchema`，就是 `rehype-sanitize` 的 `defaultSchema` 再加上 `protocols: { ...defaultSchema.protocols, src: null }`（型別 `Schema` 也從 `rehype-sanitize` import）。
    - 新檔 `src/markdown/in-link.ts`：`InLinkContext = createContext(false)`。
-   - 新檔 `src/markdown/markdown-image.tsx`：`MarkdownImage({ src, alt, resolveImage, copy })`。`alt` 去掉空白後是空的，就改用 `copy.imageUntitled`。依 `resolveImage?.(src, alt) ?? null` 的結果顯示：
+   - 新檔 `src/markdown/markdown-image.tsx`：`MarkdownImage({ src, alt, resolveImage }: { src: string; alt: string; resolveImage?: ImageResolver })`，內部 `const t = useT(markdownMessages)`（`src/i18n/use-t.ts`）。`alt` 去掉空白後是空的，就改用 `t("markdown.imageUntitled")`。依 `resolveImage?.(src, alt) ?? null` 的結果顯示：
      - 字串：`<img className="fv-md-img" src={結果} alt={alt} loading="lazy">`。
-     - `{ link }`：先過 `defaultUrlTransform(link)`（從 `react-markdown` import），結果是空字串就改走 `null` 那條。否則 `host = new URL(link).host`，label 是 `copy.imageLink` 代入 alt 與 host 後的字串。如果 `use(InLinkContext)` 是 true（這張圖在連結裡），只輸出 `<span>{label}</span>`；不是的話輸出 `<a href={link} title={copy.imageLinkTitle 代入 host} target="_blank" rel="noopener noreferrer">{label}</a>`。
-     - `null`：`<span className="fv-md-img-alt">{copy.image 代入 alt}</span>`。
-   - 測試 `src/markdown/markdown-image.test.tsx`，用 jsdom 直接 render 元件，案例：
+     - `{ link }`：先過 `defaultUrlTransform(link)`（從 `react-markdown` import），結果是空字串就改走 `null` 那條。否則 `host = new URL(link).host`，label 是 `t("markdown.imageLink", { alt, host })`。如果 `use(InLinkContext)` 是 true（這張圖在連結裡），只輸出 `<span>{label}</span>`；不是的話輸出 `<a href={link} title={t("markdown.imageLinkTitle", { host })} target="_blank" rel="noopener noreferrer">{label}</a>`。
+     - `null`：`<span className="fv-md-img-alt">{t("markdown.image", { alt })}</span>`。
+   - 測試 `src/markdown/messages.test.ts`：en 與 zh-TW 的 key 集合相同；每個 key 都以 `markdown.` 開頭；`translate(markdownMessages, "zh-TW", {}, "markdown.image", { alt: "x" })`（`src/i18n/messages.ts`）等於 `[圖片：x]`。
+   - 測試 `src/markdown/markdown-image.test.tsx`，用 jsdom 把元件包在 `<ViewerRoot>`（`src/primitives/root.tsx`）裡 render，案例：
      - 沒給 `resolveImage` 時顯示 `[Image: x]`，DOM 裡沒有 `img`；
      - 回字串時，`img` 的 src 就是那個字串；
      - 回 `{ link: "https://evil.example/a.png?d=1" }` 時，出現 `a`，文字是 `x (evil.example)`，`title` 是 `Open image on evil.example`；
@@ -189,57 +219,55 @@ blocker：03 全部；model：sonnet。
      - alt 是空的時用 `Image`；
      - 包在 `InLinkContext` 裡、回 `{ link }` 時只有文字、沒有 `a`；
      - `resolveImage` 收到的 `src`、`alt` 和傳進元件的完全一樣，包括 `data:`、`blob:`、`//host/x`。
-   - verify：`pnpm test src/markdown/markdown-image.test.tsx src/i18n`
+   - verify：`pnpm test src/markdown && pnpm typecheck && pnpm check:licenses`
    - commit：`feat(markdown-excalidraw): resolve markdown images through the host`
 
 3. **`MarkdownView`。**
-   - 新檔 `src/markdown/markdown-view.tsx`：`MarkdownView(props: MarkdownViewProps)`，props 見契約；`assetPath`、`onEditDiagram`、`editLabel` 這一步先收下但不使用。內容：
+   - 新檔 `src/raw.d.ts`：`declare module "*?raw" { const text: string; export default text; }`（測試用 `?raw` 讀 fixture）。
+   - 新檔 `src/markdown/markdown-view.tsx`：`MarkdownView(props: MarkdownViewProps)`，props 見契約。`const { source, resolveImage, renderDiagram, ...root } = props`，輸出 `<ViewerRoot {...root}><MarkdownContent source resolveImage renderDiagram /></ViewerRoot>`（`ViewerRoot` 來自 `src/primitives/root.tsx`）。`MarkdownContent`（同檔內部元件）：
      - `fences = useMemo(() => findFences(source), [source])`、`masked = useMemo(() => maskFences(source, fences), [source, fences])`，兩個函式都來自 `src/markdown/fences.ts`。
      - `<div className="fv-md"><article className="fv-prose"><Markdown …>` 渲染 `masked`。`Markdown` 是 `react-markdown` 的 default export。
      - `Markdown` 的參數：`remarkPlugins={[remarkGfm]}`、`rehypePlugins={[[rehypeSanitize, markdownSchema]]}`（`markdownSchema` 來自 `src/markdown/sanitize-schema.ts`）、`skipHtml`。
      - `urlTransform={(url, key) => key === "src" ? url : defaultUrlTransform(url)}`。
    - `components` 換掉三個元件：
      - `a`：`href` 是空字串或沒有 `href` 時輸出 `<span>{children}</span>`；否則輸出 `<a href target="_blank" rel="noopener noreferrer">`，children 外面包一層 `<InLinkContext value={true}>`（`src/markdown/in-link.ts`）。
-     - `img`：`<MarkdownImage src={String(src ?? "")} alt={String(alt ?? "")} resolveImage={props.resolveImage} copy={props.copy}>`（`src/markdown/markdown-image.tsx`）。
-     - `pre`：用 `node`（react-markdown 會傳 hast 節點）找第一個 `code` 子元素。它的 `properties.className` 含 `language-excalidraw` 時，讀它的文字（序號），到 `fences` 裡找對應的那一個，輸出 `<pre className="fv-md-diagram-pending">{fence.json}</pre>`（下一個 phase 才換成圖）。其他情況照一般的 `<pre>{children}</pre>` 輸出。
-   - `src/styles.css` 追加 `.fv-md`、`.fv-prose`（以及它下面的 h1–h4、p、ul、ol、`li:has(> input[type=checkbox])`、table、th、td、code、pre、blockquote、a、hr）、`.fv-md-img`、`.fv-md-img-alt`，只用 `--ak-*` 變數。
-   - 新檔 `src/markdown/index.ts`：匯出契約列的 `./markdown` 符號。這一步只有 `MarkdownView`、`MarkdownViewProps`、`findFences`、`maskFences`、`replaceFence`、`Fence`、`MarkdownCopy`、`markdownCopy`，而這就是 `./markdown` 的全部。
+     - `img`：`<MarkdownImage src={String(src ?? "")} alt={String(alt ?? "")} resolveImage={resolveImage}>`（`src/markdown/markdown-image.tsx`）。
+     - `pre`：用 `node`（react-markdown 會傳 hast 節點）找第一個 `code` 子元素。它的 `properties.className` 含 `language-excalidraw` 而且文字（序號）對得到 `fences` 裡的一個時：有 `renderDiagram` 就輸出 `renderDiagram(fence)`，沒有就輸出 `<pre className="fv-md-diagram-raw"><code>{fence.json}</code></pre>`。其他情況照一般的 `<pre>{children}</pre>` 輸出。
+   - `src/styles.css` 檔尾加一段 `/* == markdown (04) == */`：`.fv-md`、`.fv-prose`（以及它下面的 h1–h4、p、ul、ol、`li:has(> input[type=checkbox])`、table、th、td、code、pre、blockquote、a、hr）、`.fv-md-img`、`.fv-md-img-alt`、`.fv-md-diagram-raw`，只用 `--ak-*` 變數。
+   - `src/markdown/index.ts` 加 `export { MarkdownView } from "./markdown-view"; export type { MarkdownViewProps } from "./markdown-view";`。
    - 新 fixture `test/fixtures/doc-with-diagrams.md`，內容依序是：
      - h1、h2、一段文字；
      - 一個 GFM 表格、一個 task list（一項勾、一項沒勾）；
      - 一個 ` ```ts ` code block；
      - `![流量圖](https://evil.example/x.png)`；
-     - 第一個 ` ```excalidraw `：一個 rectangle 和一個寫著 `Hello` 的 text 元素。元素只寫 `id`、`type`、`x`、`y`、`width`、`height`（text 再加 `text`、`fontSize: 20`、`fontFamily: 5`），其餘欄位交給 Excalidraw 的 `restore` 補；
-     - 一個 list 項目，裡面是縮排的第二個 ` ```excalidraw `（一個 ellipse）；
+     - 第一個 ` ```excalidraw `，內容是這一行（元素只寫必要欄位，其餘交給 Excalidraw 的 `restore` 補）：`{"type":"excalidraw","version":2,"elements":[{"id":"r1","type":"rectangle","x":0,"y":0,"width":200,"height":100},{"id":"t1","type":"text","x":40,"y":40,"width":60,"height":25,"text":"Hello","fontSize":20,"fontFamily":5}],"appState":{},"files":{}}`；
+     - 一個 list 項目，裡面是縮排的第二個 ` ```excalidraw `，內容是這一行：`{"type":"excalidraw","version":2,"elements":[{"id":"e1","type":"ellipse","x":0,"y":0,"width":120,"height":80}],"appState":{},"files":{}}`；
      - 第三個 ` ```excalidraw `，內容是 `{not json`。
-   - 測試 `src/markdown/markdown-view.test.tsx`（jsdom），案例：
+   - 測試 `src/markdown/markdown-view.test.tsx`（jsdom；用 `import doc from "../../test/fixtures/doc-with-diagrams.md?raw"`），案例：
      - 讀 fixture 渲染後，有 `h1`、`table`、兩個 checkbox（一個 checked）、`pre code.language-ts`；
-     - 三個 `.fv-md-diagram-pending`，文字依序是三個 fence 的 JSON；
+     - 沒給 `renderDiagram` 時，三個 `.fv-md-diagram-raw`，文字依序是三個 fence 的 JSON；
+     - 給 `renderDiagram={(f) => <div data-testid="d">{f.index}</div>}` 時，三個 `d`，文字依序是 `0`、`1`、`2`；
      - 外部圖片沒給 resolver 時顯示 `[Image: 流量圖]`；
      - 原文含 `<script>alert(1)</script>` 和 `<img src=x onerror=alert(1)>` 時，DOM 裡既沒有 `script` 也沒有 `img`；
      - `[x](javascript:alert(1))` 渲染成 `span`，沒有 `a`；
      - 一般連結帶 `target="_blank"`、`rel="noopener noreferrer"`；
      - `![a](data:image/png;base64,AAAA)` 搭配回傳原 src 的 resolver，`img` 的 src 以 `data:` 開頭（證明 sanitize 沒清掉）；
      - `[![a](https://x.example/a.png)](https://y.example)` 搭配回 `{ link }` 的 resolver，DOM 裡只有一個 `a`。
-   - verify：`pnpm test src/markdown`
+   - verify：`pnpm test src/markdown && pnpm build && pnpm verify:pack`
    - commit：`feat(markdown-excalidraw): render markdown with react-markdown and sanitize`
 
 4. **`FileViewer` 開 `.md`。**
-   - 新檔 `src/viewer/markdown-body.tsx`：`MarkdownBody({ blob }: { blob: Blob })`，用 `export default` 匯出，方便 lazy 載入。
-     - 新檔 `src/viewer/blob-text.ts`：`blobText(blob: Blob): Promise<string>`，用 module 層的 `WeakMap<Blob, Promise<string>>` 快取 `blob.text()`。不能在 render 裡用 `useMemo` 產生 promise：元件 suspend 時 memo 不會保留，每次重試都會拿到新的 promise，變成無窮迴圈。
-     - 文字用 `use(blobText(blob))` 取得，不用 `useEffect`。
-     - 從 03 的 viewer context 取 `messages`、`theme` 和宿主 props（`grep -rn "createContext" src/viewer`）。
-     - 渲染 `<MarkdownView source theme={resolved} copy={markdownCopy(messages)} resolveImage={props.markdown?.resolveImage}>`，`MarkdownView` 和 `markdownCopy` 都從 `src/markdown/index.ts` import。
-     - `resolved` 的來源：03 已經有「`theme` 沒給就跟 OS」的 hook 就用它（`grep -rn "prefers-color-scheme" src`）。沒有的話，新檔 `src/viewer/use-resolved-theme.ts`，`useResolvedTheme(theme?: "light" | "dark"): "light" | "dark"`，用 `useSyncExternalStore` 訂閱 `matchMedia("(prefers-color-scheme: dark)")`。
-   - 03 的 view 分派元件（`grep -rn 'case "markdown"' src/viewer`）把 `case "markdown"` 改成 `<Suspense fallback={03 的 loading 狀態}><LazyMarkdownBody blob={…}/></Suspense>`，其中 `LazyMarkdownBody = lazy(() => import("./markdown-body"))`，`blob` 用 03 交給 text 分支的同一個。
-   - 03 顯示頂列「編輯」鈕的條件（`grep -rn "kind.edit\|\.edit &&\|edit !== null" src/viewer`）加上 `&& kind.edit !== "markdown"`。
-   - 測試：
-     - 03 的分派測試檔（同一個 grep 會找到的 `*.test.tsx`）加一案：`file` 是 `doc.md`、內容 `# Hi` 時，等到 `h1` 出現。
-     - 再加一案：有 `onSave` 的 `.md`，頂列沒有「Edit」鈕。
+   - 新檔 `src/viewer/markdown-body.tsx`，`export default function MarkdownBody({ loaded, viewer }: BodyProps)`（`BodyProps` 從 `./bodies` `import type`）：輸出 `<MarkdownView source={loaded.text ?? ""} resolveImage={viewer.markdown?.resolveImage} />`（`MarkdownView` 從 `src/markdown/index.ts` import）。不用 `locale` / `theme` 等 props：在 `FileViewer` 裡 `ViewerRoot` 是巢狀的，直接用外層的。
+   - `src/viewer/bodies.tsx`：加 `const MarkdownBody = lazy(() => import("./markdown-body"))`，把 `markdown: TextBody` 改成 `markdown: MarkdownBody`，並刪掉那行的註解 `// 04 換成 MarkdownView`。03 已經在 body 外包 `<Suspense>`（`file-viewer.tsx`），這裡不用再包。
+   - 03 的 `src/viewer/bodies.test.tsx` 有一案 `bodies.markdown === bodies.text`：用 `grep -n "bodies.markdown" src/viewer/bodies.test.tsx` 找到，把與 `bodies.markdown` 有關的斷言刪掉（其他斷言不動）。
+   - 測試 `src/viewer/markdown-body.test.tsx`（jsdom）。檔頭定義這個測試檔之後各步共用的輔助函式 `bodyProps(text: string, viewer: Partial<FileViewerProps> = {}): BodyProps`：`file = { name: "doc.md", source: blobSource(new Blob([text])) }`（`blobSource` 來自 `src/contract/byte-source.ts`）、`loaded = { blob: new Blob([text]), url: null, text }`、`fail = vi.fn()`、`viewer = { file, ...viewer }`。案例（元件包在 `<ViewerRoot>`）：
+     - `# Hi` 渲染出 `h1`；
+     - `viewer.markdown.resolveImage` 有被傳進去：`![a](x.png)` 搭配回 `"https://h.example/x.png"` 的 resolver，`img` 的 src 就是它。
+   - 測試 `src/viewer/markdown-open.test.tsx`（jsdom）：`render(<FileViewer file={{ name: "doc.md", source: blobSource(new Blob(["# Hi"])) }} onSave={vi.fn()} />)`（`FileViewer` 來自 `src/viewer/file-viewer.tsx`）。案例：`await screen.findByRole("heading", { name: "Hi" })`；頂列沒有名稱是 `Edit` 的 button（`kindOf` 對 `.md` 回 `edit: null`，因為 `markdown` 沒登錄）。
    - verify：`pnpm test src/viewer src/markdown && pnpm build && pnpm check`（`pnpm check` 裡的 `scripts/check-entry-deps.mjs` 會確認 `dist/index.js` 沒有靜態 import `react-markdown`）
    - commit：`feat(markdown-excalidraw): open markdown files in FileViewer`
 
-phase 結尾 verify：`pnpm test src/markdown src/viewer src/i18n && pnpm build && pnpm check`
+phase 結尾 verify：`pnpm test src/markdown src/viewer src/i18n && pnpm build && pnpm check && pnpm verify:pack && pnpm check:licenses`
 
 ## Phase 02 — 讀的圖與 `.excalidraw`
 
@@ -251,27 +279,27 @@ blocker：Phase 01；model：opus（字型路徑、CSP 測試架子要邊做邊�
      - 用 `createRequire(import.meta.url).resolve("@excalidraw/excalidraw")` 拿到 `.../dist/prod/index.js`，往上一層找到 `dist/prod/fonts/`；
      - 整個目錄用 `fs.cpSync(…, { recursive: true })` 複製到 `dist/excalidraw-assets/fonts/`；
      - 檢查 `dist/excalidraw-assets/fonts/Excalifont/` 至少有一個 `.woff2`，沒有就 `exit 1`。
-   - `package.json` 的 `build` 從原本的命令改成 `<原命令> && node scripts/copy-excalidraw-assets.mjs`。`files` 已經包含 `dist`，不用改。
+   - `package.json` 的 `build` 從 `tsdown` 改成 `tsdown && node scripts/copy-excalidraw-assets.mjs`。`files` 已經包含 `dist`，不用改。
    - 新檔 `src/excalidraw/asset-path.ts`：
      - 加 `declare global { interface Window { EXCALIDRAW_ASSET_PATH?: string | string[] } }`；
      - `setAssetPath(path: string | undefined): void`：`path` 有值而且和目前值不同時，寫進 `window.EXCALIDRAW_ASSET_PATH`；沒值時不動。
-   - 02 定義 `FileViewerProps` 的那個檔加 `excalidraw?: { assetPath?: string }`，旁邊用註解寫明「裡面有 `fonts/` 的目錄 URL」。
    - `THIRD_PARTY_NOTICES.md`：
-     - runtime 依賴段加 `@excalidraw/excalidraw 0.18.1 MIT`、`react-markdown`、`remark-gfm`、`rehype-sanitize`、`unified`、`remark-parse`（都是 MIT）；
-     - 新增一段「Bundled fonts（`dist/excalidraw-assets/fonts`，copied from @excalidraw/excalidraw 0.18.1）」，逐一列出九個字型家族：Excalifont、Virgil、Xiaolai、Nunito、Lilita One、Cascadia Code、Liberation Sans、Assistant 是 SIL OFL 1.1，Comic Shanns 是 MIT；附 OFL 1.1 全文。
+     - `## Runtime dependencies` 加 `- @excalidraw/excalidraw 0.18.1 — MIT — https://github.com/excalidraw/excalidraw`；
+     - 新增一段 `## Bundled fonts`（`dist/excalidraw-assets/fonts`，copied from @excalidraw/excalidraw 0.18.1），逐一列出九個字型家族：Excalifont、Virgil、Xiaolai、Nunito、Lilita One、Cascadia Code、Liberation Sans、Assistant 是 SIL OFL 1.1，Comic Shanns 是 MIT；附 OFL 1.1 全文。
    - 測試 `src/excalidraw/asset-path.test.ts`：
      - 呼叫 `setAssetPath("/a/")` 後，`window.EXCALIDRAW_ASSET_PATH` 是 `"/a/"`；
      - 再呼叫 `setAssetPath(undefined)` 時值不變。
-   - verify：`pnpm test src/excalidraw/asset-path.test.ts && pnpm build && ls dist/excalidraw-assets/fonts/Excalifont/*.woff2 && pnpm check`
+   - verify：`pnpm test src/excalidraw/asset-path.test.ts && pnpm build && ls dist/excalidraw-assets/fonts/Excalifont/*.woff2 && pnpm check && pnpm check:licenses`。若 `check:licenses` 只因為 `@excalidraw/excalidraw` 的遞移依賴授權失敗，停下來回報套件名與授權，不改 `scripts/check-licenses.mjs`。
    - commit：`feat(markdown-excalidraw): ship excalidraw fonts and asset path`
 
-2. **`parseScene` 與 `DiagramImage`。**
+2. **`parseScene`、`DiagramImage` 與 `./excalidraw` 出口。**
    - 新檔 `src/excalidraw/parse-scene.ts`，不 import Excalidraw：
      - `parseScene(json: string): { ok: true; scene: { elements: unknown[]; appState: Record<string, unknown>; files: Record<string, unknown> }; alt: string } | { ok: false }`；
      - `JSON.parse` 失敗、`type !== "excalidraw"`、或 `elements` 不是陣列時，回 `{ ok: false }`；
      - `appState`、`files` 沒有時補 `{}`；
      - `alt` = 前 10 個 `type === "text"` 而且 `isDeleted !== true` 的元素的 `text`，用空白串起來。
-   - 新檔 `src/excalidraw/diagram-image.tsx`：`DiagramImage({ json, theme, assetPath, alt })`，用 `export default` 匯出，方便 lazy 載入。
+   - 新檔 `src/excalidraw/messages.ts`（形狀同 `src/markdown/messages.ts`）：key `excalidraw.loading`、`excalidraw.broken`、`excalidraw.edit`，字串見契約表；匯出 `ExcalidrawKey`、`ExcalidrawMessages`、`excalidrawMessages: MessageTable<ExcalidrawKey>`。`src/i18n/messages.ts` 的 `Messages` 再加 `& ExcalidrawMessages`（`import type` 從 `../excalidraw/messages`）。
+   - 新檔 `src/excalidraw/diagram-image.tsx`：`DiagramImage({ json, theme, assetPath, alt, loading, broken }: DiagramImageProps)`，用 `export default` 匯出，方便 lazy 載入。
      - render 時先呼叫 `setAssetPath(assetPath)`（`src/excalidraw/asset-path.ts`）。這是冪等的全域賦值，一定要在 Excalidraw 讀字型之前做。
      - 狀態 `url: string | null`，以及 `failed: boolean`。
      - 用 `useCallback((img: HTMLImageElement | null) => { … return cleanup }, [json, theme])` 當 `<img ref>`，不用 `useEffect`。callback 依序做：
@@ -281,49 +309,51 @@ blocker：Phase 01；model：opus（字型路徑、CSP 測試架子要邊做邊�
        4. `new XMLSerializer().serializeToString(svg)` → `new Blob([…], { type: "image/svg+xml" })` → `URL.createObjectURL` → `setUrl`。
      - cleanup 設 `cancelled = true`，並對已經建立的 URL 做 `URL.revokeObjectURL`。
      - 任何一步 throw，就把 `failed` 設成 true。
-     - `<img className="fv-diagram-img" alt={alt} src={url ?? undefined}>`。url 還沒好時，旁邊顯示 `className="fv-spinner"` 的 spinner（02 有 spinner 樣式就用 02 的 class，`grep -rn "spinner" src/styles.css`）。`failed` 時改成渲染 `props.broken`。
-   - 新檔 `src/excalidraw/index.ts`：匯出 `DiagramImage`、`DiagramImageProps`、`parseScene`、`setAssetPath`。
-   - `src/styles.css` 追加 `.fv-diagram-img`（最寬 100%、高 auto、置中）、`.fv-diagram-broken`。
+     - 輸出 `<img className="fv-diagram-img" alt={alt} src={url ?? undefined}>`；`url` 還沒好時，旁邊再顯示 `loading`。`failed` 時改成渲染 `broken`。
+   - 新檔 `src/excalidraw/index.ts`：`export { default as DiagramImage } from "./diagram-image"; export type { DiagramImageProps } from "./diagram-image"; export { parseScene } from "./parse-scene"; export { setAssetPath } from "./asset-path";`。
+   - `package.json` 的 `exports` 加 `"./excalidraw": { "types": "./dist/excalidraw/index.d.ts", "default": "./dist/excalidraw/index.js" }`；`tsdown.config.ts` 的 `entry` 加 `"excalidraw/index": "src/excalidraw/index.ts"`。
+   - `src/styles.css` 檔尾加一段 `/* == excalidraw (04) == */`：`.fv-diagram-img`（最寬 100%、高 auto、置中）、`.fv-diagram-broken`。
+   - 新 fixture `test/fixtures/diagram.excalidraw`：內容就是 `test/fixtures/doc-with-diagrams.md` 第一個 ` ```excalidraw ` 的那一行 JSON（逐字相同，結尾一個換行）。
    - 測試：
+     - `src/excalidraw/messages.test.ts`：en 與 zh-TW 的 key 集合相同；每個 key 都以 `excalidraw.` 開頭。
      - `src/excalidraw/parse-scene.test.ts`（jsdom），案例：合法場景回 `ok` 而且 `alt` 是文字串；壞 JSON；`type` 不對；沒有 `elements`；`appState` 沒有時補 `{}`；超過 10 段文字時只取前 10 段；已刪除的文字不算。
-     - `src/excalidraw/diagram-image.browser.test.tsx`（browser），案例：
-       - fixture 的第一張圖渲染後 `img.src` 以 `blob:` 開頭，`alt` 是 `Hello`；
+     - `src/excalidraw/diagram-image.browser.test.tsx`（browser；`import diagram from "../../test/fixtures/diagram.excalidraw?raw"`），`loading` 傳 `<span>loading</span>`、`broken` 傳 `<span>broken</span>`，案例：
+       - fixture 渲染後 `img.src` 以 `blob:` 開頭，`alt` 是 `Hello`；
        - theme 從 light 換成 dark 時 src 換了，舊的 URL 被 revoke（spy `URL.revokeObjectURL`）；
        - unmount 後，`createObjectURL` 和 `revokeObjectURL` 的呼叫次數相等；
-       - `{not json` 顯示 broken 的內容和原文。
-     - 圖的 JSON 從 `test/fixtures/doc-with-diagrams.md` 用 `findFences`（`src/markdown/fences.ts`）取。
+       - `{not json` 顯示 `broken`。
    - 若 `pnpm test:browser` 在預先打包時報 target 錯誤，就在 vitest browser project 加 `optimizeDeps.esbuildOptions.target: "es2022"`（storage 11 第 1 步的做法）；沒報錯就不加。
-   - verify：`pnpm test src/excalidraw && pnpm test:browser src/excalidraw/diagram-image.browser.test.tsx`
+   - verify：`pnpm test src/excalidraw && pnpm test:browser src/excalidraw/diagram-image.browser.test.tsx && pnpm build && test -f dist/excalidraw/index.js && pnpm verify:pack`
    - commit：`feat(markdown-excalidraw): render diagrams as svg images`
 
 3. **文件裡的圖與 `.excalidraw` 預覽。**
-   - 新檔 `src/markdown/diagram-block.tsx`：`DiagramBlock({ fence, theme, copy, assetPath, onEdit, editLabel }: { fence: Fence; theme: "light" | "dark"; copy: MarkdownCopy; assetPath?: string; onEdit?: () => void; editLabel?: string })`。
-     - 先跑 `parseScene(fence.json)`（`src/excalidraw/parse-scene.ts`）。失敗時輸出 `<div className="fv-diagram-broken"><p>{copy.diagramBroken}</p><pre>{fence.json}</pre></div>`，不載入 Excalidraw。
-     - 成功時輸出 `<Suspense fallback={<span className="fv-diagram-loading">spinner + {copy.diagramLoading}</span>}><LazyDiagramImage json={fence.json} theme assetPath alt={alt} broken={同上的 broken 區塊}/></Suspense>`，其中 `LazyDiagramImage = lazy(() => import("../excalidraw/diagram-image"))`。
-     - 有 `onEdit` 時，外面包一層 `<button type="button" className="fv-diagram" aria-label={editLabel} onClick={onEdit}>`，加一個 `<span className="fv-diagram-hint">{editLabel}</span>`，只在 hover / focus-visible 時顯示。沒有 `onEdit` 時包 `<figure className="fv-diagram">`。
-   - `src/markdown/markdown-view.tsx` 的 `pre` 元件：原本輸出 `.fv-md-diagram-pending` 的地方，改成 `<DiagramBlock fence theme={props.theme} copy={props.copy} assetPath={props.assetPath} onEdit={props.onEditDiagram && (() => props.onEditDiagram(fence))} editLabel={props.editLabel}>`。
-   - `src/viewer/markdown-body.tsx`：多傳 `assetPath={props.excalidraw?.assetPath}`。
-   - 新檔 `src/viewer/excalidraw-body.tsx`：`ExcalidrawBody({ blob }: { blob: Blob })`，用 `export default` 匯出。
-     - 文字用 `use(blobText(blob))` 取得（`src/viewer/blob-text.ts`）。
-     - 輸出 `<div className="fv-excalidraw">`，裡面是 `<DiagramBlock fence={{ index: 0, start: 0, end: text.length, json: text }} theme copy={markdownCopy(messages)} assetPath={props.excalidraw?.assetPath}>`，不傳 `onEdit`；整檔的編輯走 03 的頂列鈕。
-     - `markdownCopy` 從 `src/markdown/copy.ts` import；theme 的取法和 `src/viewer/markdown-body.tsx` 一樣（它 import 的那個 hook）。
-   - 03 的 view 分派元件（`grep -rn 'case "excalidraw"' src/viewer`）：`case "excalidraw"` 改成 `<Suspense><LazyExcalidrawBody blob/></Suspense>`，`LazyExcalidrawBody = lazy(() => import("./excalidraw-body"))`。
-   - `src/styles.css` 追加 `.fv-diagram`（button 去掉外框、`position: relative`、focus-visible 外框用 `--ak-*`）、`.fv-diagram-hint`、`.fv-diagram-loading`、`.fv-excalidraw`（撐滿、置中、可捲動）。動畫只用 opacity，不回彈。
-   - 新 fixture `test/fixtures/diagram.excalidraw`：和 `doc-with-diagrams.md` 第一張圖同一份 JSON。
-   - 測試：
-     - `src/markdown/markdown-view.test.tsx` 改案例：原本「三個 `.fv-md-diagram-pending`」改成「兩個 `.fv-diagram` 加一個 `.fv-diagram-broken`，broken 那個含 `This diagram can't be read`」。新增：有 `onEditDiagram` 時 `.fv-diagram` 是 `button`，點第二個會收到 `index === 1` 的 fence。jsdom 只驗結構，lazy 圖的內容不等。
-     - 03 的分派測試檔加一案：開 `.excalidraw` 時出現 `.fv-excalidraw`。
-   - verify：`pnpm test src/markdown src/viewer && pnpm test:browser src/excalidraw && pnpm build && pnpm check`（入口檢查會確認 `dist/index.js` 不含 `@excalidraw`）
+   - 新檔 `src/excalidraw/use-resolved-theme.ts`：`useResolvedTheme(): Theme`（`Theme` 從 `src/contract/props.ts` `import type`）。`useRoot().theme`（`src/primitives/root-context.ts`）有值就用它；沒有就用 `useSyncExternalStore` 訂閱 `matchMedia("(prefers-color-scheme: dark)")`，server snapshot 是 `"light"`。
+   - 新檔 `src/excalidraw/diagram-block.tsx`：`DiagramBlock({ json, assetPath, onEdit }: { json: string; assetPath?: string; onEdit?: () => void })`，具名匯出，要在 `ViewerRoot` 裡面用。`t = useT(excalidrawMessages)`，`theme = useResolvedTheme()`。
+     - 先跑 `parseScene(json)`（`src/excalidraw/parse-scene.ts`）。失敗時輸出 `broken = <div className="fv-diagram-broken"><p>{t("excalidraw.broken")}</p><pre>{json}</pre></div>`，不載入 Excalidraw，也不管 `onEdit`。
+     - 成功時 `loading = <span className="fv-diagram-loading"><Spinner label={t("excalidraw.loading")} />{t("excalidraw.loading")}</span>`（`Spinner` 來自 `src/primitives/spinner.tsx`），輸出 `<Suspense fallback={loading}><LazyDiagramImage json theme assetPath alt={…} loading={loading} broken={broken}/></Suspense>`，其中 `LazyDiagramImage = lazy(() => import("./diagram-image"))`；`alt` 用 `parseScene` 回的 `alt`。
+     - 有 `onEdit` 時，外面包一層 `<button type="button" className="fv-diagram" aria-label={t("excalidraw.edit")} onClick={onEdit}>`，加一個 `<span className="fv-diagram-hint">{t("excalidraw.edit")}</span>`，只在 hover / focus-visible 時顯示。沒有 `onEdit` 時包 `<figure className="fv-diagram">`。
+   - 新檔 `src/viewer/excalidraw-body.tsx`：`export default function ExcalidrawBody({ loaded, viewer }: BodyProps)`，輸出 `<div className="fv-excalidraw"><DiagramBlock json={loaded.text ?? ""} assetPath={viewer.excalidraw?.assetPath} /></div>`，不傳 `onEdit`；整檔的編輯走 03 的頂列鈕。`DiagramBlock` 從 `src/excalidraw/diagram-block.tsx` import。
+   - `src/viewer/markdown-body.tsx`：`MarkdownView` 多傳 `renderDiagram={(fence) => <div className="fv-diagram-slot" data-fence={fence.index}><DiagramBlock json={fence.json} assetPath={viewer.excalidraw?.assetPath} /></div>}`。
+   - `src/viewer/bodies.tsx`：加 `const ExcalidrawBody = lazy(() => import("./excalidraw-body"))`，把 `excalidraw: TextBody` 改成 `excalidraw: ExcalidrawBody` 並刪掉那行註解。`src/viewer/bodies.test.tsx` 裡與 `bodies.excalidraw` 有關、等於 `bodies.text` 的斷言（`grep -n "bodies.excalidraw" src/viewer/bodies.test.tsx`）刪掉。
+   - `src/styles.css` 的 `/* == excalidraw (04) == */` 段加 `.fv-diagram`（button 去掉外框、`position: relative`、focus-visible 外框用 `--ak-*`）、`.fv-diagram-hint`、`.fv-diagram-loading`、`.fv-diagram-slot`、`.fv-excalidraw`（撐滿、置中、可捲動）。動畫只用 opacity，不回彈。
+   - 測試（jsdom 的測試都要 `vi.mock("../excalidraw/diagram-image", () => ({ default: () => <img alt="mock" /> }))`，路徑依測試檔位置調整，避免在 jsdom 載入 Excalidraw）：
+     - `src/excalidraw/use-resolved-theme.test.tsx`：在 `<ViewerRoot theme="dark">` 裡是 `"dark"`；沒給 theme 時，stub `window.matchMedia` 回 `matches: true` 得 `"dark"`、`false` 得 `"light"`。
+     - `src/excalidraw/diagram-block.test.tsx`（包在 `<ViewerRoot>`）：壞 JSON → `.fv-diagram-broken`，含 `This diagram can't be read` 和原文；合法 JSON 沒給 `onEdit` → `figure.fv-diagram`；給 `onEdit` → `button.fv-diagram`，`aria-label` 是 `Edit diagram`，點下去 `onEdit` 被呼叫。
+     - `src/viewer/markdown-body.test.tsx` 加案例：用 `test/fixtures/doc-with-diagrams.md`（`?raw`）當文字，渲染後有兩個 `.fv-diagram` 和一個 `.fv-diagram-broken`。
+     - `src/viewer/excalidraw-body.test.tsx`：用 `test/fixtures/diagram.excalidraw` 渲染，出現 `.fv-excalidraw .fv-diagram`。
+     - `src/viewer/excalidraw-open.test.tsx`：`FileViewer` 開 `diagram.excalidraw`（沒給 `onSave`），等到 `.fv-excalidraw` 出現。
+   - verify：`pnpm test src/markdown src/excalidraw src/viewer && pnpm test:browser src/excalidraw && pnpm build && pnpm check`（入口檢查會確認 `dist/index.js` 不含 `@excalidraw`）
    - commit：`feat(markdown-excalidraw): show diagrams in markdown and excalidraw files`
 
 4. **CSP 與零請求的測試。**
    - 新目錄 `test/csp/`：
      - `test/csp/index.html`：一個 `#root`，載入 `./main.tsx`。
-     - `test/csp/main.tsx`：依 `location.search` 的 `?f=md` 或 `?f=excalidraw`，用 `blobSource`（`src/index.ts`）包 `../fixtures/doc-with-diagrams.md` 或 `../fixtures/diagram.excalidraw`（`?raw` import 再轉成 `Blob`），渲染 `<FileViewer file excalidraw={{ assetPath: "/" }}>`。外面的容器 `height: 100vh`，`tokens.css` 和 `src/styles.css` 都要 import。
+     - `test/csp/main.tsx`：依 `location.search` 的 `?f=md` 或 `?f=excalidraw`，用 `blobSource`（`src/contract/byte-source.ts`）包 `import mdText from "../fixtures/doc-with-diagrams.md?raw"` 或 `import diagramText from "../fixtures/diagram.excalidraw?raw"`（轉成 `Blob`），渲染 `<FileViewer file excalidraw={{ assetPath: "/" }}>`（`FileViewer` 來自 `src/viewer/file-viewer.tsx`）。外面的容器 `height: 100vh`，依序 import `@anyknown/ui/tokens.css` 和 `../../src/styles.css`。
      - `test/csp/vite.config.ts`：
-       - `root` 指向 `test/csp`；
+       - `root` 指向 `test/csp`，`esbuild: { jsx: "automatic" }`，`build: { outDir: "dist", emptyOutDir: true }`；
        - `publicDir` 指向 repo 的 `dist/excalidraw-assets`，所以字型會在 `/fonts/...`；
        - `preview.headers` 設 `Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' blob: data:; media-src 'self' blob:; frame-src blob:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'`。這是 storage `public/_headers` 現行的 CSP，只拿掉 accounts 網域。
+     - `.gitignore` 加一行 `test/csp/dist`。
    - 新檔 `scripts/csp-smoke.mjs`：
      1. 用 vite 的 `build({ configFile: "test/csp/vite.config.ts" })` 建置，再用 `preview(...)` 起在隨機 port。
      2. 用 `playwright` 的 `chromium` 開頁面。
@@ -334,85 +364,81 @@ blocker：Phase 01；model：opus（字型路徑、CSP 測試架子要邊做邊�
      7. 斷言：`__violations` 是空的；外部請求是 0 個；至少有一個 `/fonts/Excalifont/` 的回應是 200。
      8. 印出結果，失敗就 `exit 1`。
    - `package.json` 加 `"test:csp": "pnpm build && node scripts/csp-smoke.mjs"`。
-   - `.github/workflows/ci.yml` 在 browser 測試那個 job 後面加一步 `pnpm test:csp`。
+   - `.github/workflows/ci.yml` 在 `pnpm turbo run build typecheck lint fmt:check check:entry test test:browser check:licenses` 那一步後面加一步 `- run: pnpm test:csp`（同一個縮排）。
    - verify：`pnpm test:csp`
    - commit：`test(markdown-excalidraw): prove diagrams render under the storage csp with no outside requests`
 
-phase 結尾 verify：`pnpm test src/markdown src/excalidraw src/viewer && pnpm test:browser src/excalidraw && pnpm test:csp && pnpm check`
+phase 結尾 verify：`pnpm test src/markdown src/excalidraw src/viewer && pnpm test:browser src/excalidraw && pnpm test:csp && pnpm check && pnpm verify:pack && pnpm check:licenses`
 
 ## Phase 03 — 圖的編輯與存檔
 
 blocker：Phase 02；model：opus。
 
 1. **`DiagramEditor`。**
-   - 新檔 `src/excalidraw/editor-copy.ts`：
-     - `DiagramEditorCopy = { save: string; cancel: string; discardTitle: string; discard: string; keepEditing: string }`；
-     - `diagramEditorCopy(messages: Messages): DiagramEditorCopy`，從 `src/i18n/messages.ts` 的 `Messages` 取 `diagram.save`、`diagram.cancel`、`diagram.discardTitle`、`diagram.discard`、`diagram.keepEditing`。
-   - 這五個 key 加上 `diagram.edit`，寫進 `src/i18n/messages.ts`、`src/i18n/en.ts`、`src/i18n/zh-TW.ts`，字串見契約表。
-   - 新檔 `src/excalidraw/discard-dialog.tsx`：`DiscardDialog({ open, copy, container, onKeep, onDiscard })`，用 `AlertDialog`（`@base-ui/react/alert-dialog`）的 `Root`、`Portal`、`Backdrop`、`Popup`、`Title`、`Close`。
-     - `Portal` 的 `container` 用傳進來的 `.fv-root` 元素，這樣主題變數才套得到。
-     - 兩顆鈕用 `Button`（`src/primitives/button.tsx`）。
-     - class 用 `.fv-alert`、`.fv-alert-backdrop`。
-   - 新檔 `src/excalidraw/diagram-editor.tsx`：`DiagramEditor(props: DiagramEditorProps)`，props 見契約，用 `export default` 匯出。
-     - 第一行 `import "@excalidraw/excalidraw/index.css"`。render 時先 `setAssetPath(props.assetPath)`（`src/excalidraw/asset-path.ts`）。
-     - 初始資料：`initial = useMemo(() => parseScene(props.json), [props.json])`（`src/excalidraw/parse-scene.ts`），呼叫端保證是 `ok`。
+   - 新檔 `src/excalidraw/diagram-editor.tsx`：`export default function DiagramEditor(props: DiagramEditorProps)`，props 見契約。`const { json, assetPath, onSave, onClose, onDirtyChange, ...root } = props`，輸出 `<ViewerRoot {...root}><EditorBody …/></ViewerRoot>`。`EditorBody`（同檔內部元件）：
+     - 第一行（檔頭）`import "@excalidraw/excalidraw/index.css"`。render 時先 `setAssetPath(assetPath)`（`src/excalidraw/asset-path.ts`）。`tc = useT(commonMessages)`（`commonMessages` 來自 `src/i18n/messages.ts`），`theme = useResolvedTheme()`（`src/excalidraw/use-resolved-theme.ts`），`locale = useRoot().locale`。
+     - 初始資料：`initial = useMemo(() => parseScene(json), [json])`（`src/excalidraw/parse-scene.ts`），呼叫端保證是 `ok`。
      - 渲染 `<Excalidraw>`（`@excalidraw/excalidraw`），參數：
-       - `initialData={{ ...initial.scene, scrollToContent: true }}`、`theme={props.theme}`；
-       - `langCode={props.locale === "zh-TW" ? "zh-TW" : "en"}`；
+       - `initialData={{ ...initial.scene, scrollToContent: true }}`、`theme={theme}`；
+       - `langCode={locale === "zh-TW" ? "zh-TW" : "en"}`；
        - `UIOptions={{ canvasActions: { loadScene: false, export: false, saveToActiveFile: false, saveAsImage: false, toggleTheme: false } }}`；
        - `excalidrawAPI={(api) => { apiRef.current = api }}`。
      - `onChange`：
        - 第一次呼叫時，把 `hashElementsVersion(elements)`（`@excalidraw/excalidraw`）記成基準；
        - 之後每次都和基準比較，結果寫進 `dirtyRef`；
-       - 只有 dirty 翻轉時才 `setDirty` 並呼叫 `props.onDirtyChange?.(dirty)`。
-     - 頂列 `.fv-editor-bar`：左側是錯誤訊息，右側是「取消」「儲存」兩顆 `Button`。
+       - 只有 dirty 翻轉時才 `setDirty` 並呼叫 `onDirtyChange?.(dirty)`。
+     - 頂列 `.fv-editor-bar`：左側是錯誤訊息，右側是「取消」（`Button variant="secondary"`，文字 `tc("common.cancel")`）「儲存」（`Button variant="primary"`，文字 `tc("common.save")`）兩顆（`Button` 來自 `src/primitives/button.tsx`）。
      - 儲存：
        1. `setSaving(true)`；
-       2. `json = serializeAsJSON(api.getSceneElements(), api.getAppState(), api.getFiles(), "local")`（`@excalidraw/excalidraw`）；
-       3. `await props.onSave(json)`；成功就 `props.onDirtyChange?.(false)`，再 `props.onClose()`；
+       2. `next = serializeAsJSON(api.getSceneElements(), api.getAppState(), api.getFiles(), "local")`（`@excalidraw/excalidraw`）；
+       3. `await onSave(next)`；成功就 `onDirtyChange?.(false)`，再 `onClose()`；
        4. 失敗就 `setError(e instanceof Error ? e.message : String(e))`、`setSaving(false)`，dirty 保持不變。
-       - 存檔中兩顆鈕都 `disabled`，「儲存」鈕裡換成 spinner。
-     - 取消：dirty 時打開 `DiscardDialog`（`src/excalidraw/discard-dialog.tsx`）。選「放棄」就呼叫 `props.onDirtyChange?.(false)` 再 `props.onClose()`；不 dirty 時直接 `props.onClose()`。
-     - `.fv-root` 元素用編輯器根元素 ref 的 `closest(".fv-root")` 取得。
-     - 外層 `.fv-diagram-editor`（`display: flex; flex-direction: column; height: 100%`），Excalidraw 放在 `flex: 1; min-height: 0` 的區塊裡。
-   - `src/excalidraw/index.ts` 加匯出 `DiagramEditor`、`DiagramEditorProps`、`DiagramEditorCopy`、`diagramEditorCopy`。
-   - `src/styles.css` 追加 `.fv-diagram-editor`、`.fv-editor-bar`、`.fv-alert`、`.fv-alert-backdrop`，動畫只用 opacity。
-   - 測試 `src/excalidraw/diagram-editor.browser.test.tsx`（browser，外面包一個 `<div className="fv-root" style="height:600px">`），案例：
-     - 出現 `.excalidraw` 元素；`theme="dark"` 時有 `.theme--dark`；
+       - 存檔中兩顆鈕都 `disabled`，「儲存」鈕的 `icon` 換成 `<Spinner label={tc("common.loading")} />`（`src/primitives/spinner.tsx`）。
+     - 取消：dirty 時把 `confirmOpen` 設 true，畫 `<DiscardDialog open={confirmOpen} onOpenChange={setConfirmOpen} onDiscard={() => { onDirtyChange?.(false); onClose() }} />`（`src/primitives/dialog.tsx`；它自己 portal 到 `useRoot().portal`）；不 dirty 時直接 `onClose()`。
+     - 外層 `<div className="fv-diagram-editor">`（`display: flex; flex-direction: column; height: 100%`），Excalidraw 放在 `flex: 1; min-height: 0` 的區塊裡。
+   - `src/excalidraw/index.ts` 加 `export { default as DiagramEditor } from "./diagram-editor"; export type { DiagramEditorProps } from "./diagram-editor";`。
+   - `src/styles.css` 的 `/* == excalidraw (04) == */` 段加 `.fv-diagram-editor`、`.fv-editor-bar`，動畫只用 opacity。
+   - 測試 `src/excalidraw/diagram-editor.browser.test.tsx`（browser，外面包 `<ViewerRoot><div style={{ height: 600 }}><DiagramEditor json={…} … /></div></ViewerRoot>`；`json` 用 `diagram.excalidraw` fixture 的 `?raw`），案例：
+     - 出現 `.excalidraw` 元素；`<ViewerRoot theme="dark">` 時有 `.theme--dark`；
      - 點 `[data-testid="main-menu-trigger"]` 打開主選單後，沒有 `[data-testid="load-button"]`、`[data-testid="json-export-button"]`、`[data-testid="image-export-button"]`、`[data-testid="save-button"]`、`[data-testid="save-as-button"]`；
      - 沒改就按「Cancel」：直接呼叫 `onClose`，沒有 dialog；
      - 按 `r` 在 canvas 上拖出一個矩形後，`onDirtyChange(true)` 只被呼叫一次；
      - dirty 時按「Cancel」出現「Discard your changes?」：按「Keep editing」後 dialog 關閉、`onClose` 沒被呼叫；按「Discard」後依序呼叫 `onDirtyChange(false)` 和 `onClose`；
      - 按「Save」時，`onSave` 收到的 JSON `JSON.parse` 後 `type === "excalidraw"`，`elements` 比原本多一個；
      - `onSave` reject `new Error("disk full")` 時，畫面出現 `disk full`、`onClose` 沒被呼叫、「Save」可以再按。
-   - verify：`pnpm test src/i18n && pnpm test:browser src/excalidraw/diagram-editor.browser.test.tsx`
+   - verify：`pnpm test:browser src/excalidraw/diagram-editor.browser.test.tsx && pnpm build && pnpm check`
    - commit：`feat(markdown-excalidraw): edit diagrams with excalidraw`
 
-2. **接上 `FileViewer` 的存檔。**
-   - `src/viewer/markdown-body.tsx` 改動：
-     - 狀態 `source`（初值是讀到的文字）、`editing: Fence | null`、`focusIndex: number | null`。
-     - 宿主有 `onSave` 時，`MarkdownView` 多傳 `onEditDiagram={(f) => setEditing(f)}` 和 `editLabel={messages 的 diagram.edit}`。
-     - `editing` 有值時，整個 body 換成 `<Suspense><LazyDiagramEditor json={editing.json} theme locale copy={diagramEditorCopy(messages)} assetPath={props.excalidraw?.assetPath} onDirtyChange={props.onDirtyChange} onSave={save} onClose={() => { setFocusIndex(editing.index); setEditing(null) }}/></Suspense>`。`LazyDiagramEditor = lazy(() => import("../excalidraw/diagram-editor"))`，`diagramEditorCopy` 從 `src/excalidraw/editor-copy.ts` import。
-     - `save(json)`：`next = replaceFence(source, editing, json)`（`src/markdown/fences.ts`），然後 `await props.onSave({ blob: new Blob([next], { type: "text/markdown" }), mime: "text/markdown", ext, mode: "replace", suggestedName: file.name })`；成功後 `setSource(next)`。`ext` 是 `file.name` 最後一個 `.` 起的小寫字串。
-     - 回到文件後，用 `.fv-md` 的 ref callback 找第 `focusIndex` 個 `.fv-diagram` 並 `focus()`，然後清掉 `focusIndex`。
-   - `src/viewer/excalidraw-body.tsx` 改動：多收 `editing: boolean`、`onExitEdit: () => void` 兩個 props，由 03 的編輯切換點傳進來。
-     - 狀態 `json`（初值是讀到的文字）。
-     - `editing` 時換成 `LazyDiagramEditor`，參數和 `markdown-body.tsx` 相同，但 `onSave = async (j) => { await props.onSave({ blob: new Blob([j], { type: "application/vnd.excalidraw+json" }), mime: "application/vnd.excalidraw+json", ext: ".excalidraw", mode: "replace", suggestedName: file.name }); setJson(j) }`，`onClose = props.onExitEdit`。
-     - 檔案本身 `parseScene` 失敗時，不渲染編輯器，而是顯示 broken 區塊。
-   - 03 的編輯切換點（`grep -rn 'case "excalidraw"\|EditKind' src/viewer`）：`edit === "excalidraw"` 時，不另開 editor 元件，而是把 `editing` 和 `onExitEdit` 傳給同一個 `ExcalidrawBody`，讓讀和編輯共用同一份已讀進來的 bytes。
+2. **接上 `FileViewer` 的存檔與 `.excalidraw` 編輯器。**
+   - `src/viewer/markdown-body.tsx` 改動（`BodyProps` 的 `file`、`viewer` 都用得到）：
+     - 狀態 `source`（初值 `loaded.text ?? ""`）、`editing: Fence | null`、`focusIndex: number | null`。`t = useT(commonMessages)`。
+     - `viewer.onSave` 有給時，`renderDiagram` 裡的 `DiagramBlock` 多傳 `onEdit={() => { viewer.onEditingChange?.(true); setEditing(fence) }}`。
+     - `editing` 有值時，整個 body 換成 `<Suspense fallback={<Spinner label={t("common.loading")} />}><LazyDiagramEditor json={editing.json} assetPath={viewer.excalidraw?.assetPath} onDirtyChange={viewer.onDirtyChange} onSave={save} onClose={close} /></Suspense>`。`LazyDiagramEditor = lazy(() => import("../excalidraw/diagram-editor"))`。`close`：`viewer.onEditingChange?.(false)`，`setFocusIndex(editing.index)`，`setEditing(null)`。
+     - `save(json)`：`next = replaceFence(source, editing, json)`（`src/markdown/fences.ts`），`ext = splitName(file.name).ext`（`src/contract/save.ts`），然後 `await viewer.onSave({ blob: new Blob([next], { type: "text/markdown" }), mime: "text/markdown", ext, mode: "replace", suggestedName: suggestedName(file.name, ext, "replace") })`；成功後 `setSource(next)`。`viewer.onSave` 在 `save` 被呼叫時一定有值（沒有 `onSave` 就不會有 `onEdit`）。
+     - 回到文件後，包住 `MarkdownView` 的 `<div ref={…}>` 的 ref callback 在 `focusIndex !== null` 時找 `` `[data-fence="${focusIndex}"] .fv-diagram` `` 並 `focus()`，然後 `setFocusIndex(null)`。
+   - 新檔 `src/excalidraw/file-editor.tsx`：`export function ExcalidrawFileEditor(props: EditorProps)`。`const { onSave, onClose, onDirtyChange, maxOutputBytes, assets, file, ...root } = props`，輸出 `<ViewerRoot {...root}><FileEditorBody …/></ViewerRoot>`（`maxOutputBytes`、`assets` 收下不用）。`FileEditorBody`：
+     - 用 `useEffect` 加 `AbortController` 讀檔：`text = await (await readBlob(file.source, { type: mimeOf(file), signal })).text()`（`readBlob` 在 `src/contract/byte-source.ts`，`mimeOf` 在 `src/contract/kinds.ts`）。狀態 `{ phase: "loading" } | { phase: "ready"; text: string } | { phase: "error"; message: string }`。中止（`isAbortError`，`src/contract/errors.ts`）不處理；其他錯誤 `useRoot().report(toViewerError(e, "read_failed"))`，狀態 `error`，message 是 `tc("error.read_failed")`。
+     - `loading`：`<Spinner label={tc("common.loading")} />`。
+     - `ready` 但 `parseScene(text)` 失敗：`report(new ViewerError("decode_failed"))`（只報一次），狀態同 `error`，message 是 `t("excalidraw.broken")`（`t = useT(excalidrawMessages)`）。
+     - `error`：`<div className="fv-diagram-broken" role="alert"><p>{message}</p><Button onClick={onClose}>{tc("common.close")}</Button></div>`。
+     - `ready` 且 ok：`<Suspense fallback={<Spinner …/>}><LazyDiagramEditor json={text} onDirtyChange={onDirtyChange} onClose={onClose} onSave={async (j) => { await onSave({ blob: new Blob([j], { type: "application/vnd.excalidraw+json" }), mime: "application/vnd.excalidraw+json", ext: ".excalidraw", mode: "replace", suggestedName: suggestedName(file.name, ".excalidraw", "replace") }) }} /></Suspense>`。`LazyDiagramEditor = lazy(() => import("./diagram-editor"))`。字型路徑：`EditorProps` 沒有 `assetPath`，所以這裡不傳，由 `window.EXCALIDRAW_ASSET_PATH` 沿用（`FileViewer` 開過檢視時已由 `setAssetPath` 設好；直接用 `./excalidraw` subpath 單獨掛 `ExcalidrawFileEditor` 的宿主要自己先呼叫 `setAssetPath`）。
+   - `src/excalidraw/index.ts` 加 `export { ExcalidrawFileEditor } from "./file-editor";`。
+   - `src/viewer/editors.ts`：在 `editors` 加 `excalidraw: lazy(() => import("../excalidraw/index").then((m) => ({ default: m.ExcalidrawFileEditor }))),`（`lazy` 從 `react` import）。`grep -n "editors" src/viewer/*.test.ts*`：03 若有測試斷言 `editors` 是空表，改成斷言 `Object.keys(editors)` 等於 `["excalidraw"]`。
    - `test/csp/main.tsx` 加 `onSave={async () => {}}`。`scripts/csp-smoke.mjs` 在 `?f=md` 那段多做：點第一個 `.fv-diagram`，等 `.excalidraw canvas` 出現，再斷言一次沒有 violation、沒有外部請求。
-   - 測試 `src/viewer/markdown-body.test.tsx`（jsdom），用 `vi.mock("../excalidraw/diagram-editor")` 換成一個假元件：它有一顆按鈕，按下去呼叫 `onSave(<改過的 JSON>)`，成功後呼叫 `onClose`。fixture 用 `test/fixtures/doc-with-diagrams.md`。案例：
-     - 點第二張圖再按假按鈕：`onSave` 收到 `mode: "replace"`、`ext: ".md"`、`mime: "text/markdown"`、`suggestedName: "doc-with-diagrams.md"`；`blob.text()` 和原文逐字比對時只有第二個 fence 的內容行不同（list 縮排前綴保留），第一張圖和其他文字 byte 相同；
+   - 測試 `src/viewer/markdown-body.test.tsx` 加案例（沿用檔頭的 `bodyProps`）。檔頭加 `vi.mock("../excalidraw/diagram-editor", …)`，換成假元件：一顆按鈕，按下去 `try { await p.onSave(EDITED); p.onClose() } catch {}`，`EDITED` 是 `{"type":"excalidraw","version":2,"elements":[],"appState":{},"files":{}}`。文字用 `test/fixtures/doc-with-diagrams.md`，`viewer.onSave` 用 `vi.fn()`：
+     - 點第二個 `.fv-diagram` 再按假按鈕：`onSave` 收到 `mode: "replace"`、`ext: ".md"`、`mime: "text/markdown"`、`suggestedName: "doc.md"`；`blob.text()` 和原文逐字比對時只有第二個 fence 的內容行不同（list 縮排前綴保留），第一張圖和其他文字 byte 相同；`viewer.onEditingChange` 依序收到 `true`、`false`；
      - `onSave` reject 時 `source` 不變，假編輯器還在；
      - 沒給 `onSave` 時 `.fv-diagram` 不是 button；
-     - 存好之後，focus 在第二個 `.fv-diagram` 上。
-   - 測試 `src/viewer/excalidraw-body.test.tsx`（jsdom，同樣 mock）：
-     - `editing` 時按假按鈕，`onSave` 收到 `ext: ".excalidraw"`、`mime: "application/vnd.excalidraw+json"`，blob 內容就是新 JSON；
-     - 成功後呼叫 `onExitEdit`。
-   - verify：`pnpm test src/viewer && pnpm test:csp`
+     - 存好之後，`document.activeElement` 是 `[data-fence="1"] .fv-diagram`。
+   - 測試 `src/excalidraw/file-editor.test.tsx`（jsdom，同樣 mock `./diagram-editor`；用 `bytesSource(new TextEncoder().encode(text))`，`bytesSource` 在 `src/contract/byte-source.ts`），案例：
+     - 讀 `diagram.excalidraw` fixture，假編輯器收到的 `json` 等於檔案文字；按假按鈕後 `onSave` 收到 `ext: ".excalidraw"`、`mime: "application/vnd.excalidraw+json"`、`mode: "replace"`、`suggestedName: "a.excalidraw"`（`file.name` 是 `a.excalidraw`），blob 內容是 `EDITED`，之後 `onClose` 被呼叫；
+     - 檔案內容 `{not json`：顯示 `This diagram can't be read` 和 `Close` 鈕，按下去 `onClose` 被呼叫，`onError` 收到 `decode_failed`；
+     - `ByteSource.read` reject 時，`onError` 收到 `read_failed`。
+   - 測試 `src/viewer/excalidraw-open.test.tsx` 加案例（檔頭 mock `../excalidraw/diagram-editor`，並 `vi.mock("../excalidraw/index", async () => ({ ExcalidrawFileEditor: (await import("../excalidraw/file-editor")).ExcalidrawFileEditor }))`，避免在 jsdom 載入 Excalidraw）：`FileViewer` 開 `diagram.excalidraw` 並給 `onSave`，頂列有 `Edit`；點下去後出現假編輯器；按假按鈕後 `onSave` 被呼叫，並回到檢視（`.fv-excalidraw` 再次出現）。
+   - verify：`pnpm test src/viewer src/excalidraw && pnpm test:csp`
    - commit：`feat(markdown-excalidraw): save edited diagrams through onSave`
 
-phase 結尾 verify：`pnpm test src/markdown src/excalidraw src/viewer src/i18n && pnpm test:browser src/excalidraw && pnpm test:csp && pnpm check`
+phase 結尾 verify：`pnpm test src/markdown src/excalidraw src/viewer src/i18n && pnpm test:browser src/excalidraw && pnpm test:csp && pnpm check && pnpm verify:pack && pnpm check:licenses`
 
 宿主要做的事（不在本 plan 的步驟裡）：
 

@@ -10,7 +10,7 @@
   - 多個 entry 共用的程式要由 bundler 切成共用 chunk；
   - 入口檢查要看的是 build 出來的靜態 import 圖。
   
-  設定照 `../storage/client/tsdown.config.ts`。00-overview §6 的 01 列寫「tsc build」，以本份為準。
+  設定照 `../storage/client/tsdown.config.ts`。
 - 工具版本照 2026-10-08 npm 上的版本：tsdown 0.23、vitest 5 加上 `@vitest/browser-playwright` 5、playwright 1.64、oxlint 1.87、oxfmt 0.72、turbo 2.11。TypeScript 跟兩個有發 d.ts 的套件（`../ui`、`../storage/client`）一樣用 5.9；tsdown 0.23 的 peer 接受 5–7。
 - lint 照 `../storage/.oxlintrc.json`：≤ 300 行、kebab-case、禁 `any`、`consistent-type-imports`、`import/no-cycle`。另加兩條：
   - 禁 `useEffect` / `useLayoutEffect`，寫法照 `../product/.oxlintrc.json` 的 `apps/web/**` override；
@@ -35,7 +35,18 @@
 
 ## 契約
 
-`package.json`（Phase 01 第 1 步建立）。之後的 plan 只在 `dependencies` / `peerDependencies` / `devDependencies` 加東西；新增 subpath 時同一個 commit 改三處：`exports`、`tsdown.config.ts` 的 `entry`、`src/<subpath>/index.ts`。
+`package.json`（Phase 01 第 1 步建立）。之後的 plan 只在 `dependencies` / `peerDependencies` / `devDependencies` 加東西。`exports` 與 `tsdown.config.ts` 的 `entry` 只有 `.` 與 `./styles.css`；其他 subpath（`./markdown`、`./excalidraw`、`./video-editor`、`./audio-editor`、`./image-editor`、`./comp`）由擁有它的 plan 在交付那一步加，同一個 commit 改三處：`exports`、`tsdown.config.ts` 的 `entry`、`src/<subpath>/index.ts`（00-overview §4、§9.8）。形狀照 `.` 那條：`{ "types": "./dist/<subpath>/index.d.ts", "default": "./dist/<subpath>/index.js" }`。不發佈空的 export。
+
+| subpath | 誰加 |
+| --- | --- |
+| `./markdown` | 04 P01-1 |
+| `./excalidraw` | 04 P02-2 |
+| `./video-editor` | 07 第 11 步 |
+| `./audio-editor` | 08 P03-1 |
+| `./comp` | 09 P01-1 |
+| `./image-editor` | 10 第 7 步 |
+
+本檔建的、之後各 plan 會接手的東西（00-overview §9.8）：`package.json` 的 `exports` 與 `tsdown.config.ts` 的 `entry`（`.`、`./styles.css`）、`src/styles.css`（02 P03-3 寫 root 段，每份有 UI 的 plan 在檔尾加一段）、`tsconfig.comp.json`（`typecheck` 已含；09 不另建 `src/comp/tsconfig.json`、不改 scripts）、`scripts/check-entry-deps.mjs`（不改）、`scripts/check-licenses.mjs`（不改）、`THIRD_PARTY_NOTICES.md`（04、06、07、09、10、13 在加依賴或抄程式的那一步增補）、`docs/plans/README.md`（P03-1 收進）。
 
 ```jsonc
 {
@@ -50,14 +61,8 @@
   "sideEffects": ["**/*.css"],
   "files": ["dist", "LICENSE", "THIRD_PARTY_NOTICES.md"],
   "exports": {
-    ".":              { "types": "./dist/index.d.ts",              "default": "./dist/index.js" },
-    "./styles.css":   "./dist/styles.css",
-    "./markdown":     { "types": "./dist/markdown/index.d.ts",     "default": "./dist/markdown/index.js" },
-    "./excalidraw":   { "types": "./dist/excalidraw/index.d.ts",   "default": "./dist/excalidraw/index.js" },
-    "./video-editor": { "types": "./dist/video-editor/index.d.ts", "default": "./dist/video-editor/index.js" },
-    "./audio-editor": { "types": "./dist/audio-editor/index.d.ts", "default": "./dist/audio-editor/index.js" },
-    "./image-editor": { "types": "./dist/image-editor/index.d.ts", "default": "./dist/image-editor/index.js" },
-    "./comp":         { "types": "./dist/comp/index.d.ts",         "default": "./dist/comp/index.js" }
+    ".":            { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+    "./styles.css": "./dist/styles.css"
   },
   "publishConfig": { "access": "public" },
   "packageManager": "pnpm@10.30.3"
@@ -78,7 +83,7 @@
 | `check` | `turbo run typecheck lint fmt:check check:entry` | P01-2 |
 | `test` | `vitest run --project jsdom` | P01-3 |
 | `test:browser` | `vitest run --project browser` | P01-3 |
-| `verify:pack` | `pnpm build && node scripts/verify-pack.mjs` | P02-2 |
+| `verify:pack` | `pnpm build && node scripts/verify-pack.mjs`（只驗 `exports` 裡存在的 subpath） | P02-2 |
 | `prepublishOnly` | `pnpm check && pnpm test && pnpm test:browser && pnpm verify:pack && pnpm check:licenses` | P02-2 |
 | `check:licenses` | `node scripts/check-licenses.mjs` | P02-3 |
 
@@ -95,7 +100,9 @@
 - 讀 `pnpm licenses list --prod --json`，輸出形狀是 `{ [license: string]: { name: string }[] }`。
 - 允許的 license：MIT、ISC、BSD-2-Clause、BSD-3-Clause、Apache-2.0、0BSD。
 - 寫成 `(A OR B)` 的 license，只要其中一個在允許清單裡就通過。
-- 唯一的例外：名稱是 `mediabunny` 的套件可以是 MPL-2.0。
+- 例外有兩個：
+  - 名稱是 `mediabunny` 的套件可以是 MPL-2.0；
+  - 名稱以 `@fontsource/` 或 `@fontsource-variable/` 開頭的套件可以是 OFL-1.1（字型檔的授權）。
 - 其他 license 一律失敗，包括 GPL、LGPL 與 `Unknown`。
 - `package.json` 的 `dependencies` 裡每個套件名，都必須逐字出現在 `THIRD_PARTY_NOTICES.md` 裡。
 
@@ -104,8 +111,8 @@
 blocker：無；model：sonnet。
 
 1. repo 與 build。
-   - 在 repo 根目錄執行 `git init -b main`。已經存在的 `docs/plans/*.md` 一起進這個 commit。
-   - 新增 `package.json`：內容就是契約那段 JSON，加上 `"scripts": { "build": "tsdown" }`。
+   - 在 repo 根目錄執行 `git init -b main`。已經存在的 `docs/plans/00-overview.md` 到 `docs/plans/13-image-text-shapes.md` 一起進這個 commit：`git add docs/plans/[0-9][0-9]-*.md`。`docs/plans/README.md` 不進這個 commit，P03-1 才收進。
+   - 新增 `package.json`：內容就是契約那段 JSON（`exports` 只有 `.` 與 `./styles.css`），加上 `"scripts": { "build": "tsdown" }`。
    - 執行 `pnpm add -D tsdown@^0.23.0 typescript@^5.9.3`。
    - 新增 `tsdown.config.ts`：
 
@@ -115,12 +122,6 @@ blocker：無；model：sonnet。
      export default defineConfig({
        entry: {
          index: "src/index.ts",
-         "markdown/index": "src/markdown/index.ts",
-         "excalidraw/index": "src/excalidraw/index.ts",
-         "video-editor/index": "src/video-editor/index.ts",
-         "audio-editor/index": "src/audio-editor/index.ts",
-         "image-editor/index": "src/image-editor/index.ts",
-         "comp/index": "src/comp/index.ts",
        },
        format: ["esm"],
        platform: "neutral",
@@ -134,26 +135,21 @@ blocker：無；model：sonnet。
    - 新增 `tsconfig.json`：
      - `compilerOptions`：`target` ES2022、`module` ESNext、`moduleResolution` bundler、`jsx` react-jsx、`strict` true、`noEmit` true、`verbatimModuleSyntax` true、`isolatedModules` true、`skipLibCheck` true、`lib` ["ES2022", "DOM", "DOM.Iterable"]、`types` []。
      - `include`：["src", "vitest.config.ts", "tsdown.config.ts"]。
-   - 新增 `tsconfig.comp.json`：
-     - 內容是 `{ "extends": "./tsconfig.json", "compilerOptions": { "lib": ["ES2022"] }, "include": ["src/comp"] }`。
-     - 作用：`src/comp` 一用到 DOM 型別就會報錯（00-overview §7）。
-   - 新增空殼檔。每個檔第一行是一行註解，指出哪份 plan 會填它；第二行是 `export {};`。
-     - `src/index.ts`：註解 `// "." entry. Filled by 02 contract and 03 viewer-core.`
-     - `src/markdown/index.ts`、`src/excalidraw/index.ts`：註解寫 `04 markdown-excalidraw`。
-     - `src/video-editor/index.ts`：註解寫 `07 video-editor`。
-     - `src/audio-editor/index.ts`：註解寫 `08 audio-editor`。
-     - `src/image-editor/index.ts`：註解寫 `10 image-editor`。
-     - `src/comp/index.ts`：註解寫 `09 comp-format`。
+   - 新增空殼檔 `src/index.ts`，兩行：第一行 `// "." entry. Filled by 02 contract and 03 viewer-core.`，第二行 `export {};`。其他 subpath 的 `src/<subpath>/index.ts` 不在這裡建，由擁有它的 plan 在加 export 的那一步建。
    - 新增 `src/styles.css`：只有一行註解 `/* fv-* classes. Filled by 02 contract. */`。
    - 新增 `.gitignore`，共九行：`node_modules`、`dist`、`site/dist`、`.wrangler`、`.DS_Store`、`*.tsbuildinfo`、`.turbo`、`.env`、`*.log`。
    - 新增 `LICENSE`：
      - 內容是 MIT 全文，從 `../ui/LICENSE` 整份複製；
      - 版權行寫 `Copyright (c) 2026 Senlima Sun`（00-overview §8 第 1 題）。
    - 測試：無。
-   - verify：`pnpm install && pnpm build && ls dist/index.js dist/index.d.ts dist/markdown/index.js dist/comp/index.d.ts dist/styles.css`
-   - commit：`build(scaffold): set up package, tsdown entries and empty subpaths`
+   - verify：`pnpm install && pnpm build && ls dist/index.js dist/index.d.ts dist/styles.css`
+   - commit：`build(scaffold): set up package, tsdown entry and empty main entry`
 2. typecheck、lint、format 與 `pnpm check`。
    - 執行 `pnpm add -D oxlint@^1.87.0 oxfmt@^0.72.0 turbo@^2.11.7`。
+   - 新增 `tsconfig.comp.json`（00-overview §9.8：09 的 `src/comp/**` 用它做型別檢查，不含 DOM lib）：
+     - 內容是 `{ "extends": "./tsconfig.json", "compilerOptions": { "lib": ["ES2022"] }, "include": ["src/comp"] }`；
+     - 作用：`src/comp` 一用到 DOM 型別就會報錯（00-overview §7）。
+   - 新增空殼檔 `src/comp/index.ts`，兩行：第一行 `// Not a published subpath yet. Replaced by 09 comp-format P01-1, which adds the "./comp" export.`，第二行 `export {};`。理由：`tsc -p tsconfig.comp.json` 在 `include` 沒有任何檔案時會報 TS18003，09 之前 `pnpm typecheck` 就會紅。這個檔不在 `exports` 與 `tsdown.config.ts` 的 `entry` 裡。
    - 新增 `.oxlintrc.json`。
      - 先整份複製 `../storage/.oxlintrc.json`，然後改兩處。
      - 第一處：`ignorePatterns` 改成 `["**/dist/**", "**/node_modules/**", "**/*.d.ts"]`。
@@ -299,12 +295,13 @@ blocker：Phase 01；model：sonnet。
    - `package.json` 的 `scripts` 加兩條：
      - `verify:pack` 是 `pnpm build && node scripts/verify-pack.mjs`；
      - `prepublishOnly` 是 `pnpm check && pnpm test && pnpm test:browser && pnpm verify:pack && pnpm check:licenses`。`check:licenses` 會在 P02-3 才加，本步的 verify 不會跑到 `prepublishOnly`。
-   - 測試：無，這個 script 本身就是驗證。
-   - verify：`pnpm verify:pack 2>&1 | tail -n 1 | grep -q "all 8 export entries resolve"`
+   - 測試：無，這個 script 本身就是驗證。它對 `package.json` 的 `exports` 裡每一條（現在只有 `.` 與 `./styles.css`，所以輸出 `all 2 export entries resolve`）做解析；之後的 plan 加 subpath 後，數字隨 `exports` 增加，不必改這個 script。
+   - verify：`pnpm verify:pack 2>&1 | tail -n 1 | grep -q "all 2 export entries resolve"`
    - commit：`build(scaffold): resolve every export from the packed tarball`
 3. 授權檢查與 third-party notices。
-   - 新增 `scripts/check-licenses.mjs`，規則見契約的「授權檢查」，匯出兩個符號：
+   - 新增 `scripts/check-licenses.mjs`，規則見契約的「授權檢查」，匯出三個符號：
      - `export const ALLOWED = ["MIT", "ISC", "BSD-2-Clause", "BSD-3-Clause", "Apache-2.0", "0BSD"]`。
+     - `export const FONT_PACKAGE = /^@fontsource(-variable)?\//`，授權為 `OFL-1.1` 且名稱符合它的套件通過（與 `mediabunny` 的 MPL-2.0 例外並列）。
      - `export function checkLicenses(report, deps, notices)`，回傳 `string[]`，每個問題一行：
        - `report` 是 `pnpm licenses list --prod --json` parse 之後的物件，空的時候傳 `{}`；
        - `deps` 是 `Object.keys(pkg.dependencies ?? {})`；
@@ -327,6 +324,10 @@ blocker：Phase 01；model：sonnet。
        - `{ "MPL-2.0": [{ name: "other" }] }` 有一行問題；
        - `{ "(MIT OR GPL-3.0)": [{ name: "y" }] }`：沒有問題；
        - deps 有 `zod`、notices 沒寫 `zod`：一行問題；
+       - `{ "OFL-1.1": [{ name: "@fontsource-variable/geist" }] }`，deps 與 notices 都有 `@fontsource-variable/geist`：沒有問題；
+       - `{ "OFL-1.1": [{ name: "@fontsource/inter" }] }`，deps 與 notices 都有 `@fontsource/inter`：沒有問題；
+       - `{ "OFL-1.1": [{ name: "other-font" }] }`：一行問題；
+       - `{ "GPL-3.0": [{ name: "@fontsource/inter" }] }`：一行問題（字型例外只放行 OFL-1.1）；
        - `{}`，deps 空：沒有問題。
    - verify：`pnpm test scripts && pnpm check:licenses && pnpm check`
    - commit：`build(scaffold): check production licenses against an allowlist and the notices file`
@@ -337,7 +338,7 @@ phase 結尾 verify：`pnpm test && pnpm test:browser && pnpm check && pnpm veri
 
 blocker：Phase 02；model：sonnet。
 
-1. `CLAUDE.md`、`README.md`、`CHANGELOG.md`。
+1. `CLAUDE.md`、`README.md`、`CHANGELOG.md`，並收進 `docs/plans/README.md`。
    - 新增 `CLAUDE.md`：給在本 repo 工作的 agent 看，中文，≤ 60 行。依序七段：
      1. 一句話定位：`@anyknown/file-viewer`，瀏覽器內檢視與編輯檔案的 React 元件庫；設計見 `docs/plans/00-overview.md`。
      2. 命令：把本檔契約的 scripts 表抄過去，拿掉「哪一步加」那一欄。
@@ -365,9 +366,13 @@ blocker：Phase 02；model：sonnet。
         - Release 段改寫自 `../ui/README.md` 的 Release 段：tag `v*`、tag 必須與版本一致、trusted publishing、`npm publish` 而不是 `pnpm publish`、0.0.1 是手動發的；
         - License 段寫 MIT，並指向 `THIRD_PARTY_NOTICES.md`。
    - 新增 `CHANGELOG.md`：Keep a Changelog 格式，有 `## [Unreleased]`（內容空）與 `## [0.0.1] - 2026-10-08`（內容是 `Package name reserved. No API yet.`）。
+   - 收進 `docs/plans/README.md`（本 repo 的 plan 規則，中文）：
+     - 這個檔在磁碟上已經存在（P01-1 的 commit 沒收它），內容不改；它不是 repo 根的 `README.md`。
+     - 先執行 `test -f docs/plans/README.md`，不存在就停下回報，不要自己寫。
+     - 它與上面三個檔同一個 commit：`git add CLAUDE.md README.md CHANGELOG.md docs/plans/README.md`。
    - 測試：無。
-   - verify：`pnpm fmt:check && pnpm verify:pack`
-   - commit：`docs(scaffold): add agent guide, readme and changelog`
+   - verify：`test -f docs/plans/README.md && pnpm fmt:check && pnpm verify:pack`
+   - commit：`docs(scaffold): add agent guide, readme, changelog and plan rules`
 2. CI 與 release workflow。
    - 新增 `.github/workflows/ci.yml`。
      - 先整份複製 `../ui/.github/workflows/ci.yml`。

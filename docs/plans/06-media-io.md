@@ -16,13 +16,13 @@
 
 ## 契約
 
-全部在 `src/media/`，`src/media/index.ts` 只 re-export（`support.ts` 不經它）。用到的 02 符號：`ByteSource`、`blobSource`、`bytesSource`（`src/contract/byte-source.ts`），`ViewerError`、`ViewerErrorCode`（`src/contract/errors.ts`）。本 plan 假設 `ViewerError` 的建構子是 `new ViewerError(code, { cause })`，`.code` 與 `.cause` 都可以讀；02 落地的簽名不同的話，就照 02 的簽名改呼叫處，行為不變。
+全部在 `src/media/`，`src/media/index.ts` 只 re-export（`support.ts` 不經它）。用到的 02 符號（簽名以 00-overview §3 / §9.1 為準）：`ByteSource`（`read(start: number, end: number, signal?: AbortSignal): Promise<Uint8Array<ArrayBuffer>>`、`size: number`）、`blobSource(blob: Blob)`、`bytesSource(bytes: Uint8Array<ArrayBuffer>)`（皆在 `src/contract/byte-source.ts`），`ViewerError`（`new ViewerError(code, { message?, cause? })`，`.code`、`.cause`）、`ViewerErrorCode`、`isAbortError(e: unknown): boolean`（皆在 `src/contract/errors.ts`）。
 
 ```ts
 // src/media/support.ts（入口可用：不 import mediabunny）
 export function hasVideoCodecs(): boolean; // typeof VideoDecoder === "function" && typeof VideoEncoder === "function"
 
-// src/media/media-error.ts
+// src/media/media-error.ts（error 是 abort 時原樣 throw，不回傳）
 export function toMediaError(error: unknown, fallback: ViewerErrorCode): ViewerError;
 
 // src/media/source.ts
@@ -72,14 +72,15 @@ blocker：02 的 `src/contract/byte-source.ts` 與 `src/contract/errors.ts` 已�
    - 執行 `pnpm add mediabunny@1.61.1 --save-exact`。`package.json` 的 `dependencies` 會出現 `"mediabunny": "1.61.1"`，`pnpm-lock.yaml` 也會跟著改。
    - 改 `THIRD_PARTY_NOTICES.md` 的「Runtime dependencies」段。如果內容還是「None yet.」，換成下面這一列；否則照字母順序插入這一列：`- mediabunny 1.61.1 — MPL-2.0 — used unmodified as an npm dependency; source: https://github.com/Vanilagy/mediabunny/tree/v1.61.1`
    - 新增 `src/media/media-error.ts`，匯出 `toMediaError(error: unknown, fallback: ViewerErrorCode): ViewerError`，依序判斷：
+     - `isAbortError(error)`（從 `src/contract/errors.ts` import）為真，就 `throw error`（abort 原樣丟，不轉）；
      - 沿著 `error`、`error.cause`、`error.cause.cause`…往下找，找到第一個 `instanceof ViewerError` 的就原樣回傳；
      - `error instanceof UnsupportedInputFormatError`（從 `"mediabunny"` import）回 `new ViewerError("unsupported", { cause: error })`；
      - 其他情況回 `new ViewerError(fallback, { cause: error })`。
-     - `ViewerError` 與 `ViewerErrorCode` 從 `src/contract/errors.ts` import。
+     - `ViewerError`、`ViewerErrorCode`、`isAbortError` 從 `src/contract/errors.ts` import。
    - 新增 `src/media/support.ts`，匯出 `hasVideoCodecs(): boolean`，內容是 `typeof VideoDecoder === "function" && typeof VideoEncoder === "function"`。這個檔不准 import 任何東西。
    - 新增 `src/media/index.ts`，只寫 `export { toMediaError } from "./media-error";`。
    - 測試：
-     - 新增 `src/media/media-error.test.ts`（jsdom），四案：`ViewerError` 原樣回傳（同一個 instance）；`new Error("x", { cause: new ViewerError("read_failed", { cause: 1 }) })` 回傳裡面那個 `ViewerError`；`new UnsupportedInputFormatError()` 回 code `unsupported`，`cause` 是原物件；`"boom"` 字串回 fallback code，`cause` 是 `"boom"`。
+     - 新增 `src/media/media-error.test.ts`（jsdom），五案：`new DOMException("x", "AbortError")` 被 `toMediaError(e, "decode_failed")` 原樣 throw（`expect(() => …).toThrow(e)` 且丟出的是同一個物件）；`ViewerError` 原樣回傳（同一個 instance）；`new Error("x", { cause: new ViewerError("read_failed", { cause: 1 }) })` 回傳裡面那個 `ViewerError`；`new UnsupportedInputFormatError()` 回 code `unsupported`，`cause` 是原物件；`"boom"` 字串回 fallback code，`cause` 是 `"boom"`。
      - 新增 `src/media/support.test.ts`（jsdom），三案：什麼都沒 stub 時回 false；用 `vi.stubGlobal` 把 `VideoDecoder`、`VideoEncoder` 都設成 `function () {}` 時回 true；只 stub `VideoDecoder` 時回 false。每案後面 `vi.unstubAllGlobals()`。
    - verify：`pnpm test src/media && pnpm check:licenses && pnpm check`
    - commit：`feat(media-io): add mediabunny and map media errors to viewer error codes`
