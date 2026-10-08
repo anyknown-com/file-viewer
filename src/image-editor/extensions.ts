@@ -1,3 +1,4 @@
+import { registerAdjust } from "./adjust/install";
 import { registerSelectPaint } from "./tools/register";
 
 let installed = false;
@@ -8,4 +9,5 @@ export function installExtensions(): void {
   if (installed) return;
   installed = true;
   registerSelectPaint();
+  registerAdjust();
 }
