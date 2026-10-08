@@ -106,6 +106,8 @@ export const en = {
   "image.open.layerTooLarge": "The layer “{name}” is too large for this device.",
   "image.narrow": "The image editor needs a wider window.",
   "image.back": "Back to preview",
+  "image.preview.none": "This project has no preview image.",
+  "image.preview.loading": "Loading preview…",
   "image.topbar.save": "Save",
   "image.topbar.saveAs": "Save as",
   "image.topbar.export": "Export",

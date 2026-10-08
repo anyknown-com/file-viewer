@@ -1,5 +1,13 @@
 /** How a file is displayed: the viewer built for its format. */
-export type ViewKind = "image" | "video" | "audio" | "pdf" | "text" | "markdown" | "excalidraw";
+export type ViewKind =
+  | "image"
+  | "video"
+  | "audio"
+  | "pdf"
+  | "text"
+  | "markdown"
+  | "excalidraw"
+  | "comp";
 /** Which editor can change a file. */
 export type EditKind = "markdown" | "excalidraw" | "image" | "video" | "audio";
 

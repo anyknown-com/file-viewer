@@ -56,7 +56,7 @@ describe("bodies", () => {
 
   it("covers every current kind", () => {
     expect(new Set(Object.keys(bodies))).toEqual(
-      new Set(["audio", "excalidraw", "image", "markdown", "pdf", "text", "video"]),
+      new Set(["audio", "comp", "excalidraw", "image", "markdown", "pdf", "text", "video"]),
     );
   });
 });

@@ -78,7 +78,7 @@ function extEntry(file: { name: string; mime?: string }): [ViewKind, string] | n
 }
 
 export function formatOf(file: { name: string; mime?: string }): ViewKind | null {
-  if (isComp(file.name)) return null;
+  if (isComp(file.name)) return "comp";
   const hit = extEntry(file);
   if (hit) return hit[0];
   const mime = cleanMime(file.mime);
@@ -121,6 +121,8 @@ export function kindOf(file: FileInfo, limits?: Partial<Limits>): KindResult {
   const edit = kind && editors[kind] ? kind : null;
   const format = formatOf(file);
   if (!format) return { view: null, edit, tooLarge: false };
+  // A comp preview reads only the zip head, so its size is never checked here.
+  if (format === "comp") return { view: format, edit, tooLarge: false };
   if (file.size > limitFor(format, resolved)) return { view: null, edit, tooLarge: true };
   return { view: format, edit, tooLarge: false };
 }

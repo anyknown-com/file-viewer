@@ -1557,6 +1557,11 @@ button.fv-diagram {
 
 /* == image editor (10) == */
 
+/* The .comp.zip preview body: its children sit straight in .fv-stage like the other bodies. */
+.fv-comp-preview {
+  display: contents;
+}
+
 .fv-ie,
 .fv-ie-session {
   display: grid;

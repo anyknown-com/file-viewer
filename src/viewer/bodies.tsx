@@ -68,6 +68,7 @@ function TextBody({ loaded }: BodyProps) {
 
 const MarkdownBody = lazy(() => import("./markdown-body"));
 const ExcalidrawBody = lazy(() => import("./excalidraw-body"));
+const CompBody = lazy(() => import("../image-editor/comp-preview"));
 
 export const bodies: Record<ViewKind, ComponentType<BodyProps>> = {
   image: ImageBody,
@@ -77,4 +78,5 @@ export const bodies: Record<ViewKind, ComponentType<BodyProps>> = {
   text: TextBody,
   markdown: MarkdownBody,
   excalidraw: ExcalidrawBody,
+  comp: CompBody,
 };

@@ -108,6 +108,8 @@ export const zhTW: Record<ImageKey, string> = {
   "image.open.layerTooLarge": "圖層「{name}」對這台裝置來說太大。",
   "image.narrow": "影像編輯器需要更寬的視窗。",
   "image.back": "回到預覽",
+  "image.preview.none": "這個專案沒有預覽圖。",
+  "image.preview.loading": "正在載入預覽…",
   "image.topbar.save": "儲存",
   "image.topbar.saveAs": "另存新檔",
   "image.topbar.export": "匯出",

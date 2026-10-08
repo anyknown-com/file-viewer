@@ -60,9 +60,14 @@ describe("kindOf view", () => {
     expect(kindOf({ name: "a.png", size: 11 }, { previewBytes: 10 }).tooLarge).toBe(true);
   });
 
-  it("returns null view for unknown formats and comp.zip", () => {
-    expect(kindOf(f("p.COMP.ZIP", 10 * Mi))).toMatchObject({ view: null, tooLarge: false });
+  it("views comp.zip as comp at any size", () => {
+    expect(kindOf(f("a.comp.zip")).view).toBe("comp");
+    expect(kindOf(f("A.COMP.ZIP")).view).toBe("comp");
+    expect(kindOf(f("a.comp.zip", 2 * Gi))).toMatchObject({ view: "comp", tooLarge: false });
     expect(mimeOf(f("p.COMP.ZIP"))).toBe("application/zip");
+  });
+
+  it("returns null view for unknown formats", () => {
     for (const file of [f("a.zip"), f("noext")]) {
       expect(kindOf(file)).toMatchObject({ view: null, tooLarge: false });
       expect(mimeOf(file)).toBe("application/octet-stream");
