@@ -99,11 +99,14 @@ function WandPanel({ api }: { api: EditorApi }): React.JSX.Element {
         max={255}
         onChange={(tolerance) => update({ tolerance })}
       />
-      <ToggleGroup<1 | 3 | 5>
+      <ToggleGroup<"1" | "3" | "5">
         label={t("image.select.sample")}
-        value={opts.sample}
-        options={SAMPLES.map((s) => ({ value: s.value, label: t(s.key) }))}
-        onChange={(sample) => update({ sample })}
+        value={String(opts.sample) as "1" | "3" | "5"}
+        options={SAMPLES.map((s) => ({
+          value: String(s.value) as "1" | "3" | "5",
+          label: t(s.key),
+        }))}
+        onChange={(sample) => update({ sample: Number(sample) as 1 | 3 | 5 })}
       />
       <Switch
         label={t("image.select.contiguous")}
