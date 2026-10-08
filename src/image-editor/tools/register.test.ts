@@ -22,7 +22,13 @@ it("registers the select and paint messages", () => {
 it("registers the select tools, menu, overlay, thumbnail decor and provider once", () => {
   registerSelectPaint();
   const ids = tools().map((t) => t.id);
-  for (const id of ["select.rect", "select.ellipse", "select.lasso", "select.polygon"]) {
+  for (const id of [
+    "select.rect",
+    "select.ellipse",
+    "select.lasso",
+    "select.polygon",
+    "select.wand",
+  ]) {
     expect(ids).toContain(id);
   }
   expect(menuItems("select")).toHaveLength(8);

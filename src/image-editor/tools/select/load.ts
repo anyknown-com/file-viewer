@@ -29,6 +29,28 @@ void main() {
 }
 `;
 
+function mergeLayerTexture(
+  api: EditorApi,
+  id: LayerId,
+  target: PixelTarget,
+  tex: WebGLTexture,
+  size: { width: number; height: number },
+  asMask: boolean,
+  op: MaskOp,
+): void {
+  const m = targetMatrix(api, id, target);
+  renderSelection(api, LOAD_FS, (g, program) => {
+    g.activeTexture(g.TEXTURE1);
+    g.bindTexture(g.TEXTURE_2D, tex);
+    g.uniform1i(g.getUniformLocation(program, "u_layer"), 1);
+    g.uniform2i(g.getUniformLocation(program, "u_size"), size.width, size.height);
+    g.uniform1i(g.getUniformLocation(program, "u_mask"), asMask ? 1 : 0);
+    g.uniform1i(g.getUniformLocation(program, "u_op"), opIndex(op));
+    g.uniform3f(g.getUniformLocation(program, "u_r0"), m[0], m[2], m[4]);
+    g.uniform3f(g.getUniformLocation(program, "u_r1"), m[1], m[3], m[5]);
+  });
+}
+
 /** Merges a layer's alpha (or a mask's value), mapped into document space, into the selection. */
 export function loadLayerAlpha(api: EditorApi, id: LayerId, target: PixelTarget, op: MaskOp): void {
   const size = layerPixelSize(api, id, target);
@@ -38,16 +60,21 @@ export function loadLayerAlpha(api: EditorApi, id: LayerId, target: PixelTarget,
     target === "mask"
       ? createR8(gl, size.width, size.height, px)
       : createRgba(gl, size.width, size.height, px);
-  const m = targetMatrix(api, id, target);
-  renderSelection(api, LOAD_FS, (g, program) => {
-    g.activeTexture(g.TEXTURE1);
-    g.bindTexture(g.TEXTURE_2D, tex);
-    g.uniform1i(g.getUniformLocation(program, "u_layer"), 1);
-    g.uniform2i(g.getUniformLocation(program, "u_size"), size.width, size.height);
-    g.uniform1i(g.getUniformLocation(program, "u_mask"), target === "mask" ? 1 : 0);
-    g.uniform1i(g.getUniformLocation(program, "u_op"), opIndex(op));
-    g.uniform3f(g.getUniformLocation(program, "u_r0"), m[0], m[2], m[4]);
-    g.uniform3f(g.getUniformLocation(program, "u_r1"), m[1], m[3], m[5]);
-  });
+  mergeLayerTexture(api, id, target, tex, size, target === "mask", op);
+  gl.deleteTexture(tex);
+}
+
+/** Merges an R8 mask in the layer image's pixel space (255 = selected) into the selection. */
+export function writeLayerSpaceMask(
+  api: EditorApi,
+  id: LayerId,
+  bytes: Uint8Array,
+  width: number,
+  height: number,
+  op: MaskOp,
+): void {
+  const gl = api.gl;
+  const tex = createR8(gl, width, height, bytes);
+  mergeLayerTexture(api, id, "image", tex, { width, height }, true, op);
   gl.deleteTexture(tex);
 }

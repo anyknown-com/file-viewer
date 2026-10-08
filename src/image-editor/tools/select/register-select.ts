@@ -3,12 +3,14 @@ import { ellipseMarqueeTool, rectMarqueeTool } from "./marquee";
 import { lassoTool, polygonLassoTool } from "./lasso";
 import { registerSelectMenu } from "./menu";
 import { selectionProvider } from "./provider";
+import { wandTool } from "./wand-tool";
 
 export function registerSelectTools(): void {
   registerTool(rectMarqueeTool);
   registerTool(ellipseMarqueeTool);
   registerTool(lassoTool);
   registerTool(polygonLassoTool);
+  registerTool(wandTool);
   registerSelectMenu();
   registerSelection(selectionProvider);
 }

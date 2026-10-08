@@ -1,4 +1,5 @@
 import { decodePng, encodePng, type PngImage } from "../../comp/index"; // 09
+import { wandMask } from "../tools/select/wand";
 
 // Jobs the module worker runs. Other plans add one key each (11: wand, heal, contentFill).
 export const jobs = {
@@ -13,6 +14,8 @@ export const jobs = {
     signal.throwIfAborted();
     return decodePng(input.bytes, input.kind);
   },
+  wand: (input: Parameters<typeof wandMask>[0], signal: AbortSignal): Uint8Array =>
+    wandMask(input, signal),
 };
 
 export type JobKind = keyof typeof jobs;
