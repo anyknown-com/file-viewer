@@ -32,6 +32,15 @@ Versions 0.0.x only hold the package name on npm and have no API. The first usab
 | `pnpm test:browser` | `vitest run --project browser` |
 | `pnpm verify:pack` | `pnpm build && node scripts/verify-pack.mjs` |
 | `pnpm check:licenses` | `node scripts/check-licenses.mjs` |
+| `pnpm site:dev` | docs site dev server on port 5300 |
+| `pnpm site:test` | generates the API data, then runs the site and script tests |
+| `pnpm site:build` | builds the package, the API data, the site, then `llms.txt` and the Markdown docs |
+| `pnpm site:smoke` | opens the built site in Chromium and checks CSP and network |
+| `pnpm site:deploy` | builds, then deploys with wrangler |
+
+## Docs site
+
+https://file-viewer.anyknown.com has four kinds of page: the playground (`#/`, drop a file to open it), the guides (`#/guide/<key>`), the API reference (`#/api`, generated from the TypeScript source) and the message tables. The Markdown sources are also served as `/llms.txt`, `/llms-full.txt` and `/docs/<key>.md` for agents. The site itself runs under the minimum CSP that "Connect your app" asks of a host, and `pnpm site:smoke` checks that.
 
 ## Release
 

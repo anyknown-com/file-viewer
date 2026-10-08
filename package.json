@@ -68,7 +68,7 @@
     "gen:api-docs": "node scripts/api-docs.mjs",
     "site:dev": "node scripts/api-docs.mjs && vite --config site/vite.config.ts",
     "site:test": "node scripts/api-docs.mjs && vitest run --config site/vitest.config.ts",
-    "site:build": "pnpm build && node scripts/api-docs.mjs && vite build --config site/vite.config.ts",
+    "site:build": "pnpm build && node scripts/api-docs.mjs && vite build --config site/vite.config.ts && node scripts/llms-txt.mjs",
     "site:smoke": "node scripts/site-smoke.mjs",
     "site:deploy": "pnpm site:build && npx wrangler deploy --config site/wrangler.jsonc"
   },
