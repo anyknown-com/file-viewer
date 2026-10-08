@@ -22,6 +22,7 @@
 - 記憶體上限照 storage 14 §3：同一時間最多開 8 個 `Input`，超過就關掉最久沒用的那個；`CanvasSink` 的 `poolSize` 設 2；縮圖條與波形只算畫面上看得到的範圍，只放在記憶體裡（各有 LRU 上限）；輸出經 `StreamTarget` 接 06 的 `createBlobSink`，不整包放進記憶體。解出來的影音不寫 IndexedDB、OPFS、localStorage。
 - 預覽用 Canvas2D 合成：影片幀來自 `CanvasSink`，聲音來自 `AudioBufferSink`，排進 `AudioContext` 播放，播放時鐘用 `AudioContext.currentTime`。輸出用同一個 `renderFrame` 畫到 `OffscreenCanvas`。
 - 輸出規格：MP4，H.264，`Mp4OutputFormat({ fastStart: "fragmented" })`。畫質三種：原尺寸、1080p、720p（以短邊算，例如 9:16 的 1080p 是 1080×1920）；1080p 用 8 Mbps，720p 用 5 Mbps，原尺寸依像素數等比換算，夾在 1–40 Mbps 之間。比原片大的畫質不列出來。fps 用專案的 fps（原片，上限 60）。音訊 48 kHz、立體聲、128 kbps：`canEncodeAudio("aac", …)` 為 true 就用 AAC，否則用 Opus 放在 MP4 容器裡。不用 `@mediabunny/aac-encoder`，因為它會開 `blob:` worker。開始前先估大小：`(視訊位元率 + 音訊位元率) × 秒數 ÷ 8 × 1.05`；超過 `maxOutputBytes` 就不讓開始。
+- 輸出寬高一律向下取偶數，含 source。
 - 存檔一律是「輸出成新檔」（00-overview §2）：呼叫 `onSave({ blob, mode: "export", ext: ".mp4", mime: "video/mp4", suggestedName })`，`suggestedName` 用 `src/contract/save.ts` 的 `suggestedName(file.name, ".mp4", "export")`（結果是 `<主檔名> (edited).mp4`），原片不動。按鈕只寫「輸出」。`onSave` resolve 後，編輯器標成已存並呼叫 `onClose`；新檔要不要打開由宿主決定（H1）。reject 時留在輸出 Dialog，顯示 `error.message`。
 - 版面跟 00-overview §3 的規則走：編輯器撐滿宿主給的容器，不自己開全螢幕 Dialog（storage 14 §4 是全螢幕 Dialog，這裡改掉）。容器寬度小於 768 px 或 `hasVideoCodecs()` 為 false 時，編輯器只顯示說明與「回到預覽」。storage 14 原本是讓「編輯」按鈕變成 tooltip；這裡改成進編輯器後才判斷，這樣 03 的按鈕不必知道影片的特殊規則。
 - 文字字型用 Geist（`@fontsource-variable/geist`，同源自架，CSP 不用改；13 image-text-shapes 也用它）。它的授權是 OFL-1.1；01 P02-3 的 `scripts/check-licenses.mjs` 已允許 `@fontsource*` 套件用 OFL-1.1，本份不改授權檢查，只在 `THIRD_PARTY_NOTICES.md` 加一列。
@@ -266,7 +267,7 @@ export class EditorSession { constructor(o: { file: FileRef; provider?: AssetPro
 blocker：01 scaffold（本 Phase 不 import 02–06 的任何東西）；model：sonnet。全部是純函式，在 jsdom 跑。
 
 1. 時間與專案模型。新增 `src/video-editor/model/time.ts`、`src/video-editor/model/ids.ts`、`src/video-editor/model/project.ts`，簽名照「契約」的 `model/time.ts`、`model/ids.ts`、`model/project.ts`。規則：
-   - `canvasSize`：`source` 回傳原片尺寸；其他比例以原片短邊 `b = min(width, height)` 為準：16:9 是 `b×16/9 × b`，9:16 是 `b × b×16/9`，1:1 是 `b × b`。寬高都四捨五入成偶數。
+   - `canvasSize`：`source` 回傳原片尺寸；其他比例以原片短邊 `b = min(width, height)` 為準：16:9 是 `b×16/9 × b`，9:16 是 `b × b×16/9`，1:1 是 `b × b`。寬高一律向下取偶數（含 `source`）。
    - `createProject(source)`：`fps = min(round(source.fps ?? 30), 60)`；`aspect "source"`；`tracks` 裡 `main` 放一個 `VideoClip`（`assetId SOURCE_ASSET_ID`、`start 0`、`in 0`、`out source.duration`、`volume 1`、`muted false`、`fit "fit"`），`overlay` 與 `audio` 是空陣列；三種軌的 `id` 都用 `newId()`。
 
    測試：`src/video-editor/model/time.test.ts`

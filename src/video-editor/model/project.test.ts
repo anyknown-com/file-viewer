@@ -28,10 +28,13 @@ describe("canvasSize", () => {
   it("returns even sizes for every aspect", () => {
     const aspects: Aspect[] = ["source", "16:9", "9:16", "1:1"];
     for (const a of aspects) {
-      const s = canvasSize(a, { width: 854, height: 482 });
+      const s = canvasSize(a, { width: 853, height: 481 });
       expect(s.width % 2).toBe(0);
       expect(s.height % 2).toBe(0);
     }
+  });
+  it("source rounds down to even", () => {
+    expect(canvasSize("source", { width: 853, height: 481 })).toEqual({ width: 852, height: 480 });
   });
   it("9:16 of 1920x1080 is 1080x1920", () => {
     expect(canvasSize("9:16", { width: 1920, height: 1080 })).toEqual({

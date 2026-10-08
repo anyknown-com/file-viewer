@@ -18,6 +18,8 @@ export function roundToFrame(ticks: Ticks, fps: number): Ticks {
   return Math.round(ticks / frame) * frame;
 }
 
+const two = (n: number) => String(n).padStart(2, "0");
+
 export function formatTimecode(ticks: Ticks, fps: number): string {
   const totalFrames = Math.floor(Math.max(0, ticks) / frameTicks(fps));
   const rate = Math.round(fps);
@@ -26,7 +28,6 @@ export function formatTimecode(ticks: Ticks, fps: number): string {
   const seconds = totalSeconds % 60;
   const minutes = Math.floor(totalSeconds / 60) % 60;
   const hours = Math.floor(totalSeconds / 3600);
-  const two = (n: number) => String(n).padStart(2, "0");
   const tail = `${two(minutes)}:${two(seconds)}:${two(frames)}`;
   return hours > 0 ? `${hours}:${tail}` : tail;
 }

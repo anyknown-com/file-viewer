@@ -111,13 +111,13 @@ export function projectDuration(p: Project): Ticks {
   return end;
 }
 
-const even = (n: number) => Math.round(n / 2) * 2;
+const even = (n: number) => Math.floor(n / 2) * 2;
 
 export function canvasSize(
   aspect: Aspect,
   source: { width: number; height: number },
 ): { width: number; height: number } {
-  if (aspect === "source") return { width: source.width, height: source.height };
+  if (aspect === "source") return { width: even(source.width), height: even(source.height) };
   const b = Math.min(source.width, source.height);
   const long = (b * 16) / 9;
   if (aspect === "16:9") return { width: even(long), height: even(b) };
@@ -128,7 +128,7 @@ export function canvasSize(
 export function createProject(source: AssetMeta): Project {
   const size = { width: source.width, height: source.height };
   return {
-    ...size,
+    ...canvasSize("source", size),
     fps: Math.min(Math.round(source.fps ?? 30), 60),
     aspect: "source",
     source: size,
