@@ -17,7 +17,7 @@ export default defineConfig({
         // instead of discovering them mid-run, re-optimizing and reloading the page.
         optimizeDeps: {
           entries: ["src/**/*.browser.test.{ts,tsx}"],
-          include: ["fflate", "zod"],
+          include: ["fflate", "zod", "@excalidraw/excalidraw"],
         },
         test: {
           name: "browser",

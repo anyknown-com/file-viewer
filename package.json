@@ -37,6 +37,10 @@
       "types": "./dist/audio-editor/index.d.ts",
       "default": "./dist/audio-editor/index.js"
     },
+    "./excalidraw": {
+      "types": "./dist/excalidraw/index.d.ts",
+      "default": "./dist/excalidraw/index.js"
+    },
     "./styles.css": "./dist/styles.css"
   },
   "publishConfig": {

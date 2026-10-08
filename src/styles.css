@@ -831,3 +831,18 @@
 .fv-audio-status .fv-progress {
   inline-size: min(100%, 20rem);
 }
+
+/* == excalidraw (04) == */
+.fv-diagram-img {
+  display: block;
+  max-inline-size: 100%;
+  block-size: auto;
+  margin-inline: auto;
+}
+
+.fv-diagram-broken {
+  padding: var(--ak-space-md);
+  border: 1px solid var(--ak-border);
+  border-radius: var(--ak-radius-md);
+  color: var(--ak-text-muted);
+}

@@ -275,11 +275,11 @@ blocker：Phase 01；model：opus（字型路徑、CSP 測試架子要邊做邊�
 
 1. **Excalidraw 依賴與字型。**
    - `pnpm add @excalidraw/excalidraw@0.18.1 --save-exact`。
-   - 新檔 `scripts/copy-excalidraw-assets.mjs`：
-     - 用 `createRequire(import.meta.url).resolve("@excalidraw/excalidraw")` 拿到 `.../dist/prod/index.js`，往上一層找到 `dist/prod/fonts/`；
+   - 字型由 tsdown 自己的設定複製（`tsdown.config.ts` 的 `hooks["build:done"]`：`copyExcalidrawFonts`），所以每次跑 tsdown（`build`、`check:entry`）dist 裡都有字型；沒有另外的複製腳本。做法：
+     - 用 `createRequire(import.meta.url).resolve("@excalidraw/excalidraw")` 拿到 `.../dist/prod/index.js`，同一層的 `dist/prod/fonts/`；
      - 整個目錄用 `fs.cpSync(…, { recursive: true })` 複製到 `dist/excalidraw-assets/fonts/`；
-     - 檢查 `dist/excalidraw-assets/fonts/Excalifont/` 至少有一個 `.woff2`，沒有就 `exit 1`。
-   - `package.json` 的 `build` 從 `tsdown` 改成 `tsdown && node scripts/copy-excalidraw-assets.mjs`。`files` 已經包含 `dist`，不用改。
+     - 檢查 `dist/excalidraw-assets/fonts/Excalifont/` 至少有一個 `.woff2`，沒有就 throw，build 失敗。
+   - `package.json` 的 `build` 維持 `tsdown`。`files` 已經包含 `dist`，不用改。
    - 新檔 `src/excalidraw/asset-path.ts`：
      - 加 `declare global { interface Window { EXCALIDRAW_ASSET_PATH?: string | string[] } }`；
      - `setAssetPath(path: string | undefined): void`：`path` 有值而且和目前值不同時，寫進 `window.EXCALIDRAW_ASSET_PATH`；沒值時不動。
