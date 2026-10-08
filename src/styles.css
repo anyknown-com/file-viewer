@@ -2025,3 +2025,18 @@ button.fv-diagram {
 .fv-ie-adj-curve-point[data-selected="true"] {
   fill: var(--ak-text);
 }
+
+.fv-ie-adj-effects {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ak-space-xs);
+  padding: var(--ak-space-sm);
+  border-block-end: 1px solid var(--ak-border);
+}
+
+.fv-ie-adj-effect-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ak-space-sm);
+}

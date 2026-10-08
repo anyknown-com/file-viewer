@@ -1,3 +1,4 @@
+import { registerEffectsUi } from "../effects/menu";
 import { registerLayerEffects } from "../effects/register";
 import { registerMessages } from "../registry";
 import { registerAdjustUi } from "./menu";
@@ -13,4 +14,5 @@ export function registerAdjust(): void {
   registerBlurAdjustments();
   registerLayerEffects();
   registerAdjustUi();
+  registerEffectsUi();
 }

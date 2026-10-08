@@ -1,6 +1,7 @@
 import { useT } from "../../i18n/use-t";
 import { Button } from "../../primitives/button";
 import type { EditorApi, Layer, LayerDecor } from "../api";
+import { focusEffects } from "../effects/focus";
 import { adjustMessages } from "./messages";
 import { KIND_KEY } from "./settings";
 
@@ -21,15 +22,33 @@ export function LayerBadge({
   api: EditorApi;
 }): React.JSX.Element | null {
   const t = useT(adjustMessages);
-  if (!layer.adjustment) return null;
+  const hasEffects = layer.effects !== undefined && Object.keys(layer.effects).length > 0;
+  if (!layer.adjustment && !hasEffects) return null;
   return (
-    <Button
-      variant="ghost"
-      className="fv-ie-adj-badge"
-      aria-label={t(`image.adjust.kind.${KIND_KEY[layer.adjustment.kind]}`)}
-      icon={<HalfCircle />}
-      onClick={() => api.setSession({ active: layer.id })}
-    />
+    <>
+      {layer.adjustment ? (
+        <Button
+          variant="ghost"
+          className="fv-ie-adj-badge"
+          aria-label={t(`image.adjust.kind.${KIND_KEY[layer.adjustment.kind]}`)}
+          icon={<HalfCircle />}
+          onClick={() => api.setSession({ active: layer.id })}
+        />
+      ) : null}
+      {hasEffects ? (
+        <Button
+          variant="ghost"
+          className="fv-ie-adj-badge"
+          aria-label={t("image.effects.open")}
+          onClick={() => {
+            api.setSession({ active: layer.id });
+            focusEffects(layer.id);
+          }}
+        >
+          fx
+        </Button>
+      ) : null}
+    </>
   );
 }
 

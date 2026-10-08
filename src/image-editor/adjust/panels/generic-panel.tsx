@@ -9,7 +9,7 @@ import { type AdjustColor, fromHex, toHex } from "./color";
 import { FIELDS, getPath, resolveAdjustment, setPath } from "./fields";
 
 // React's onChange is the native `input` event; the editor needs `input` (preview) and `change` (commit).
-function ColorField(props: {
+export function ColorField(props: {
   label: string;
   value: AdjustColor;
   onPreview: (c: AdjustColor) => void;
