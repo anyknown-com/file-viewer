@@ -1,0 +1,15 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "types": ["vite/client"],
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "paths": {
+      "@anyknown/file-viewer": ["../src/index.ts"],
+      "@anyknown/file-viewer/*": ["../src/*/index.ts"]
+    }
+  },
+  "include": ["./**/*.ts", "./**/*.tsx"],
+  "exclude": ["./dist"]
+}

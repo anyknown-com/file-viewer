@@ -19,8 +19,11 @@
         "tsdown.config.ts"
       ]
     },
+    "typecheck:site": {
+      "inputs": ["site/**", "!site/dist/**", "src/**", "tsconfig.json"]
+    },
     "lint": {
-      "inputs": ["src/**", "scripts/**", ".oxlintrc.json"]
+      "inputs": ["src/**", "scripts/**", "site/**", "!site/dist/**", ".oxlintrc.json"]
     },
     "fmt:check": {
       "inputs": ["$TURBO_DEFAULT$", "!**/*.md"]
