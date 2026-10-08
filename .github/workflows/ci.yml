@@ -21,7 +21,8 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install --with-deps chromium
+      # chrome for the browser tests (AAC, H.264); chromium for test:csp and site:smoke.
+      - run: npx playwright install --with-deps chromium chrome
       - run: pnpm turbo run build typecheck typecheck:site lint fmt:check check:entry test test:browser check:licenses
       - run: pnpm test:csp
       - run: pnpm site:test

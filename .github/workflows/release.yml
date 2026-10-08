@@ -27,7 +27,7 @@ jobs:
       # Node 22 ships npm 10.x; trusted publishing needs >= 11.5.1.
       - run: npm install --global npm@latest
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chrome
 
       # The tag names the release. Refuse to publish if package.json disagrees,
       # otherwise the tag and the published version drift apart silently.
