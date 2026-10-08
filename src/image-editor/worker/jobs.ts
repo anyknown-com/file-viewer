@@ -1,4 +1,5 @@
 import { decodePng, encodePng, type PngImage } from "../../comp/index"; // 09
+import { spotHeal } from "../tools/heal/spot-heal";
 import { wandMask } from "../tools/select/wand";
 
 // Jobs the module worker runs. Other plans add one key each (11: wand, heal, contentFill).
@@ -16,6 +17,8 @@ export const jobs = {
   },
   wand: (input: Parameters<typeof wandMask>[0], signal: AbortSignal): Uint8Array =>
     wandMask(input, signal),
+  heal: (input: Parameters<typeof spotHeal>[0], signal: AbortSignal): Uint8Array =>
+    spotHeal(input, signal),
 };
 
 export type JobKind = keyof typeof jobs;

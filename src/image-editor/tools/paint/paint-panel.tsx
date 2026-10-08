@@ -10,14 +10,9 @@ import { ColorSwatches } from "./color-swatches";
 /** The brush and eraser options, and the rasterize question `ensurePaintable` asks. */
 export function PaintPanel({ api }: { api: EditorApi }): React.JSX.Element {
   const t = useT(selectPaintMessages);
-  const common = useT(commonMessages);
-  const { brush, rasterizeAsk } = useToolState(api);
+  const { brush } = useToolState(api);
   const set = (patch: Partial<ToolState["brush"]>): void =>
     setToolState(api, { brush: { ...toolState(api).brush, ...patch } });
-  const answer = (ok: boolean): void => {
-    setToolState(api, { rasterizeAsk: null });
-    rasterizeAsk?.resolve(ok);
-  };
   return (
     <>
       <ColorSwatches api={api} />
@@ -49,19 +44,32 @@ export function PaintPanel({ api }: { api: EditorApi }): React.JSX.Element {
         max={100}
         onChange={(v) => set({ smoothing: v / 100 })}
       />
-      {rasterizeAsk && (
-        <ConfirmDialog
-          open
-          onOpenChange={(open) => {
-            if (!open) answer(false);
-          }}
-          title={t("image.paint.rasterizeTitle")}
-          description={t("image.paint.rasterizeBody")}
-          confirmLabel={t("image.paint.rasterize")}
-          cancelLabel={common("common.cancel")}
-          onConfirm={() => answer(true)}
-        />
-      )}
+      <RasterizeAsk api={api} />
     </>
+  );
+}
+
+/** The rasterize question `ensurePaintable` asks; every tool that calls it renders this. */
+export function RasterizeAsk({ api }: { api: EditorApi }): React.JSX.Element | null {
+  const t = useT(selectPaintMessages);
+  const common = useT(commonMessages);
+  const { rasterizeAsk } = useToolState(api);
+  if (!rasterizeAsk) return null;
+  const answer = (ok: boolean): void => {
+    setToolState(api, { rasterizeAsk: null });
+    rasterizeAsk.resolve(ok);
+  };
+  return (
+    <ConfirmDialog
+      open
+      onOpenChange={(open) => {
+        if (!open) answer(false);
+      }}
+      title={t("image.paint.rasterizeTitle")}
+      description={t("image.paint.rasterizeBody")}
+      confirmLabel={t("image.paint.rasterize")}
+      cancelLabel={common("common.cancel")}
+      onConfirm={() => answer(true)}
+    />
   );
 }

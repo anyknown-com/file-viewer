@@ -184,7 +184,7 @@ async function begin(
 const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
 
 /** `[` / `]` size (Shift: hardness) and 1–0 opacity, as in Photoshop. */
-function brushKey(e: KeyboardEvent, api: EditorApi): boolean {
+export function brushKey(e: KeyboardEvent, api: EditorApi): boolean {
   if (e.metaKey || e.ctrlKey || e.altKey) return false;
   const { brush } = toolState(api);
   const dir = e.code === "BracketRight" ? 1 : e.code === "BracketLeft" ? -1 : 0;
@@ -203,7 +203,7 @@ function brushKey(e: KeyboardEvent, api: EditorApi): boolean {
   return true;
 }
 
-function ring(ctx: CanvasRenderingContext2D, c: Point, r: number): void {
+export function ring(ctx: CanvasRenderingContext2D, c: Point, r: number): void {
   ctx.beginPath();
   ctx.arc(c.x, c.y, Math.max(r, 0.5), 0, Math.PI * 2);
   ctx.setLineDash([]);
