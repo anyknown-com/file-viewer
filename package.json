@@ -49,6 +49,7 @@
     "check:licenses": "node scripts/check-licenses.mjs"
   },
   "dependencies": {
+    "@base-ui/react": "^1.8.0",
     "fflate": "^0.8.3",
     "zod": "^4.6.5"
   },

@@ -20,6 +20,17 @@ export function record<S extends z.ZodRawShape>(shape: S) {
   });
 }
 
+/**
+ * A Swift `T?` field. Synthesized Decodable uses decodeIfPresent, which reads a missing key and
+ * `null` alike as nil; both become `undefined` here, and the key is left out when written.
+ */
+export function optional<T extends z.ZodType>(schema: T) {
+  return schema
+    .nullish()
+    .transform((v) => v ?? undefined)
+    .optional();
+}
+
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }

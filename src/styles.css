@@ -38,3 +38,93 @@
 .fv-portal {
   display: contents;
 }
+
+/* == primitives (02) == */
+
+.fv-icon {
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+.fv-icon-sm {
+  width: var(--ak-icon-size-sm);
+  height: var(--ak-icon-size-sm);
+}
+
+.fv-icon-md {
+  width: var(--ak-icon-size-md);
+  height: var(--ak-icon-size-md);
+}
+
+.fv-icon-lg {
+  width: var(--ak-icon-size-lg);
+  height: var(--ak-icon-size-lg);
+}
+
+.fv-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ak-space-xs);
+  height: 32px;
+  padding: 0 var(--ak-space-md);
+  border: 1px solid var(--ak-border-control);
+  border-radius: var(--ak-corner-control);
+  background: var(--ak-surface);
+  color: var(--ak-text);
+  font: inherit;
+  font-size: var(--ak-type-t2);
+  cursor: pointer;
+  transition: background-color var(--ak-motion-quick) var(--ak-motion-ease-out);
+}
+
+.fv-button:hover {
+  background: var(--ak-surface-raised);
+}
+
+.fv-button-primary {
+  background: var(--ak-accent);
+  color: var(--ak-accent-text);
+  border-color: transparent;
+}
+
+.fv-button-ghost {
+  background: transparent;
+  border-color: transparent;
+}
+
+.fv-button-ghost:hover {
+  background: var(--ak-ink-n8);
+}
+
+.fv-button-danger {
+  background: var(--ak-danger-solid);
+  color: var(--ak-on-danger-solid);
+  border-color: transparent;
+}
+
+.fv-button-icon {
+  width: 32px;
+  padding: 0;
+}
+
+.fv-button[data-disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.fv-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--ak-ink-n18);
+  border-top-color: var(--ak-text);
+  border-radius: var(--ak-radius-full);
+  animation: fv-spin var(--ak-motion-loop) linear infinite;
+}
+
+@keyframes fv-spin {
+  to {
+    rotate: 360deg;
+  }
+}

@@ -40,6 +40,7 @@ git clone https://github.com/robbietilton/Compositor "$SCRATCH/compositor" && gi
   - zip 宣告總大小上限寫死 4 GiB（storage 17 是「storage 單檔上限的兩倍」= 4 GiB；本套件沒有單檔上限，取同一個數）。
   - `fromImage(image, layerName)`：第二個參數是圖層名（呼叫端傳原檔的主檔名），storage 17 寫成固定 `Background`。
 - **H2 不再自己實作摘要**：ai-readable-docs 原本要在 product 寫 `image-project-summary.ts` 對 golden fixture；改成直接 import 本份的 `readHead` / `readProject` / `summarize` / `stringifyManifest`，fixture 只留在本 repo 的測試裡。H2 要做什麼見「之後再做」。
+- **Swift `T?` 欄位收 `null`**：synthesized Decodable 用 `decodeIfPresent`，缺 key 與 `null` 都讀成 nil；schema 一律用 `src/comp/extra.ts` 的 `optional(schema)`（`.nullish()` 再把 `null` 轉成 `undefined`），寫出時不寫這個 key（Compositor 兩種讀法相同）。
 - 不做：寫 ZIP64（> 4 GiB 直接丟錯）、PSD / OpenRaster 匯入匯出、JPEG 編解碼、像素預算（10 用 `pngSize` 自己算）、讀單一圖層而不讀整檔的 API（等 product 的「讀圖片」真的要再開）。
 
 ## 契約

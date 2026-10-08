@@ -89,6 +89,21 @@ describe("layerAdjustmentSchema", () => {
     expect(layerAdjustmentSchema.safeParse(noBlur).success).toBe(true);
   });
 
+  it("reads null in a Swift optional as absent, as decodeIfPresent does", () => {
+    const parsed = layerAdjustmentSchema.parse({
+      ...curvesExample(),
+      blurRadius: null,
+      noiseSeed: null,
+      hsvSettings: null,
+    });
+    expect(parsed.blurRadius).toBeUndefined();
+    expect(parsed.noiseSeed).toBeUndefined();
+    expect(parsed.hsvSettings).toBeUndefined();
+    expect(parsed.extra).toBeUndefined();
+    expect(toJsonValue(parsed)).toEqual(curvesExample());
+    expect(issuePaths({ ...curvesExample(), hue: null })).toContain("hue");
+  });
+
   it("keeps unknown keys in extra and writes them back in place", () => {
     const input = curvesExample();
     input.futureKey = 1;

@@ -5,7 +5,7 @@
 // (`var hue: Double = 0`); only `T?` properties are optional. Value ranges are checked later by
 // validateLikeCompositor (`LayerAdjustment.isValid`), not here.
 import { z } from "zod";
-import { record } from "./extra";
+import { optional, record } from "./extra";
 import {
   blackWhiteSettingsSchema,
   colorBalanceSettingsSchema,
@@ -106,20 +106,20 @@ export const layerAdjustmentSchema = record({
   saturation: z.number(),
   lightness: z.number(),
   colorize: z.boolean(),
-  hsvSettings: hueSaturationSchema.optional(),
+  hsvSettings: optional(hueSaturationSchema),
   levels: levelsSchema,
   curves: curvesSchema,
-  exposureSettings: exposureSettingsSchema.optional(),
-  gradientMapSettings: gradientMapSettingsSchema.optional(),
-  grainSettings: grainSettingsSchema.optional(),
-  blackWhiteSettings: blackWhiteSettingsSchema.optional(),
-  colorBalanceSettings: colorBalanceSettingsSchema.optional(),
-  blurRadius: z.number().optional(),
-  motionAngle: z.number().optional(),
-  motionDistance: z.number().optional(),
-  noiseAmount: z.number().optional(),
-  noiseGaussian: z.boolean().optional(),
-  noiseMonochromatic: z.boolean().optional(),
-  noiseSeed: uint32Schema.optional(),
+  exposureSettings: optional(exposureSettingsSchema),
+  gradientMapSettings: optional(gradientMapSettingsSchema),
+  grainSettings: optional(grainSettingsSchema),
+  blackWhiteSettings: optional(blackWhiteSettingsSchema),
+  colorBalanceSettings: optional(colorBalanceSettingsSchema),
+  blurRadius: optional(z.number()),
+  motionAngle: optional(z.number()),
+  motionDistance: optional(z.number()),
+  noiseAmount: optional(z.number()),
+  noiseGaussian: optional(z.boolean()),
+  noiseMonochromatic: optional(z.boolean()),
+  noiseSeed: optional(uint32Schema),
 });
 export type LayerAdjustment = z.output<typeof layerAdjustmentSchema>;
