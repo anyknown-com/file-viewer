@@ -63,7 +63,8 @@
     "site:dev": "vite --config site/vite.config.ts",
     "site:test": "vitest run --config site/vitest.config.ts",
     "site:build": "pnpm build && vite build --config site/vite.config.ts",
-    "site:smoke": "node scripts/site-smoke.mjs"
+    "site:smoke": "node scripts/site-smoke.mjs",
+    "site:deploy": "pnpm site:build && npx wrangler deploy --config site/wrangler.jsonc"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

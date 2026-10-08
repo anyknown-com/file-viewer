@@ -1,0 +1,14 @@
+{
+  "$schema": "https://unpkg.com/wrangler/config-schema.json",
+  "name": "anyknown-file-viewer-site",
+  "compatibility_date": "2026-10-01",
+  // Static assets only. Workers static assets apply dist/_headers (copied from public/), so
+  // production serves the same minimum CSP that `pnpm site:smoke` checks under `vite preview`.
+  "assets": {
+    "directory": "./dist",
+  },
+  // The site lives on file-viewer.anyknown.com; wrangler creates the DNS record itself.
+  // With routes set, workers_dev is off by default and the *.workers.dev URL returns 404. That is
+  // on purpose: one public URL. Set "workers_dev": true explicitly to keep a preview URL.
+  "routes": [{ "pattern": "file-viewer.anyknown.com", "custom_domain": true }],
+}
