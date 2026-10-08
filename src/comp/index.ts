@@ -13,3 +13,5 @@ export type { LayerEffects } from "./manifest-effects";
 export type { LayerShapeStyle, LayerTextStyle } from "./manifest-text-shape";
 export type { CanvasGuide } from "./manifest-guides";
 export { validateLikeCompositor } from "./validate";
+export { fromImage, readProject, writeProject } from "./project";
+export type { Project } from "./project";
