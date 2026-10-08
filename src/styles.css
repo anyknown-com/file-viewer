@@ -646,3 +646,132 @@
   block-size: 100%;
   min-block-size: 0;
 }
+
+/* == markdown (04) == */
+.fv-md {
+  block-size: 100%;
+  overflow: auto;
+  padding: var(--ak-space-lg);
+}
+
+.fv-prose {
+  max-inline-size: 48rem;
+  margin-inline: auto;
+  color: var(--ak-text);
+  font-family: var(--ak-font-body);
+  font-size: var(--ak-type-t3);
+  line-height: var(--ak-type-body);
+  overflow-wrap: anywhere;
+}
+
+.fv-prose h1,
+.fv-prose h2,
+.fv-prose h3,
+.fv-prose h4 {
+  margin: var(--ak-space-xl) 0 var(--ak-space-sm);
+  line-height: 1.3;
+  font-weight: 600;
+}
+
+.fv-prose h1 {
+  font-size: var(--ak-type-t1);
+}
+
+.fv-prose h2 {
+  font-size: var(--ak-type-t2);
+}
+
+.fv-prose h3,
+.fv-prose h4 {
+  font-size: var(--ak-type-t3);
+}
+
+.fv-prose p,
+.fv-prose ul,
+.fv-prose ol,
+.fv-prose table,
+.fv-prose pre,
+.fv-prose blockquote {
+  margin: 0 0 var(--ak-space-md);
+}
+
+.fv-prose ul,
+.fv-prose ol {
+  padding-inline-start: var(--ak-space-xl);
+}
+
+.fv-prose li:has(> input[type="checkbox"]) {
+  list-style: none;
+  margin-inline-start: calc(-1 * var(--ak-space-lg));
+}
+
+.fv-prose li:has(> input[type="checkbox"]) > input {
+  margin-inline-end: var(--ak-space-sm);
+}
+
+.fv-prose table {
+  border-collapse: collapse;
+  display: block;
+  overflow-x: auto;
+}
+
+.fv-prose th,
+.fv-prose td {
+  padding: var(--ak-space-xs) var(--ak-space-md);
+  border: 1px solid var(--ak-border);
+  text-align: start;
+}
+
+.fv-prose th {
+  background: var(--ak-surface);
+  font-weight: 600;
+}
+
+.fv-prose code {
+  padding: 0.1em 0.35em;
+  border-radius: var(--ak-corner-small);
+  background: var(--ak-surface);
+  font-family: var(--ak-font-mono);
+  font-size: 0.9em;
+}
+
+.fv-prose pre {
+  padding: var(--ak-space-md);
+  border-radius: var(--ak-corner-control);
+  background: var(--ak-surface);
+  overflow-x: auto;
+}
+
+.fv-prose pre code {
+  padding: 0;
+  background: none;
+}
+
+.fv-prose blockquote {
+  padding-inline-start: var(--ak-space-md);
+  border-inline-start: 3px solid var(--ak-border);
+  color: var(--ak-text-muted);
+}
+
+.fv-prose a {
+  color: var(--ak-accent-text);
+  text-decoration: underline;
+}
+
+.fv-prose hr {
+  margin: var(--ak-space-xl) 0;
+  border: 0;
+  border-top: 1px solid var(--ak-border);
+}
+
+.fv-md-img {
+  max-inline-size: 100%;
+}
+
+.fv-md-img-alt {
+  color: var(--ak-text-faint);
+}
+
+.fv-md-diagram-raw {
+  font-family: var(--ak-font-mono);
+}
