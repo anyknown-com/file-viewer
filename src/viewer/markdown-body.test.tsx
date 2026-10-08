@@ -1,10 +1,13 @@
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import doc from "../../test/fixtures/doc-with-diagrams.md?raw";
 import { blobSource } from "../contract/byte-source";
 import type { FileViewerProps } from "../contract/props";
 import { ViewerRoot } from "../primitives/root";
 import type { BodyProps } from "./bodies";
 import MarkdownBody from "./markdown-body";
+
+vi.mock("../excalidraw/diagram-image", () => ({ default: () => <img alt="mock" /> }));
 
 afterEach(cleanup);
 
@@ -39,5 +42,15 @@ describe("MarkdownBody", () => {
       </ViewerRoot>,
     );
     expect(container.querySelector("img")?.getAttribute("src")).toBe("https://h.example/x.png");
+  });
+
+  it("draws excalidraw fences as diagrams", () => {
+    const { container } = render(
+      <ViewerRoot>
+        <MarkdownBody {...bodyProps(doc)} />
+      </ViewerRoot>,
+    );
+    expect(container.querySelectorAll(".fv-diagram")).toHaveLength(2);
+    expect(container.querySelectorAll(".fv-diagram-broken")).toHaveLength(1);
   });
 });

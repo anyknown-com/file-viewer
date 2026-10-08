@@ -879,3 +879,71 @@
   border-radius: var(--ak-radius-md);
   color: var(--ak-text-muted);
 }
+
+.fv-diagram {
+  position: relative;
+  display: block;
+  inline-size: fit-content;
+  max-inline-size: 100%;
+  margin: var(--ak-space-md) auto;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ak-corner-small);
+  background: none;
+  color: inherit;
+  font: inherit;
+}
+
+button.fv-diagram {
+  cursor: pointer;
+}
+
+.fv-root .fv-diagram:focus-visible {
+  outline: var(--ak-focus-ring-width) solid var(--ak-focus-ring);
+  outline-offset: 2px;
+}
+
+.fv-diagram-hint {
+  position: absolute;
+  inset-block-start: var(--ak-space-sm);
+  inset-inline-end: var(--ak-space-sm);
+  padding: var(--ak-space-xs) var(--ak-space-sm);
+  border: 1px solid var(--ak-border);
+  border-radius: var(--ak-corner-small);
+  background: var(--ak-surface-raised);
+  color: var(--ak-text);
+  font-size: var(--ak-type-t1);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--ak-motion-quick) var(--ak-motion-ease-out);
+}
+
+.fv-diagram:hover .fv-diagram-hint,
+.fv-diagram:focus-visible .fv-diagram-hint {
+  opacity: 1;
+}
+
+.fv-diagram-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ak-space-sm);
+  padding: var(--ak-space-lg);
+  color: var(--ak-text-muted);
+}
+
+.fv-diagram-slot {
+  margin-block: var(--ak-space-md);
+}
+
+/* margin: auto centers without clipping the top edge when the diagram overflows. */
+.fv-excalidraw {
+  display: flex;
+  block-size: 100%;
+  overflow: auto;
+  padding: var(--ak-space-lg);
+}
+
+.fv-excalidraw > .fv-diagram {
+  margin: auto;
+}

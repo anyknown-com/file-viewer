@@ -67,6 +67,7 @@ function TextBody({ loaded }: BodyProps) {
 }
 
 const MarkdownBody = lazy(() => import("./markdown-body"));
+const ExcalidrawBody = lazy(() => import("./excalidraw-body"));
 
 export const bodies: Record<ViewKind, ComponentType<BodyProps>> = {
   image: ImageBody,
@@ -75,5 +76,5 @@ export const bodies: Record<ViewKind, ComponentType<BodyProps>> = {
   pdf: PdfBody,
   text: TextBody,
   markdown: MarkdownBody,
-  excalidraw: TextBody, // 04 P02-3 swaps in the Excalidraw body
+  excalidraw: ExcalidrawBody,
 };
