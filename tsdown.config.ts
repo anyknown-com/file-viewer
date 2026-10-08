@@ -5,6 +5,7 @@ export default defineConfig({
     index: "src/index.ts",
     "comp/index": "src/comp/index.ts",
     "markdown/index": "src/markdown/index.ts",
+    "audio-editor/index": "src/audio-editor/index.ts",
   },
   format: ["esm"],
   platform: "neutral",

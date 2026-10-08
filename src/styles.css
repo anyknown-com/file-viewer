@@ -775,3 +775,59 @@
 .fv-md-diagram-raw {
   font-family: var(--ak-font-mono);
 }
+
+/* == audio editor (08) == */
+.fv-audio {
+  container-type: inline-size;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  block-size: 100%;
+  min-block-size: 0;
+  inline-size: 100%;
+  background: var(--ak-surface);
+  color: var(--ak-text);
+  outline: none;
+}
+
+.fv-audio:focus-visible {
+  outline: var(--ak-focus-ring-width) solid var(--ak-focus-ring);
+  outline-offset: calc(-1 * var(--ak-focus-ring-width));
+}
+
+.fv-audio-top {
+  display: flex;
+  align-items: center;
+  gap: var(--ak-space-xs);
+  padding: var(--ak-space-xs) var(--ak-space-sm);
+  border-block-end: 1px solid var(--ak-border);
+}
+
+.fv-audio-name {
+  flex: 1;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--ak-type-t2);
+}
+
+.fv-audio-wave-slot {
+  position: relative;
+  min-block-size: 0;
+}
+
+.fv-audio-status {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: var(--ak-space-sm);
+  padding: var(--ak-space-lg);
+  color: var(--ak-text-muted);
+  text-align: center;
+}
+
+.fv-audio-status .fv-progress {
+  inline-size: min(100%, 20rem);
+}

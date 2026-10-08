@@ -33,6 +33,10 @@
       "types": "./dist/markdown/index.d.ts",
       "default": "./dist/markdown/index.js"
     },
+    "./audio-editor": {
+      "types": "./dist/audio-editor/index.d.ts",
+      "default": "./dist/audio-editor/index.js"
+    },
     "./styles.css": "./dist/styles.css"
   },
   "publishConfig": {

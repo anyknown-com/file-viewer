@@ -1,3 +1,4 @@
+import type { AudioMessages } from "../audio-editor/messages";
 import type { ImageMessages } from "../image-editor/messages";
 import type { MarkdownMessages } from "../markdown/messages";
 import type { ViewerMessages } from "../viewer/messages";
@@ -8,7 +9,11 @@ export type Locale = "en" | "zh-TW";
 export type Vars = Record<string, string | number>;
 export type MessageTable<K extends string> = Record<Locale, Record<K, string>>;
 // Each area adds "& <Area>Messages" here with import type (02-contract).
-export type Messages = CommonMessages & ViewerMessages & ImageMessages & MarkdownMessages;
+export type Messages = CommonMessages &
+  ViewerMessages &
+  ImageMessages &
+  MarkdownMessages &
+  AudioMessages;
 
 export function format(template: string, vars?: Vars): string {
   if (!vars) return template;
