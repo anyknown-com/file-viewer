@@ -15,7 +15,7 @@ function exactly(subpath: string): RegExp {
 }
 
 // "." → src/index.ts; "./<file>.css" → src/<file>.css; "./<name>" → src/<name>/index.ts
-function srcFile(subpath: string): string {
+export function srcFile(subpath: string): string {
   if (subpath === ".") return "src/index.ts";
   const name = subpath.slice(2);
   return name.endsWith(".css") ? `src/${name}` : `src/${name}/index.ts`;

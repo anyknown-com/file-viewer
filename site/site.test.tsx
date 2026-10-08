@@ -64,3 +64,9 @@ it("shows not-found for an unknown guide", async () => {
   await go("#/guide/nope");
   expect(screen.getByText("Page not found")).toBeTruthy();
 });
+
+it("shows the Getting started h1 on #/guide/getting-started", async () => {
+  render(<Site />);
+  await go("#/guide/getting-started");
+  expect(screen.getByRole("heading", { level: 1, name: "Getting started" })).toBeTruthy();
+});

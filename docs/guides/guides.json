@@ -1,5 +1,11 @@
 [
   {
+    "key": "getting-started",
+    "file": "docs/guides/getting-started.md",
+    "title": "Getting started",
+    "note": "Install, CSS, show a file, let people edit, bring your own bytes, limits and errors, language."
+  },
+  {
     "key": "readme",
     "file": "README.md",
     "title": "Package README",
