@@ -16,6 +16,8 @@ export function createBufferPool(gl: WebGL2RenderingContext, format: "rgba16f" |
 
   return {
     borrow(w: number, h: number): Borrowed {
+      // Surfaces from before a WebGL context loss are dead: drop them without deleting.
+      if (idle.length > 0 && !gl.isTexture(idle[0]!.texture)) idle.length = 0;
       const index = idle.findIndex((t) => t.width === w && t.height === h);
       const target = index >= 0 ? idle.splice(index, 1)[0] : createTarget(gl, w, h, format);
       let released = false;

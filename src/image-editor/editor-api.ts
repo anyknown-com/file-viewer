@@ -26,7 +26,7 @@ export type EditorDeps = {
 /**
  * What the editor's own UI needs beyond EditorApi: the renderer and a hook called on
  * requestRender (EditorCanvas), the store (undo / redo), session changes and pixel versions
- * (the layer panel), and the worker (unmount).
+ * (the layer panel), the worker (unmount), and the textures and blocked flag (WebGL context loss).
  */
 export type EditorInternals = {
   renderer: Renderer;
@@ -37,6 +37,9 @@ export type EditorInternals = {
   subscribeSession(fn: () => void): () => void;
   /** Bumped on every write to the layer's image or mask texture. */
   pixelVersion(id: LayerId): number;
+  textures: TextureStore;
+  /** True while the WebGL context is lost: the shell takes no input. */
+  blocked: { get(): boolean; set(b: boolean): void; subscribe(fn: () => void): () => void };
 };
 
 const internals = new WeakMap<EditorApi, EditorInternals>();
@@ -62,6 +65,8 @@ export function createEditorApi(deps: EditorDeps): EditorApi {
   const { gl, store, textures, renderer, pixels, worker, session, ui } = deps;
   let frame: (() => void) | null = null;
   const sessionListeners = new Set<() => void>();
+  const blockedListeners = new Set<() => void>();
+  let blocked = false;
   const requestRender = () => {
     deps.requestRender();
     frame?.();
@@ -153,6 +158,19 @@ export function createEditorApi(deps: EditorDeps): EditorApi {
       return () => sessionListeners.delete(fn);
     },
     pixelVersion: (id) => textures.version(id),
+    textures,
+    blocked: {
+      get: () => blocked,
+      set(b) {
+        if (b === blocked) return;
+        blocked = b;
+        for (const fn of blockedListeners) fn();
+      },
+      subscribe(fn) {
+        blockedListeners.add(fn);
+        return () => blockedListeners.delete(fn);
+      },
+    },
   });
   return api;
 }

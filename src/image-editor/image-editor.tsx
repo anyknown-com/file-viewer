@@ -12,6 +12,7 @@ import type { View } from "./canvas";
 import { createDocStore, type DocStore } from "./doc/store";
 import { createEditorApi } from "./editor-api";
 import { createBufferPool } from "./engine/buffers";
+import { guardContext } from "./engine/context-loss";
 import { createGl, destroyGl } from "./engine/gl/context";
 import { createPixels } from "./engine/pixels";
 import { createRenderer } from "./engine/render";
@@ -133,6 +134,7 @@ function EditorSession(props: {
       const show = (doc: Doc) => {
         const ready = editorFor(gl, floatTargets, textures, runner, doc, latest);
         let dirty = ready.store.dirty();
+        cleanups.push(guardContext(ready.api, ready.store, ready.ui));
         cleanups.push(
           ready.store.subscribe(() => {
             if (ready.store.dirty() === dirty) return;
@@ -163,6 +165,7 @@ function EditorSession(props: {
         abort.abort();
         for (const cleanup of cleanups.splice(0)) cleanup();
         runner.terminate();
+        for (const id of textures.ids()) textures.delete(id);
         destroyGl(gl);
       };
     },

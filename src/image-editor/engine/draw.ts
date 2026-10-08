@@ -65,7 +65,7 @@ export function blankTextures(gl: WebGL2RenderingContext): {
   white: WebGLTexture;
 } {
   let b = blanks.get(gl);
-  if (!b) {
+  if (!b || !gl.isTexture(b.clear)) {
     b = { clear: pixel(gl, [0, 0, 0, 0]), white: pixel(gl, [255, 255, 255, 255]) };
     blanks.set(gl, b);
   }

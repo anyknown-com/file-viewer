@@ -36,7 +36,8 @@ export function compile(gl: WebGL2RenderingContext, vs: string, fs: string): Web
   }
   const key = `${vs}\0${fs}`;
   const cached = cache.get(key);
-  if (cached) return cached;
+  // A program from before a WebGL context loss is dead: build it again.
+  if (cached && gl.isProgram(cached)) return cached;
   const v = shader(gl, gl.VERTEX_SHADER, vs);
   const f = shader(gl, gl.FRAGMENT_SHADER, fs);
   const program = gl.createProgram();
@@ -58,7 +59,7 @@ export function compile(gl: WebGL2RenderingContext, vs: string, fs: string): Web
 /** Draws FULLSCREEN_VS's triangle with an empty vertex array (one per gl). */
 export function drawFullscreen(gl: WebGL2RenderingContext): void {
   let vao = vaos.get(gl);
-  if (!vao) {
+  if (!vao || !gl.isVertexArray(vao)) {
     vao = gl.createVertexArray();
     vaos.set(gl, vao);
   }

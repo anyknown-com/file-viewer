@@ -3,6 +3,7 @@ import { Menubar } from "../../primitives/menubar";
 import type { EditorApi, MenuId } from "../api";
 import { EditorCanvas, type View } from "../canvas";
 import type { DocStore } from "../doc/store";
+import { internalsOf } from "../editor-api";
 import { redo, undo } from "../layer-ops";
 import { menuItems } from "../registry";
 import { shortcutLabel } from "../shortcut";
@@ -20,7 +21,7 @@ const MENUS = ["edit", "image", "layer", "select"] as const satisfies readonly M
 // Keys typed into menus, dialogs and selects belong to them.
 const OWN_KEYS = "[role='menu'], [role='listbox'], [role='dialog']";
 
-function EditorMenus({ api }: { api: EditorApi }): React.JSX.Element {
+function EditorMenus({ api, blocked }: { api: EditorApi; blocked: boolean }): React.JSX.Element {
   const label = useLabel();
   const menus = MENUS.map((menu) => ({
     id: menu,
@@ -29,7 +30,7 @@ function EditorMenus({ api }: { api: EditorApi }): React.JSX.Element {
       id: spec.id,
       label: label(spec.label),
       onSelect: () => spec.run(api),
-      disabled: spec.enabled ? !spec.enabled(api) : false,
+      disabled: blocked || (spec.enabled ? !spec.enabled(api) : false),
       shortcut: spec.shortcut && shortcutLabel(spec.shortcut),
     })),
   })).filter((menu) => menu.items.length > 0);
@@ -39,7 +40,7 @@ function EditorMenus({ api }: { api: EditorApi }): React.JSX.Element {
 /**
  * The editor's frame: top bar, menu bar and notices over the tool column, the canvas, and the
  * properties and layer panels. Keys anywhere in the editor (or on the page body) go to handleKey.
- * `ui` must be the slot `api` was made with.
+ * `ui` must be the slot `api` was made with. While the WebGL context is lost nothing takes input.
  */
 export function EditorShell(props: {
   api: EditorApi;
@@ -59,6 +60,8 @@ export function EditorShell(props: {
   const canUndo = useSyncExternalStore(store.subscribe, store.canUndo);
   const canRedo = useSyncExternalStore(store.subscribe, store.canRedo);
   const notice = useSyncExternalStore(ui.subscribe, ui.notice);
+  const { blocked: block } = internalsOf(api);
+  const blocked = useSyncExternalStore(block.subscribe, block.get);
   const [unsupported, setUnsupported] = useState(false);
   const onRender = useCallback((r: { unsupported: boolean }) => setUnsupported(r.unsupported), []);
 
@@ -71,6 +74,7 @@ export function EditorShell(props: {
         const target = e.target as Node | null;
         if (target !== doc.body && !root.contains(target)) return;
         if (target instanceof Element && target.closest(OWN_KEYS)) return;
+        if (internalsOf(api).blocked.get()) return;
         if (handleKey(e, api)) e.preventDefault();
       };
       doc.addEventListener("keydown", onKey);
@@ -90,14 +94,15 @@ export function EditorShell(props: {
         dirty={dirty}
         canUndo={canUndo}
         canRedo={canRedo}
+        blocked={blocked}
         onUndo={() => undo(api)}
         onRedo={() => redo(api)}
         onClose={props.onClose}
         saveSlot={props.saveSlot}
       />
-      <EditorMenus api={api} />
+      <EditorMenus api={api} blocked={blocked} />
       <Notice messages={messages} />
-      <div className="fv-ie-main">
+      <div className="fv-ie-main" inert={blocked}>
         <Toolbar api={api} />
         <div className="fv-ie-stage">
           <EditorCanvas

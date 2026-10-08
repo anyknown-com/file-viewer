@@ -113,7 +113,7 @@ function attach(container: HTMLDivElement, overlay: HTMLCanvasElement, api: Edit
 
   function draw(time: number) {
     raf = 0;
-    if (size.width <= 0 || size.height <= 0) return;
+    if (size.width <= 0 || size.height <= 0 || gl.isContextLost()) return;
     let ratio = Math.min(devicePixelRatio || 1, 2);
     const area = size.width * size.height * ratio * ratio;
     if (area > VIEW_MAX_PIXELS) ratio *= Math.sqrt(VIEW_MAX_PIXELS / area);

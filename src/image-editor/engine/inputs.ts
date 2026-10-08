@@ -16,8 +16,9 @@ export function createLayerInputs(gl: WebGL2RenderingContext, textures: TextureS
     const settings = layer.adjustment;
     if (!settings || !make) return null;
     const cached = luts.get(layer.id);
-    if (cached?.settings === settings) return cached.lut;
-    if (cached) gl.deleteTexture(cached.lut.texture);
+    const alive = cached !== undefined && gl.isTexture(cached.lut.texture);
+    if (alive && cached.settings === settings) return cached.lut;
+    if (alive) gl.deleteTexture(cached.lut.texture);
     const lut = make(gl, settings);
     const bind = lut.dims === 1 ? gl.TEXTURE_2D : gl.TEXTURE_3D;
     gl.bindTexture(bind, lut.texture);

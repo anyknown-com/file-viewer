@@ -1,5 +1,6 @@
 export const en = {
   "image.notice.unsupported": "This file uses an adjustment or effect this version can't show yet.",
+  "image.notice.contextLost": "The graphics card was reset. Restoring the image…",
   "image.topbar.close": "Close",
   "image.topbar.undo": "Undo",
   "image.topbar.redo": "Redo",

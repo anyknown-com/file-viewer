@@ -10,6 +10,8 @@ export function Topbar(props: {
   dirty: boolean;
   canUndo: boolean;
   canRedo: boolean;
+  /** The WebGL context is lost: undo, redo and saving wait. */
+  blocked: boolean;
   onUndo(): void;
   onRedo(): void;
   onClose(): void;
@@ -42,7 +44,7 @@ export function Topbar(props: {
         <Button
           {...iconButton("image.topbar.undo")}
           icon={<UndoIcon />}
-          disabled={!props.canUndo}
+          disabled={props.blocked || !props.canUndo}
           onClick={props.onUndo}
         />
       </Tooltip>
@@ -50,11 +52,13 @@ export function Topbar(props: {
         <Button
           {...iconButton("image.topbar.redo")}
           icon={<RedoIcon />}
-          disabled={!props.canRedo}
+          disabled={props.blocked || !props.canRedo}
           onClick={props.onRedo}
         />
       </Tooltip>
-      <div className="fv-ie-save">{props.saveSlot}</div>
+      <div className="fv-ie-save" inert={props.blocked}>
+        {props.saveSlot}
+      </div>
     </div>
   );
 }

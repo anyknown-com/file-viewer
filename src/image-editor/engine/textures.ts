@@ -139,5 +139,20 @@ export function createTextureStore(
       return value;
     },
     ids: (): LayerId[] => [...versions.keys()],
+    /**
+     * After WebGL context loss: forgets every texture without deleting it (the objects died with
+     * the context) and returns what was there, so the caller can upload it again.
+     */
+    forget(): { id: LayerId; target: PixelTarget; smooth: boolean; size: Size }[] {
+      const lost = [...entries].map(([k, e]) => ({
+        id: k.slice(k.indexOf(":") + 1),
+        target: k.slice(0, k.indexOf(":")) as PixelTarget,
+        smooth: e.smooth,
+        size: { width: e.width, height: e.height },
+      }));
+      entries.clear();
+      edges.clear();
+      return lost;
+    },
   };
 }

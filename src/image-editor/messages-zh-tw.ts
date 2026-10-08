@@ -2,6 +2,7 @@ import type { ImageKey } from "./messages";
 
 export const zhTW: Record<ImageKey, string> = {
   "image.notice.unsupported": "這個檔案用到這一版還不能顯示的調整或效果。",
+  "image.notice.contextLost": "顯示卡已重置，正在還原影像…",
   "image.topbar.close": "關閉",
   "image.topbar.undo": "復原",
   "image.topbar.redo": "重做",
