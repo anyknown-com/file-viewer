@@ -62,6 +62,6 @@ export function replaceFence(source: string, fence: Fence, content: string): str
 
 export function maskFences(source: string, fences: Fence[]): string {
   let out = source;
-  for (const f of [...fences].reverse()) out = replaceFence(out, f, String(f.index));
+  for (const f of fences.toReversed()) out = replaceFence(out, f, String(f.index));
   return out;
 }
