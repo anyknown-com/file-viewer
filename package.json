@@ -43,7 +43,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsdown && node scripts/copy-excalidraw-assets.mjs",
+    "build": "tsdown",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.comp.json",
     "lint": "oxlint",
     "fmt": "oxfmt",
