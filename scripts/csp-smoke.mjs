@@ -64,6 +64,16 @@ try {
     }
   };
   await open("md", '.fv-diagram img[src^="blob:"]', 2);
+  // Clicking a diagram loads Excalidraw itself; that must stay inside the CSP too.
+  await page.click(".fv-diagram");
+  try {
+    await page.waitForSelector(".excalidraw canvas", { timeout: 30_000 });
+  } catch {
+    failures.push("?f=md: no .excalidraw canvas after clicking a diagram");
+  }
+  for (const v of await page.evaluate(() => window.__violations)) {
+    if (!known(v)) failures.push(`?f=md editor: csp violation ${v}`);
+  }
   await open("excalidraw", 'img[src^="blob:"]', 1);
 } finally {
   await browser.close();

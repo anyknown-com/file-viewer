@@ -11,6 +11,9 @@ export const editors: EditorRegistry = {
   audio: lazy(() =>
     import("../audio-editor/audio-editor").then((m) => ({ default: m.AudioEditor })),
   ),
+  excalidraw: lazy(() =>
+    import("../excalidraw/file-editor").then((m) => ({ default: m.ExcalidrawFileEditor })),
+  ),
   video: lazy(() =>
     import("../video-editor/ui/video-editor").then((m) => ({ default: m.VideoEditor })),
   ),

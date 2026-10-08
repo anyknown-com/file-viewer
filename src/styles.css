@@ -1083,6 +1083,12 @@ button.fv-diagram {
   min-block-size: 0;
 }
 
+/* Wrappers that only hold a ref; their children lay out as if the wrapper were not there. */
+.fv-md-body,
+.fv-diagram-file-editor {
+  display: contents;
+}
+
 /* == video-editor (07) == */
 
 .fv-ve-root {

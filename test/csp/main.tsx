@@ -14,6 +14,6 @@ const file = md
 
 createRoot(document.getElementById("root")!).render(
   <div style={{ height: "100vh" }}>
-    <FileViewer file={file} excalidraw={{ assetPath: "/" }} />
+    <FileViewer file={file} excalidraw={{ assetPath: "/" }} onSave={async () => {}} />
   </div>,
 );
