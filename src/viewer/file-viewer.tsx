@@ -1,9 +1,12 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { ViewerError } from "../contract/errors";
 import type { FileViewerProps } from "../contract/props";
 import { ViewerRoot } from "../primitives/root";
 import { Boundary } from "./boundary";
-import { resolve } from "./resolve";
+import { EditBar } from "./edit-bar";
+import { EditPane } from "./edit-pane";
+import { editors } from "./editors";
+import { resolve, type Resolved } from "./resolve";
 import { Status } from "./status";
 import { sourceKey, ViewPane } from "./view-pane";
 
@@ -11,8 +14,56 @@ function Content(props: {
   viewer: FileViewerProps;
   report: (e: ViewerError) => void;
 }): React.JSX.Element {
-  const { file, limits } = props.viewer;
+  const { viewer, report } = props;
+  const { file, limits, onSave } = viewer;
+  const [editing, setEditing] = useState(false);
   const r = resolve(file, limits);
+  const Editor = r.edit && onSave ? editors[r.edit] : undefined;
+  const open = (): void => {
+    setEditing(true);
+    viewer.onEditingChange?.(true);
+  };
+  const close = (): void => {
+    setEditing(false);
+    viewer.onEditingChange?.(false);
+    viewer.onDirtyChange?.(false);
+  };
+  if (editing && Editor && onSave) {
+    return (
+      <EditPane
+        Editor={Editor}
+        editorProps={{
+          file,
+          locale: viewer.locale,
+          messages: viewer.messages,
+          theme: viewer.theme,
+          limits,
+          onError: report,
+          onSave,
+          onClose: close,
+          onDirtyChange: viewer.onDirtyChange,
+          maxOutputBytes: viewer.editor?.maxOutputBytes,
+          assets: viewer.editor?.assets,
+        }}
+        report={report}
+      />
+    );
+  }
+  return (
+    <>
+      {Editor ? <EditBar onEdit={open} /> : null}
+      <ViewBody r={r} viewer={viewer} report={report} />
+    </>
+  );
+}
+
+function ViewBody(props: {
+  r: Resolved;
+  viewer: FileViewerProps;
+  report: (e: ViewerError) => void;
+}): React.JSX.Element {
+  const { r } = props;
+  const { file } = props.viewer;
   if (r.status !== "view") {
     return (
       <div className="fv-stage">
