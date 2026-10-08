@@ -10,7 +10,7 @@ Each entry lists the upstream repository, commit, copied paths and the full MIT 
 
 - Repository: https://github.com/robbietilton/Compositor
 - Commit: 11d8d7a
-- Copied paths: `IO/ProjectStore.swift`, `IO/ImageExporter.swift`, and the format rules in `Document/*.swift` (ported to TypeScript in `src/comp/`)
+- Copied paths: `IO/ProjectStore.swift`, `IO/ImageExporter.swift`, and the format rules in `Document/*.swift` (ported to TypeScript in `src/comp/`); `Rendering/LiveMaskRenderer.swift` (ported in `src/image-editor/engine/`)
 - License: MIT
 
 ```
