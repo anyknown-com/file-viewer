@@ -1,6 +1,7 @@
 import { registerSelection, registerTool } from "../../registry";
 import { ellipseMarqueeTool, rectMarqueeTool } from "./marquee";
 import { lassoTool, polygonLassoTool } from "./lasso";
+import { registerEditMenu } from "./edit-menu";
 import { registerSelectMenu } from "./menu";
 import { selectionProvider } from "./provider";
 import { wandTool } from "./wand-tool";
@@ -12,5 +13,6 @@ export function registerSelectTools(): void {
   registerTool(polygonLassoTool);
   registerTool(wandTool);
   registerSelectMenu();
+  registerEditMenu();
   registerSelection(selectionProvider);
 }

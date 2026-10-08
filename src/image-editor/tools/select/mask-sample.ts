@@ -1,6 +1,6 @@
-import type { EditorApi, LayerId, Rect } from "../../api";
+import type { EditorApi, LayerId, PixelTarget, Rect } from "../../api";
 import { compile, drawFullscreen, FULLSCREEN_VS } from "../../engine/gl/program";
-import { invert } from "../geom";
+import { invert, targetMatrix } from "../geom";
 import { createR8, readRgba, withFramebuffer } from "../gl";
 import { hasSelection, selectionOf, unbind } from "./mask";
 
@@ -26,13 +26,18 @@ void main() {
 }
 `;
 
-/** The selection sampled (bilinear) into layer pixel space over `rect`; all 255 without a selection. */
-export function selectionInLayer(api: EditorApi, id: LayerId, rect: Rect): Uint8Array {
+/** The selection sampled (bilinear) into the pixel space of the layer's image or mask over `rect`; all 255 without a selection. */
+export function selectionInLayer(
+  api: EditorApi,
+  id: LayerId,
+  rect: Rect,
+  pixelTarget: PixelTarget = "image",
+): Uint8Array {
   const out = new Uint8Array(rect.width * rect.height);
   if (!hasSelection(api)) return out.fill(255);
   const s = selectionOf(api);
   const gl = api.gl;
-  const m = invert(api.layerMatrix(id));
+  const m = invert(targetMatrix(api, id, pixelTarget));
   const target = createR8(gl, rect.width, rect.height);
   const program = compile(gl, FULLSCREEN_VS, SAMPLE_FS);
   gl.disable(gl.BLEND);

@@ -32,6 +32,16 @@ it("registers the select tools, menu, overlay, thumbnail decor and provider once
     expect(ids).toContain(id);
   }
   expect(menuItems("select")).toHaveLength(8);
+  expect(menuItems("edit").map((m) => m.id)).toEqual(
+    expect.arrayContaining([
+      "edit.cut",
+      "edit.copy",
+      "edit.copyMerged",
+      "edit.paste",
+      "edit.fill",
+      "edit.clear",
+    ]),
+  );
   expect(overlays().map((o) => o.id)).toContain("select.ants");
   expect(layerDecors().map((d) => d.id)).toContain("select.thumbnailLoad");
   expect(selectionProvider()).toBe(provider);
