@@ -16,3 +16,4 @@ export type {
   AssetInfo,
   AssetProvider,
 } from "./contract/props";
+export { FileViewer } from "./viewer/file-viewer";
