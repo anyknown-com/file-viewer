@@ -7,6 +7,7 @@ import { ViewerError } from "../../contract/errors";
 import { en } from "../../i18n/en";
 import { hasVideoCodecs } from "../../media/support";
 import { AssetStore } from "../engine/assets";
+import { Thumbnails } from "../engine/thumbnails";
 import { videoMessages } from "../messages";
 import type { AssetMeta } from "../model/project";
 import { secondsToTicks } from "../model/time";
@@ -48,11 +49,20 @@ beforeEach(() => {
   vi.mocked(hasVideoCodecs).mockReturnValue(true);
   vi.mocked(AssetStore.prototype.load).mockResolvedValue(source);
   vi.mocked(AssetStore.prototype.status).mockReturnValue({ state: "ready", info: source });
+  vi.mocked(AssetStore.prototype.list).mockResolvedValue([
+    { id: "source", name: "clip.mp4", mime: "video/mp4", size: 8, kind: "video" },
+  ]);
+  vi.mocked(AssetStore.prototype.subscribe).mockReturnValue(() => {});
+  vi.mocked(Thumbnails.prototype.strip).mockResolvedValue([]);
+  vi.mocked(Thumbnails.prototype.peaks).mockResolvedValue(new Float32Array(1));
+  // jsdom draws nothing; without this it logs "not implemented" for every clip canvas.
+  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
 });
 
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 function setup(over: Partial<EditorProps> = {}) {

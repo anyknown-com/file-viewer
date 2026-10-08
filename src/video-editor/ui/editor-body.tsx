@@ -6,7 +6,9 @@ import { Progress } from "../../primitives/progress";
 import { videoMessages } from "../messages";
 import { addText, deleteClips, splitAt } from "../model/edits";
 import type { History } from "../model/history";
+import { AssetPanel } from "./asset-panel";
 import { CloseGuard } from "./close-guard";
+import { Inspector } from "./inspector";
 import { type KeyAction, keyAction } from "./keyboard";
 import { Notice, noticeReason } from "./notice";
 import { PreviewPanel } from "./preview-panel";
@@ -139,11 +141,15 @@ export function VideoEditorBody(props: EditorProps): React.JSX.Element {
           // The export dialog arrives with Phase 04.
           onExport={() => undefined}
         />
-        <div className="fv-ve-assets" />
+        <div className="fv-ve-assets">
+          <AssetPanel session={session} />
+        </div>
         <div className="fv-ve-preview">
           <PreviewPanel session={session} />
         </div>
-        <div className="fv-ve-inspector" />
+        <div className="fv-ve-inspector">
+          <Inspector session={session} />
+        </div>
         <div className="fv-ve-timeline">
           <Timeline session={session} />
         </div>

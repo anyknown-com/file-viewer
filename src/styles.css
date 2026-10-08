@@ -1355,3 +1355,166 @@ button.fv-diagram {
   font-size: var(--ak-type-t3);
   font-variant-numeric: tabular-nums;
 }
+
+.fv-ve-ap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ak-space-sm);
+  padding: var(--ak-space-sm);
+}
+
+.fv-ve-ap-title {
+  margin: 0;
+  font-size: var(--ak-type-t2);
+  font-weight: 600;
+}
+
+.fv-ve-input {
+  inline-size: 100%;
+  padding: var(--ak-space-xs) var(--ak-space-sm);
+  border: 1px solid var(--ak-border-control);
+  border-radius: var(--ak-corner-control);
+  background: var(--ak-surface);
+  color: var(--ak-text);
+  font: inherit;
+  font-size: var(--ak-type-t2);
+  resize: vertical;
+}
+
+.fv-ve-ap-empty,
+.fv-ve-inspector-empty {
+  margin: 0;
+  color: var(--ak-text-muted);
+  font-size: var(--ak-type-t2);
+}
+
+.fv-ve-ap-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fv-ve-asset {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ak-space-xs);
+  padding: var(--ak-space-xs);
+  border-radius: var(--ak-corner-small);
+}
+
+.fv-ve-asset:hover {
+  background: var(--ak-layer1);
+}
+
+.fv-ve-asset-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ak-space-xs);
+  cursor: grab;
+}
+
+.fv-ve-asset-name {
+  flex: 1;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--ak-type-t2);
+}
+
+.fv-ve-asset-tag {
+  color: var(--ak-text-muted);
+  font-size: var(--ak-type-t3);
+}
+
+.fv-ve-asset-error,
+.fv-ve-clip-error {
+  margin: 0;
+  color: var(--ak-danger);
+  font-size: var(--ak-type-t3);
+}
+
+/* Loading has no known length, so the bar slides at a steady, linear pace. */
+.fv-ve-loading .fv-progress-indicator[data-indeterminate] {
+  animation-timing-function: var(--ak-motion-linear);
+}
+
+.fv-ve-clip .fv-ve-loading {
+  position: absolute;
+  inset-inline: var(--ak-space-xs);
+  inset-block-end: 2px;
+}
+
+.fv-ve-inspector-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ak-space-md);
+  padding: var(--ak-space-sm);
+}
+
+.fv-ve-inspector > .fv-ve-inspector-empty {
+  padding: var(--ak-space-sm);
+}
+
+.fv-ve-inspector-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ak-space-xs);
+}
+
+.fv-ve-inspector-label {
+  color: var(--ak-text-muted);
+  font-size: var(--ak-type-t3);
+}
+
+.fv-ve-color {
+  inline-size: 48px;
+  block-size: 28px;
+  padding: 0;
+  border: 1px solid var(--ak-border-control);
+  border-radius: var(--ak-corner-control);
+  background: none;
+}
+
+.fv-ve-clip[data-unsupported] {
+  border-color: var(--ak-danger);
+  box-shadow: inset 0 0 0 1px var(--ak-danger);
+}
+
+.fv-ve-clip-label,
+.fv-ve-clip-error {
+  position: relative;
+  z-index: 1;
+}
+
+.fv-ve-media {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.fv-ve-thumbs,
+.fv-ve-wave {
+  position: absolute;
+  inset-block-start: 0;
+  block-size: 100%;
+}
+
+.fv-ve-wave {
+  color: var(--ak-text-muted);
+}
+
+.fv-ve-wave[data-half] {
+  inset-block-start: 50%;
+  block-size: 50%;
+}
+
+.fv-ve-image-thumb {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  block-size: 100%;
+}

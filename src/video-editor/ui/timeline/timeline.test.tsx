@@ -98,11 +98,12 @@ class FakeSession {
     snapLine: null,
   };
   player = { seek: vi.fn<(t: number) => void>() };
+  // Stable objects, as the real store returns: the clips read them with useSyncExternalStore.
+  #ready = { state: "ready" as const, info: { name: "clip.mp4", duration: s(10) } };
+  #idle = { state: "idle" as const };
   assets = {
-    status: (id: string) =>
-      id === "source"
-        ? { state: "ready" as const, info: { name: "clip.mp4", duration: s(10) } }
-        : { state: "idle" as const },
+    status: (id: string) => (id === "source" ? this.#ready : this.#idle),
+    subscribe: () => () => {},
   };
   #listeners = new Set<() => void>();
 
@@ -153,12 +154,23 @@ function drag(el: Element, from: number, to: number) {
 }
 
 beforeEach(() => {
+  // jsdom has no ResizeObserver; a timeline that never measures its view asks for no thumbnails.
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      disconnect() {}
+    },
+  );
   // jsdom has no pointer capture.
   Element.prototype.setPointerCapture = vi.fn<(id: number) => void>();
   Element.prototype.hasPointerCapture = vi.fn<(id: number) => boolean>(() => true);
 });
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 describe("Timeline", () => {
   it("orders overlay, main and audio tracks top to bottom", () => {

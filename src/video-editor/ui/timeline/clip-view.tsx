@@ -1,10 +1,14 @@
-import { useState } from "react";
+import { useCallback, useState, useSyncExternalStore } from "react";
+import { useT } from "../../../i18n/use-t";
+import { Progress } from "../../../primitives/progress";
+import { videoMessages } from "../../messages";
 import { moveClip, trimClip } from "../../model/edits";
 import { type Lane, laneOf } from "../../model/placement";
 import { type Clip, clipEnd, type Project, type Track } from "../../model/project";
 import { buildSnapPoints, type SnapPoint } from "../../model/snapping";
 import type { Ticks } from "../../model/time";
 import type { EditorSession } from "../session";
+import { ClipMedia } from "./clip-media";
 import { dragMove, dragTrim, ticksToPx } from "./geometry";
 
 /** Pressing within this many px of a clip's edge trims instead of moving. */
@@ -39,9 +43,16 @@ export function ClipView(props: {
   pps: number;
   playhead: Ticks;
   selected: boolean;
+  visibleFrom: Ticks;
+  visibleTo: Ticks;
 }): React.JSX.Element {
   const { session, project, track, clip, pps } = props;
+  const t = useT(videoMessages);
   const [drag, setDrag] = useState<Drag | null>(null);
+  const subscribe = useCallback((l: () => void) => session.assets.subscribe(l), [session]);
+  const status = useSyncExternalStore(subscribe, () =>
+    clip.kind === "text" ? null : session.assets.status(clip.assetId),
+  );
   const end = clipEnd(clip);
 
   const resolve = (d: Drag, clientX: number): { at: Ticks; snapLine: Ticks | null } => {
@@ -86,7 +97,6 @@ export function ClipView(props: {
       session.run(moveClip(project, clip.id, target, at));
       return;
     }
-    const status = clip.kind === "text" ? null : session.assets.status(clip.assetId);
     const duration = status?.state === "ready" ? status.info.duration : null;
     session.run(trimClip(project, clip.id, drag.mode, at, duration));
   };
@@ -115,6 +125,7 @@ export function ClipView(props: {
       data-kind={clip.kind}
       data-selected={props.selected || undefined}
       data-dragging={drag ? true : undefined}
+      data-unsupported={status?.state === "unsupported" || undefined}
       title={label}
       style={{ insetInlineStart: ticksToPx(start, pps), inlineSize: ticksToPx(stop - start, pps) }}
       onPointerDown={onPointerDown}
@@ -122,7 +133,22 @@ export function ClipView(props: {
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
     >
+      <ClipMedia
+        session={session}
+        clip={clip}
+        pps={pps}
+        visibleFrom={props.visibleFrom}
+        visibleTo={props.visibleTo}
+      />
       <span className="fv-ve-clip-label">{label}</span>
+      {status?.state === "loading" ? (
+        <div className="fv-ve-loading">
+          <Progress label={t("video.clip.loading")} value={null} />
+        </div>
+      ) : null}
+      {status?.state === "unsupported" ? (
+        <span className="fv-ve-clip-error">{t("video.clip.unsupported")}</span>
+      ) : null}
     </div>
   );
 }
