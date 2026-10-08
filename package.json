@@ -41,6 +41,10 @@
       "types": "./dist/excalidraw/index.d.ts",
       "default": "./dist/excalidraw/index.js"
     },
+    "./video-editor": {
+      "types": "./dist/video-editor/index.d.ts",
+      "default": "./dist/video-editor/index.js"
+    },
     "./styles.css": "./dist/styles.css"
   },
   "publishConfig": {

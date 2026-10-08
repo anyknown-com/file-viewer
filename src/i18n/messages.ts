@@ -2,6 +2,7 @@ import type { AudioMessages } from "../audio-editor/messages";
 import type { ExcalidrawMessages } from "../excalidraw/messages";
 import type { ImageMessages } from "../image-editor/messages";
 import type { MarkdownMessages } from "../markdown/messages";
+import type { VideoMessages } from "../video-editor/messages";
 import type { ViewerMessages } from "../viewer/messages";
 import { en, type CommonKey, type CommonMessages } from "./en";
 import { zhTW } from "./zh-tw";
@@ -15,7 +16,8 @@ export type Messages = CommonMessages &
   ImageMessages &
   MarkdownMessages &
   ExcalidrawMessages &
-  AudioMessages;
+  AudioMessages &
+  VideoMessages;
 
 export function format(template: string, vars?: Vars): string {
   if (!vars) return template;

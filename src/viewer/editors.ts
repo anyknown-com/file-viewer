@@ -11,4 +11,7 @@ export const editors: EditorRegistry = {
   audio: lazy(() =>
     import("../audio-editor/audio-editor").then((m) => ({ default: m.AudioEditor })),
   ),
+  video: lazy(() =>
+    import("../video-editor/ui/video-editor").then((m) => ({ default: m.VideoEditor })),
+  ),
 };

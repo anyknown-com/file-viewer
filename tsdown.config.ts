@@ -22,6 +22,7 @@ export default defineConfig({
     "markdown/index": "src/markdown/index.ts",
     "audio-editor/index": "src/audio-editor/index.ts",
     "excalidraw/index": "src/excalidraw/index.ts",
+    "video-editor/index": "src/video-editor/index.ts",
   },
   format: ["esm"],
   platform: "neutral",

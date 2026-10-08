@@ -1031,3 +1031,98 @@ button.fv-diagram {
 .fv-excalidraw > .fv-diagram {
   margin: auto;
 }
+
+/* == video-editor (07) == */
+
+.fv-ve-root {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr) 280px;
+  grid-template-rows: auto minmax(0, 1fr) 40%;
+  grid-template-areas:
+    "top top top"
+    "assets preview inspector"
+    "timeline timeline timeline";
+  block-size: 100%;
+  min-block-size: 0;
+  inline-size: 100%;
+  background: var(--ak-surface);
+  color: var(--ak-text);
+  outline: none;
+}
+
+.fv-ve-top {
+  grid-area: top;
+  display: flex;
+  align-items: center;
+  gap: var(--ak-space-xs);
+  padding: var(--ak-space-xs) var(--ak-space-sm);
+  border-block-end: 1px solid var(--ak-border);
+}
+
+.fv-ve-name {
+  flex: 1;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--ak-type-t2);
+}
+
+.fv-ve-export {
+  margin-inline-start: var(--ak-space-sm);
+}
+
+.fv-ve-assets {
+  grid-area: assets;
+  min-block-size: 0;
+  overflow: auto;
+  border-inline-end: 1px solid var(--ak-border);
+}
+
+.fv-ve-preview {
+  grid-area: preview;
+  min-block-size: 0;
+  min-inline-size: 0;
+}
+
+.fv-ve-inspector {
+  grid-area: inspector;
+  min-block-size: 0;
+  overflow: auto;
+  border-inline-start: 1px solid var(--ak-border);
+}
+
+.fv-ve-timeline {
+  grid-area: timeline;
+  min-block-size: 0;
+  overflow: hidden;
+  border-block-start: 1px solid var(--ak-border);
+}
+
+/* The notice and the loading bar take the whole editor. */
+.fv-ve-notice,
+.fv-ve-status {
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ak-space-md);
+  padding: var(--ak-space-lg);
+  text-align: center;
+}
+
+.fv-ve-notice {
+  color: var(--ak-text-muted);
+}
+
+.fv-ve-notice p {
+  max-inline-size: 40ch;
+  margin: 0;
+  color: var(--ak-text);
+}
+
+.fv-ve-status .fv-progress {
+  inline-size: min(100%, 240px);
+}
