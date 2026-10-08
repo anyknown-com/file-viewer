@@ -50,22 +50,34 @@ async function readBack(sink: Awaited<ReturnType<typeof encodeClip>>) {
 const SLOW_CI = 60_000;
 
 describe("mp4 round trip", () => {
-  it("fragmented", async () => {
-    const r = await readBack(await encodeClip("fragmented"));
-    expect(r.size).toBeGreaterThan(6144);
-    expect(r.hasVideo).toBe(true);
-    expect(Math.abs(r.duration - 2)).toBeLessThan(1 / 30);
-  }, SLOW_CI);
+  it(
+    "fragmented",
+    async () => {
+      const r = await readBack(await encodeClip("fragmented"));
+      expect(r.size).toBeGreaterThan(6144);
+      expect(r.hasVideo).toBe(true);
+      expect(Math.abs(r.duration - 2)).toBeLessThan(1 / 30);
+    },
+    SLOW_CI,
+  );
 
-  it("non-fragmented (mdat header rewrite)", async () => {
-    const r = await readBack(await encodeClip(false));
-    expect(r.size).toBeGreaterThan(6144);
-    expect(r.hasVideo).toBe(true);
-    expect(Math.abs(r.duration - 2)).toBeLessThan(1 / 30);
-  }, SLOW_CI);
+  it(
+    "non-fragmented (mdat header rewrite)",
+    async () => {
+      const r = await readBack(await encodeClip(false));
+      expect(r.size).toBeGreaterThan(6144);
+      expect(r.hasVideo).toBe(true);
+      expect(Math.abs(r.duration - 2)).toBeLessThan(1 / 30);
+    },
+    SLOW_CI,
+  );
 
-  it("stops at maxBytes", async () => {
-    const err = await encodeClip("fragmented", 2048).catch((e: unknown) => e);
-    expect(toMediaError(err, "decode_failed").code).toBe("output_too_large");
-  }, SLOW_CI);
+  it(
+    "stops at maxBytes",
+    async () => {
+      const err = await encodeClip("fragmented", 2048).catch((e: unknown) => e);
+      expect(toMediaError(err, "decode_failed").code).toBe("output_too_large");
+    },
+    SLOW_CI,
+  );
 });
