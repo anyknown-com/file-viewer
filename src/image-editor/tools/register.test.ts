@@ -19,7 +19,7 @@ it("registers the select and paint messages", () => {
   expect(messageTables()).toContain(selectPaintMessages);
 });
 
-it("registers the select tools, menu, overlay, thumbnail decor and provider once", () => {
+it("registers the select and paint tools, menus, overlay, thumbnail decor and provider once", () => {
   registerSelectPaint();
   const ids = tools().map((t) => t.id);
   for (const id of [
@@ -41,6 +41,10 @@ it("registers the select tools, menu, overlay, thumbnail decor and provider once
       "edit.fill",
       "edit.clear",
     ]),
+  );
+  expect(ids).toEqual(expect.arrayContaining(["paint.brush", "paint.eraser"]));
+  expect(menuItems("hidden").map((m) => m.id)).toEqual(
+    expect.arrayContaining(["paint.swapColors", "paint.defaultColors"]),
   );
   expect(overlays().map((o) => o.id)).toContain("select.ants");
   expect(layerDecors().map((d) => d.id)).toContain("select.thumbnailLoad");

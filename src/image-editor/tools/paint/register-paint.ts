@@ -1,0 +1,22 @@
+import { registerMenuItem, registerTool } from "../../registry";
+import { brushTool, eraserTool } from "./brush-tool";
+import { defaultColors, swapColors } from "./color-swatches";
+
+export function registerPaintTools(): void {
+  registerTool(brushTool);
+  registerTool(eraserTool);
+  registerMenuItem({
+    id: "paint.swapColors",
+    menu: "hidden",
+    label: "image.paint.swap",
+    shortcut: "X",
+    run: swapColors,
+  });
+  registerMenuItem({
+    id: "paint.defaultColors",
+    menu: "hidden",
+    label: "image.paint.defaultColors",
+    shortcut: "D",
+    run: defaultColors,
+  });
+}

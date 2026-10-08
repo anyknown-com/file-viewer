@@ -1,10 +1,22 @@
 import type { EditorApi, LayerId, PixelTarget, Point, Rect } from "../../api";
 import { compile, drawFullscreen, FULLSCREEN_VS } from "../../engine/gl/program";
-import { createTarget } from "../../engine/gl/target";
 import { invert, layerPixelSize, targetMatrix } from "../geom";
 import { createR8, readRgba, withFramebuffer } from "../gl";
 import { hasSelection, selectionOf, unbind } from "../select/mask";
 import { BRUSH_FS } from "./brush.glsl";
+
+/** R16F, renderable and blendable with EXT_color_buffer_float (or _half_float). */
+function createDensity(gl: WebGL2RenderingContext, w: number, h: number): WebGLTexture {
+  if (!gl.getExtension("EXT_color_buffer_float")) gl.getExtension("EXT_color_buffer_half_float");
+  const t = gl.createTexture();
+  if (!t) throw new Error("Could not create a texture.");
+  gl.bindTexture(gl.TEXTURE_2D, t);
+  gl.texStorage2D(gl.TEXTURE_2D, 1, gl.R16F, w, h);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  gl.bindTexture(gl.TEXTURE_2D, null);
+  return t;
+}
 
 /**
  * One stroke's coverage on a target-size R8 texture. Each segment draws only its bounding box
@@ -24,7 +36,7 @@ export function createStrokeBuffer(
   const gl = api.gl;
   const { width, height } = layerPixelSize(api, id, target);
   const texture = createR8(gl, width, height);
-  let density: ReturnType<typeof createTarget> | null = null;
+  let density: WebGLTexture | null = null;
   const sel = hasSelection(api) ? selectionOf(api) : null;
   const m = invert(targetMatrix(api, id, target));
 
@@ -81,10 +93,10 @@ export function createStrokeBuffer(
       if (hardness >= 1) {
         pass(program, texture, 0, rect);
       } else {
-        density ??= createTarget(gl, width, height, "rgba16f");
-        pass(program, density.texture, 1, rect);
+        density ??= createDensity(gl, width, height);
+        pass(program, density, 1, rect);
         gl.activeTexture(gl.TEXTURE1);
-        gl.bindTexture(gl.TEXTURE_2D, density.texture);
+        gl.bindTexture(gl.TEXTURE_2D, density);
         pass(program, texture, 2, rect);
       }
       unbind(gl, 2);
@@ -99,7 +111,7 @@ export function createStrokeBuffer(
     },
     dispose() {
       gl.deleteTexture(texture);
-      density?.dispose();
+      if (density) gl.deleteTexture(density);
     },
   };
 }
