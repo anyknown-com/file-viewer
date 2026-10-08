@@ -407,6 +407,8 @@ file-viewer/
 
 一個檔超過 300 行就把兩種語言拆成同目錄的 `messages-en.ts`、`messages-zh-tw.ts`，表名不變。**每個區域的 `messages.ts` 都會保留**：拆檔之後它只負責組合並匯出該區域的表（`<area>Messages`），不會消失或改名。05 第 9 步的 `scripts/api-docs.mjs` 就是用 glob 讀 `src/**/messages.ts` 的 `*Messages` export 來產生 Messages 表，依賴這個保證。06 不加 key（錯誤都用 `error.<code>`）。
 
+刻意為空的 key 要登記在 api-docs 測試的白名單。
+
 ### 9.3 基本元件（`src/primitives/`，全部由 02 提供）
 
 每個都從 `@base-ui/react/<part>` 的 subpath import，popup portal 到 `useRoot().portal`，CSS 加在 `src/styles.css` 的 primitives 段。其他 plan 不在 `src/primitives/` 新增檔案；缺元件時回報主 agent，由 02 的檔增補。

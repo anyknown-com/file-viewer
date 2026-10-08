@@ -12,6 +12,9 @@ beforeAll(async () => {
 const root = (): ApiExport[] => api.entries.find((e) => e.subpath === ".")!.exports;
 const named = (name: string): ApiExport => root().find((e) => e.name === name)!;
 
+// 宿主覆寫，預設不顯示 (host overrides it; empty by default, nothing shown)
+const INTENTIONALLY_EMPTY_KEYS = new Set(["image.paint.redactRetention"]);
+
 describe("apiDocs", () => {
   it("has one entry per non-CSS subpath in package.json exports", () => {
     const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
@@ -57,7 +60,9 @@ describe("apiDocs", () => {
     expect(new Set(keys).size).toBe(keys.length);
     expect(keys.some((k) => k.startsWith("common."))).toBe(true);
     expect(keys).toContain("error.too_large");
-    const empty = api.messages.filter((r) => r.en === "" || r["zh-TW"] === "").map((r) => r.key);
+    const empty = api.messages
+      .filter((r) => !INTENTIONALLY_EMPTY_KEYS.has(r.key) && (r.en === "" || r["zh-TW"] === ""))
+      .map((r) => r.key);
     expect(empty).toEqual([]);
   });
 
