@@ -2,10 +2,15 @@
 import type { Point } from "../../api";
 
 /**
- * Coverage (0–1) of one segment a→b in target pixel space, written with MAX blending.
- * Hard tips: distance to the segment with a 1 px antialiased edge. Soft tips: optical density
- * integrated along the segment (8-point Gauss–Legendre), coverage = 1 − e^−density. Then × the
- * selection (`u_sel`, canvas-size R8, sampled bilinearly through `u_docFromLayer`) when `u_useSel`.
+ * One segment a→b in target pixel space, in one of three passes (`u_pass`):
+ * 0 — hard tips: coverage (0–1) from the distance to the segment with a 1 px antialiased edge,
+ *     × the selection; drawn with MAX blending.
+ * 1 — soft tips: the segment's optical density integrated along it (8-point Gauss–Legendre),
+ *     uncapped; added into the stroke's float density buffer.
+ * 2 — soft tips: coverage = 1 − e^−min(density, 20) from the whole stroke's density
+ *     (`u_density`), × the selection, as in Compositor's per-stroke cap.
+ * The selection is `u_sel` (canvas-size R8, sampled bilinearly through `u_docFromLayer`) when
+ * `u_useSel`.
  */
 export const BRUSH_FS = `#version 300 es
 precision highp float;
@@ -17,6 +22,8 @@ uniform bool u_useSel;
 uniform sampler2D u_sel;
 uniform ivec2 u_selSize;
 uniform mat3 u_docFromLayer;
+uniform int u_pass;
+uniform sampler2D u_density;
 out vec4 o;
 
 const float NODES[4] = float[4](0.1834346425, 0.5255324099, 0.7966664774, 0.9602898565);
@@ -33,15 +40,17 @@ float tipDensity(float d2) {
   return -log(max(1.0 - tip(d2), 0.001));
 }
 
-float coverage(vec2 p) {
+float hardCoverage(vec2 p) {
   vec2 v = u_b - u_a;
-  if (u_hardness >= 1.0) {
-    float t = clamp(dot(p - u_a, v) / max(dot(v, v), 1e-12), 0.0, 1.0);
-    vec2 delta = p - (u_a + t * v);
-    return tip(dot(delta, delta));
-  }
+  float t = clamp(dot(p - u_a, v) / max(dot(v, v), 1e-12), 0.0, 1.0);
+  vec2 delta = p - (u_a + t * v);
+  return tip(dot(delta, delta));
+}
+
+float density(vec2 p) {
+  vec2 v = u_b - u_a;
   float len = length(v);
-  if (len < 1e-6) return 1.0 - exp(-tipDensity(dot(p - u_a, p - u_a)));
+  if (len < 1e-6) return tipDensity(dot(p - u_a, p - u_a));
   vec2 dir = v / len;
   float proj = dot(p - u_a, dir);
   vec2 perp = p - u_a - proj * dir;
@@ -62,7 +71,7 @@ float coverage(vec2 p) {
   }
   // Soft tips deposit paint every max(0.25, 2.5% of the diameter), Compositor's spacingFraction.
   float spacing = max(0.25, u_radius * 0.05);
-  return 1.0 - exp(-min(integral * half_ / spacing, 20.0));
+  return integral * half_ / spacing;
 }
 
 float selAt(ivec2 i) {
@@ -80,7 +89,14 @@ float selection(vec2 lp) {
 
 void main() {
   vec2 p = gl_FragCoord.xy;
-  o = vec4(coverage(p) * selection(p), 0.0, 0.0, 1.0);
+  if (u_pass == 1) {
+    o = vec4(density(p), 0.0, 0.0, 1.0);
+    return;
+  }
+  float c = u_pass == 0
+    ? hardCoverage(p)
+    : 1.0 - exp(-min(texelFetch(u_density, ivec2(p), 0).r, 20.0));
+  o = vec4(c * selection(p), 0.0, 0.0, 1.0);
 }
 `;
 
@@ -94,7 +110,7 @@ function tip(d2: number, radius: number, hardness: number): number {
   return Math.max(0, (Math.exp(-2.5 * t * t) - Math.exp(-2.5)) / (1 - Math.exp(-2.5)));
 }
 
-/** The same coverage as BRUSH_FS (without the selection) at point `px`; `size` is the diameter. */
+/** BRUSH_FS coverage (without the selection) of a one-segment stroke at `px`; `size` is the diameter. */
 export function coverageRef(px: Point, a: Point, b: Point, size: number, hardness: number): number {
   const radius = size / 2;
   const density = (d2: number) => -Math.log(Math.max(1 - tip(d2, radius, hardness), 0.001));

@@ -5,6 +5,7 @@ import { mountCanvas } from "../../test/mount-canvas";
 import { writeSelection } from "../select/mask";
 import { coverageRef } from "./brush.glsl";
 import { createStrokeBuffer } from "./stroke-buffer";
+import { spacing } from "./stroke-path";
 
 const mounted: (() => void)[] = [];
 afterEach(() => {
@@ -43,14 +44,14 @@ it("matches the reference coverage of a soft segment within 1", async () => {
   buffer.dispose();
 });
 
-it("keeps coverage when the same segment is drawn twice", async () => {
+it("keeps hard coverage when the same segment is drawn twice", async () => {
   const { api, id } = await setup();
   const buffer = createStrokeBuffer(api, id, "image");
   const a = { x: 20, y: 64 };
   const b = { x: 100, y: 64 };
-  const rect = buffer.segment(a, b, 16, 0.5);
+  const rect = buffer.segment(a, b, 16, 1);
   const once = buffer.read(rect);
-  buffer.segment(a, b, 16, 0.5);
+  buffer.segment(a, b, 16, 1);
   expect(buffer.read(rect)).toEqual(once);
   buffer.dispose();
 });
@@ -89,5 +90,23 @@ it("maps the selection through a translated layer", async () => {
   expect(got[row + 31 - rect.x]).toBe(255);
   expect(got[row + 32 - rect.x]).toBe(0);
   expect(got[row + 48 - rect.x]).toBe(0);
+  buffer.dispose();
+});
+
+it("keeps a soft stroke made of many segments even along its length", async () => {
+  const { api, id } = await setup();
+  const buffer = createStrokeBuffer(api, id, "image");
+  const size = 24;
+  const step = spacing(size);
+  for (let x = 8; x + step <= 120; x += step) {
+    buffer.segment({ x, y: 64 }, { x: x + step, y: 64 }, size, 0);
+  }
+  // Sample the centre line and two lines inside the soft edge, away from the stroke's ends.
+  for (const y of [64, 68, 72]) {
+    const row = buffer.read({ x: 32, y, width: 64, height: 1 });
+    let worst = 0;
+    for (let x = 1; x < row.length; x++) worst = Math.max(worst, Math.abs(row[x]! - row[x - 1]!));
+    expect(worst, `row ${y}: ${row.join(",")}`).toBeLessThanOrEqual(2);
+  }
   buffer.dispose();
 });
