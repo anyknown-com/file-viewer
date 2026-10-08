@@ -4,16 +4,51 @@ import { commonMessages } from "../../i18n/messages";
 import { useT } from "../../i18n/use-t";
 import { Progress } from "../../primitives/progress";
 import { videoMessages } from "../messages";
-import { addText, splitAt } from "../model/edits";
+import { addText, deleteClips, splitAt } from "../model/edits";
+import type { History } from "../model/history";
 import { CloseGuard } from "./close-guard";
+import { type KeyAction, keyAction } from "./keyboard";
 import { Notice, noticeReason } from "./notice";
+import { PreviewPanel } from "./preview-panel";
 import { EditorSession, type SessionState } from "./session";
+import { Timeline } from "./timeline/timeline";
 import { TopBar } from "./top-bar";
 
 /** Below this container width the editor only shows a notice (00-overview §3). */
 const NARROW_PX = 768;
 
 const noSubscribe = () => () => {};
+
+function runKey(action: KeyAction, session: EditorSession, history: History): void {
+  const { player, state } = session;
+  const p = history.project;
+  switch (action) {
+    case "toggle":
+      return player.toggle();
+    case "pause":
+      return player.pause();
+    case "play":
+      return player.play();
+    case "back5":
+      return player.jump(-5);
+    case "prevFrame":
+      return player.step(-1);
+    case "nextFrame":
+      return player.step(1);
+    case "split":
+      return session.run(splitAt(p, state.playhead, state.selection));
+    case "delete":
+    case "rippleDelete":
+      session.run(deleteClips(p, state.selection, action === "rippleDelete"));
+      return session.select([], false);
+    case "undo":
+      return history.undo();
+    case "redo":
+      return history.redo();
+    case "deselect":
+      return session.select([], false);
+  }
+}
 
 export function VideoEditorBody(props: EditorProps): React.JSX.Element {
   const t = useT(videoMessages);
@@ -72,6 +107,16 @@ export function VideoEditorBody(props: EditorProps): React.JSX.Element {
     else props.onClose();
   };
 
+  const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    // Keys typed in a dialog or menu bubble here through their portal; they are not ours.
+    if (!session || !history || !(e.target instanceof Node)) return;
+    if (!e.currentTarget.contains(e.target)) return;
+    const action = keyAction(e);
+    if (!action) return;
+    e.preventDefault();
+    runKey(action, session, history);
+  };
+
   let body: React.ReactNode;
   if (state?.status === "unsupported" && state.error) {
     body = <Notice reason={noticeReason(state.error.code)} onBack={props.onClose} />;
@@ -95,9 +140,13 @@ export function VideoEditorBody(props: EditorProps): React.JSX.Element {
           onExport={() => undefined}
         />
         <div className="fv-ve-assets" />
-        <div className="fv-ve-preview" />
+        <div className="fv-ve-preview">
+          <PreviewPanel session={session} />
+        </div>
         <div className="fv-ve-inspector" />
-        <div className="fv-ve-timeline" />
+        <div className="fv-ve-timeline">
+          <Timeline session={session} />
+        </div>
       </>
     );
   } else {
@@ -109,7 +158,8 @@ export function VideoEditorBody(props: EditorProps): React.JSX.Element {
   }
 
   return (
-    <div ref={rootRef} className="fv-ve-root">
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/no-noninteractive-tabindex -- the editor root owns the shortcuts and must be focusable to get them without a window listener.
+    <div ref={rootRef} className="fv-ve-root" tabIndex={0} onKeyDown={onKeyDown}>
       {body}
       <CloseGuard
         open={guardOpen}

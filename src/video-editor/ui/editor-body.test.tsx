@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { bytesSource } from "../../contract/byte-source";
@@ -47,6 +47,7 @@ beforeEach(() => {
   vi.stubGlobal("ResizeObserver", FakeResizeObserver);
   vi.mocked(hasVideoCodecs).mockReturnValue(true);
   vi.mocked(AssetStore.prototype.load).mockResolvedValue(source);
+  vi.mocked(AssetStore.prototype.status).mockReturnValue({ state: "ready", info: source });
 });
 
 afterEach(() => {
@@ -118,5 +119,19 @@ describe("VideoEditor shell", () => {
     await user.click(await screen.findByRole("button", { name: v["video.addText"] }));
     expect(props.onDirtyChange).toHaveBeenCalledWith(true);
     expect(props.onDirtyChange).toHaveBeenCalledOnce();
+  });
+
+  it("undoes from the keyboard and deletes the selected clip", async () => {
+    const { props, user } = setup();
+    await user.click(await screen.findByRole("button", { name: v["video.addText"] }));
+    await user.keyboard("{Control>}z{/Control}");
+    expect(props.onDirtyChange).toHaveBeenLastCalledWith(false);
+    await user.click(screen.getByRole("button", { name: v["video.addText"] }));
+    const clip = screen.getByText(v["video.defaultText"]).closest(".fv-ve-clip")!;
+    Element.prototype.setPointerCapture = vi.fn<(id: number) => void>();
+    fireEvent.pointerDown(clip, { button: 0, pointerId: 1, clientX: 0 });
+    fireEvent.pointerUp(clip, { pointerId: 1, clientX: 0 });
+    await user.keyboard("{Delete}");
+    expect(screen.queryByText(v["video.defaultText"])).toBeNull();
   });
 });

@@ -1286,3 +1286,39 @@ button.fv-diagram {
 .fv-ve-snapline {
   background: var(--ak-accent);
 }
+
+.fv-ve-pv {
+  display: flex;
+  flex-direction: column;
+  block-size: 100%;
+}
+
+.fv-ve-stage {
+  position: relative;
+  flex: 1;
+  min-block-size: 0;
+  background: var(--ak-layer1);
+}
+
+/* Centered and scaled to fit, keeping the project's aspect ratio. */
+.fv-ve-canvas {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: contain;
+}
+
+.fv-ve-pv-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ak-space-sm);
+  padding: var(--ak-space-xs) var(--ak-space-sm);
+  border-block-start: 1px solid var(--ak-border);
+}
+
+.fv-ve-timecode {
+  font-size: var(--ak-type-t3);
+  font-variant-numeric: tabular-nums;
+}
