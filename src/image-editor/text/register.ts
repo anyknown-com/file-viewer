@@ -8,6 +8,7 @@ import { redrawAfterTransform } from "../shapes/layer";
 import { shapeTool } from "../shapes/shape-tool";
 import { textShapeMessages } from "./messages";
 import { TextControls } from "./panel";
+import { textShapeThumbnail } from "./thumbs";
 import { textTool } from "./type-tool";
 
 export function registerTextShapes(): void {
@@ -15,6 +16,7 @@ export function registerTextShapes(): void {
   registerTool(textTool);
   registerTool(shapeTool);
   registerLayerDecor({ id: "shape-resize", onTransformEnd: redrawAfterTransform });
+  registerLayerDecor({ id: "text-shape-thumb", thumbnail: textShapeThumbnail });
   // With another tool, a selected text layer still shows its properties (the text tool's own panel has them).
   registerPropertyPanel({
     id: "text",

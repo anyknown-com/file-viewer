@@ -1876,6 +1876,15 @@ button.fv-diagram {
 }
 
 /* image-text-shapes */
+.fv-text-thumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  max-width: 32px;
+  overflow: hidden;
+  font-size: 10px;
+}
+
 .fv-text-edit {
   position: absolute;
   transform-origin: 0 0;
