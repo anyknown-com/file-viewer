@@ -39,7 +39,9 @@
     "check:entry": "tsdown && node scripts/check-entry-deps.mjs",
     "check": "turbo run typecheck lint fmt:check check:entry",
     "test": "vitest run --project jsdom",
-    "test:browser": "vitest run --project browser"
+    "test:browser": "vitest run --project browser",
+    "verify:pack": "pnpm build && node scripts/verify-pack.mjs",
+    "prepublishOnly": "pnpm check && pnpm test && pnpm test:browser && pnpm verify:pack && pnpm check:licenses"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",
