@@ -32,6 +32,14 @@ vi.mock("./overview", () => ({ Overview: () => null }));
 let dispose: ReturnType<typeof vi.fn<() => void>>;
 
 beforeEach(() => {
+  // jsdom has no Web Audio; the player only needs a clock and close().
+  vi.stubGlobal(
+    "AudioContext",
+    class {
+      currentTime = 0;
+      close = () => Promise.resolve();
+    },
+  );
   dispose = vi.fn<() => void>();
   vi.mocked(openTrack).mockReset();
   vi.mocked(openTrack).mockResolvedValue({
@@ -46,7 +54,10 @@ beforeEach(() => {
   vi.mocked(scanPeaks).mockReturnValue(new Promise(() => {}));
 });
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 function setup(over: Partial<EditorProps> = {}) {
   const props: EditorProps = {

@@ -1,10 +1,11 @@
-import { useMemo, useReducer, useState } from "react";
+import { useCallback, useMemo, useReducer, useRef, useState } from "react";
 import type { EditorProps } from "../contract/editor";
 import { commonMessages } from "../i18n/messages";
 import { useT } from "../i18n/use-t";
 import { Button } from "../primitives/button";
 import { DiscardDialog } from "../primitives/dialog";
 import { CloseIcon } from "../primitives/glyphs";
+import { useRoot } from "../primitives/root-context";
 import { type AudioEdit, cut, initialEdit, keep, outputDuration, type Range, split } from "./edit";
 import { RedoIcon, UndoIcon } from "./glyphs";
 import {
@@ -17,9 +18,11 @@ import {
 import { audioMessages } from "./messages";
 import { NormalizePopover } from "./normalize-popover";
 import { Overview } from "./overview";
+import { createPlayer, type Player } from "./player";
 import { SelectionLayer } from "./selection-layer";
 import { SilencePopover } from "./silence-popover";
 import { Tools } from "./tools";
+import { togglePlay, Transport } from "./transport";
 import { useTrackLoad } from "./use-track-load";
 import { clampView, fitView, type View, zoom } from "./view";
 import { VolumePopover } from "./volume-popover";
@@ -63,6 +66,9 @@ export function EditorBody(props: EditorProps): React.JSX.Element {
   const [selection, setSelection] = useState<Range | null>(null);
   const [playhead, setPlayhead] = useState(0);
   const [silence, setSilence] = useState<Range[]>([]);
+  const [player, setPlayer] = useState<Player | null>(null);
+  const [loop, setLoop] = useState(false);
+  const root = useRoot();
 
   const { rootRef, load, opened, peaks, progress } = useTrackLoad(props.file.source, (o) =>
     dispatchRaw({ type: "init", edit: initialEdit(o.duration) }),
@@ -70,6 +76,38 @@ export function EditorBody(props: EditorProps): React.JSX.Element {
   const zoomWindow = useMemo(() => opened && createZoomWindow(opened.track), [opened]);
   const duration = history ? outputDuration(history.present) : 0;
   const view = useMemo(() => clampView(rawView, duration), [rawView, duration]);
+
+  const live = useRef({ edit: initialEdit(0), loop: null as Range | null, report: root.report });
+  // oxlint-disable-next-line react/refs -- the player reads the newest edit and loop on its own timer.
+  live.current = {
+    edit: history?.present ?? initialEdit(0),
+    loop: loop ? selection : null,
+    report: root.report,
+  };
+  const playerRef = useCallback(
+    (el: HTMLDivElement | null) => {
+      if (!el || !opened) return;
+      const ctx = new AudioContext();
+      const p = createPlayer(
+        ctx,
+        opened.track,
+        () => ({ edit: live.current.edit, loop: live.current.loop }),
+        (e) => live.current.report(e),
+      );
+      setPlayer(p);
+      return () => {
+        p.dispose();
+        ctx.close().catch(() => undefined);
+        setPlayer(null);
+      };
+    },
+    [opened],
+  );
+  const head = () => (player ? player.position() : playhead);
+  const seek = (to: number) => {
+    setPlayhead(to);
+    player?.seek(to);
+  };
 
   const dirty = history !== null && isDirty(history);
   const dispatch = (a: HistoryAction) => {
@@ -83,6 +121,7 @@ export function EditorBody(props: EditorProps): React.JSX.Element {
       // Cut / keep (or undoing them) moves everything after the edit: the old selection means nothing.
       setSelection(null);
       setPlayhead((p) => Math.min(p, nextDuration));
+      if (player && !player.playing()) player.seek(Math.min(player.position(), nextDuration));
     }
   };
   const apply = (next: AudioEdit) => {
@@ -106,7 +145,8 @@ export function EditorBody(props: EditorProps): React.JSX.Element {
       return;
     }
     if (e.metaKey || e.ctrlKey || e.altKey || !opened || !history) return;
-    const edit = editKey(e.key, history.present, selection, playhead);
+    if (transportKey(e)) return;
+    const edit = editKey(e.key, history.present, selection, head());
     if (edit) {
       e.preventDefault();
       apply(edit);
@@ -118,9 +158,22 @@ export function EditorBody(props: EditorProps): React.JSX.Element {
     setView(next);
   };
 
+  /** Space plays / pauses (unless a focused control takes it), L loops, Home / End seek. */
+  const transportKey = (e: React.KeyboardEvent<HTMLDivElement>): boolean => {
+    const k = e.key.toLowerCase();
+    if (k === " " && e.target !== e.currentTarget) return false;
+    if (k === " " && player) togglePlay(player);
+    else if (k === "l") setLoop((on) => !on);
+    else if (k === "home") seek(0);
+    else if (k === "end") seek(duration);
+    else return false;
+    e.preventDefault();
+    return true;
+  };
+
   return (
     <>
-      {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/no-noninteractive-tabindex -- the editor root owns the shortcuts (Esc, undo / redo, later space / Delete / S / T) and must be focusable to get them without a window listener. */}
+      {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/no-noninteractive-tabindex -- the editor root owns the shortcuts (Esc, undo / redo, space, Delete / S / T, L, Home / End) and must be focusable to get them without a window listener. */}
       <div ref={rootRef} className="fv-audio" tabIndex={0} onKeyDown={onKeyDown}>
         <div className="fv-audio-top">
           <Button
@@ -173,16 +226,16 @@ export function EditorBody(props: EditorProps): React.JSX.Element {
                 sampleRate={opened.sampleRate}
                 zoomWindow={zoomWindow}
                 onViewChange={setView}
-                playhead={() => playhead}
+                playhead={head}
                 overlay={
                   <SelectionLayer
                     view={view}
                     state={history.present}
                     selection={selection}
-                    playhead={playhead}
+                    playhead={head()}
                     silence={silence}
                     onSelect={setSelection}
-                    onSeek={setPlayhead}
+                    onSeek={seek}
                   />
                 }
               />
@@ -194,11 +247,19 @@ export function EditorBody(props: EditorProps): React.JSX.Element {
             </div>
           )}
         </div>
-        <div className="fv-audio-transport" />
+        <div ref={playerRef} className="fv-audio-transport">
+          <Transport
+            player={player}
+            duration={duration}
+            selection={selection}
+            loop={loop}
+            onLoopChange={setLoop}
+          />
+        </div>
         {history && (
           <Tools
             selection={selection}
-            playhead={playhead}
+            playhead={head()}
             onApply={apply}
             state={history.present}
             canUndo={history.past.length > 0}

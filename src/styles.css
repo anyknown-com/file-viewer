@@ -912,6 +912,28 @@
   background: var(--ak-accent);
 }
 
+.fv-audio-transport {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ak-space-xs);
+  padding: var(--ak-space-xs) var(--ak-space-sm);
+  border-block-start: 1px solid var(--ak-border);
+}
+
+.fv-audio-time {
+  display: inline-flex;
+  gap: var(--ak-space-xs);
+  margin-inline-start: var(--ak-space-sm);
+  color: var(--ak-text-muted);
+}
+
+.fv-audio-time-value {
+  color: var(--ak-text);
+  font-family: var(--ak-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
 .fv-audio-tools {
   display: flex;
   flex-wrap: wrap;
