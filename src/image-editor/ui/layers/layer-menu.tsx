@@ -13,6 +13,7 @@ import {
   toggleClip,
   ungroupFolder,
 } from "../../layer-ops";
+import { canMergeDown, mergeDown, mergeFolder } from "../../engine/merge";
 import { menuItems } from "../../registry";
 import { useLabel } from "../use-label";
 
@@ -45,6 +46,18 @@ export function LayerMenu(props: {
       label: label(clipped ? "image.layers.unclip" : "image.layers.clip"),
       disabled: folder,
       onSelect: () => toggleClip(api, id),
+    },
+    {
+      id: "merge-down",
+      label: label("image.layers.mergeDown"),
+      disabled: !canMergeDown(api, id),
+      onSelect: () => mergeDown(api, id),
+    },
+    {
+      id: "merge-folder",
+      label: label("image.layers.mergeFolder"),
+      disabled: !folder,
+      onSelect: () => mergeFolder(api, id),
     },
   ];
   if (masked) {

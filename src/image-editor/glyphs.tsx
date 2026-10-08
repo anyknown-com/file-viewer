@@ -134,3 +134,12 @@ export function ZoomIcon(props: GlyphProps): React.JSX.Element {
     </Icon>
   );
 }
+
+export function CropIcon(props: GlyphProps): React.JSX.Element {
+  return (
+    <Icon {...props}>
+      <path d="M6 2v14a2 2 0 002 2h14" />
+      <path d="M2 6h14a2 2 0 012 2v14" />
+    </Icon>
+  );
+}

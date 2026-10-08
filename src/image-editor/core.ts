@@ -15,10 +15,14 @@ import {
   undo,
 } from "./layer-ops";
 import { flipCanvas, rotateCanvas } from "./doc/commands/index";
+import { canMergeDown, mergeDown, mergeFolder } from "./engine/merge";
 import { menuItems, registerMenuItem, registerTool } from "./registry";
+import { cropTool } from "./tools/crop-tool";
 import { handTool } from "./tools/hand-tool";
 import { transformTool } from "./tools/transform-tool";
 import { actualSize, fitToWindow, zoomBy, zoomTool } from "./tools/zoom-tool";
+import { openCanvasSizeDialog } from "./ui/canvas-size-dialog";
+import { openImageSizeDialog } from "./ui/image-size-dialog";
 
 const hasActive = (api: EditorApi): boolean => activeLayer(api) !== undefined;
 
@@ -99,7 +103,29 @@ export function registerCore(): void {
     enabled: hasActive,
     run: onActive(deleteLayer),
   });
+  registerMenuItem({
+    id: "layer.mergeDown",
+    menu: "layer",
+    label: "image.layers.mergeDown",
+    shortcut: "Mod+E",
+    enabled: (api) => {
+      const layer = activeLayer(api);
+      return layer !== undefined && canMergeDown(api, layer.id);
+    },
+    run: onActive(mergeDown),
+  });
+  registerMenuItem({
+    id: "layer.mergeFolder",
+    menu: "layer",
+    label: "image.layers.mergeFolder",
+    enabled: (api) => {
+      const layer = activeLayer(api);
+      return layer !== undefined && isFolder(layer);
+    },
+    run: onActive(mergeFolder),
+  });
   registerTool(transformTool);
+  registerTool(cropTool);
   registerTool(handTool);
   registerTool(zoomTool);
   registerMenuItem({
@@ -108,6 +134,18 @@ export function registerCore(): void {
     label: "image.transform.label",
     shortcut: "Mod+T",
     run: (api) => api.setSession({ tool: transformTool.id }),
+  });
+  registerMenuItem({
+    id: "image.imageSize",
+    menu: "image",
+    label: "image.canvas.imageSize",
+    run: openImageSizeDialog,
+  });
+  registerMenuItem({
+    id: "image.canvasSize",
+    menu: "image",
+    label: "image.canvas.canvasSize",
+    run: openCanvasSizeDialog,
   });
   const canvas = [
     ["image.flipH", "image.canvas.flipCanvasH", flipCanvas("x")],

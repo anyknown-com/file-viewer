@@ -70,6 +70,28 @@ export function canvasSize(
   };
 }
 
+/**
+ * Image size: the canvas becomes `w` × `h`; every layer's center and size, placed mask and guide
+ * scale with it. Pixels are the caller's (resampled to match).
+ */
+export function scaleImage(w: number, h: number): Command {
+  return (doc) => {
+    const sx = w / doc.manifest.width;
+    const sy = h / doc.manifest.height;
+    return mapPlacements(
+      doc,
+      { width: w, height: h },
+      (t) => {
+        const cx = (t.origin[0] + t.size[0] / 2) * sx;
+        const cy = (t.origin[1] + t.size[1] / 2) * sy;
+        const size: [number, number] = [t.size[0] * sx, t.size[1] * sy];
+        return { ...t, size, origin: [cx - size[0] / 2, cy - size[1] / 2] };
+      },
+      (g) => ({ ...g, position: g.position * (g.axis === "vertical" ? sx : sy) }),
+    );
+  };
+}
+
 /** LayerFlip.swift `mirrored`: the picture flips, its angle turns the other way. */
 function mirrored(t: Transform, horizontally: boolean, axis: number): Transform {
   if (horizontally) {

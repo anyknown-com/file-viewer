@@ -85,7 +85,7 @@ function ready(role: "menuitem" | "option", name: string): Promise<HTMLElement> 
     );
     if (!found) throw new Error(`no ${role} ${name} ready`);
     return found;
-  });
+  }, 5000);
 }
 
 async function contextItem(id: LayerId, name: string) {

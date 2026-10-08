@@ -1,5 +1,5 @@
 export { clipToBelow, releaseClip, releaseDetachedClipping } from "./clip";
-export { canvasSize, crop, flipCanvas, rotateCanvas, setTransform } from "./geometry";
+export { canvasSize, crop, flipCanvas, rotateCanvas, scaleImage, setTransform } from "./geometry";
 export { groupLayers, ungroup } from "./groups";
 export {
   addLayer,
