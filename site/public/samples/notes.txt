@@ -1,0 +1,4 @@
+file-viewer opens files right in the browser tab.
+Nothing is uploaded; the bytes stay on your device.
+Saving an edit hands the host a Blob.
+檔案只在這個分頁裡，不會上傳。

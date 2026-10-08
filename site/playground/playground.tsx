@@ -7,6 +7,7 @@ import { DiscardDialog } from "./discard-dialog";
 import { DropZone } from "./drop-zone";
 import { downloadSave, fileRefOf, savedRefOf } from "./host";
 import "./playground.css";
+import { SampleList } from "./sample-list";
 import { STRINGS, formatSize } from "./strings";
 
 type Opened = { ref: FileRef; size: number; key: number };
@@ -83,6 +84,7 @@ export function Playground({
               </button>
             </span>
           </div>
+          <SampleList locale={locale} onFile={open} />
           <div className="pg-viewer">
             <FileViewer
               key={opened.key}
@@ -101,6 +103,7 @@ export function Playground({
           {chooseButton}
         </div>
       )}
+      {opened ? null : <SampleList locale={locale} onFile={open} />}
       <DiscardDialog
         open={pending !== null}
         name={opened?.ref.name ?? ""}

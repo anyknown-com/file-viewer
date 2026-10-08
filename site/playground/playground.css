@@ -152,3 +152,17 @@
   justify-content: flex-end;
   gap: var(--ak-space-xs);
 }
+
+.pg-samples {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ak-space-xs);
+  margin-block: var(--ak-space-sm);
+}
+
+.pg-samples-title {
+  margin-inline-end: var(--ak-space-xs);
+  font-size: 0.875rem;
+  color: var(--ak-text-muted);
+}

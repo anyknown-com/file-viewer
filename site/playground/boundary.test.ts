@@ -11,6 +11,8 @@ const ALLOWED = [
   /^react$/,
   /^react-dom(\/.+)?$/,
   /^\.\/[^/]+$/,
+  // The sample list ships with the playground; its files are served from public/samples/.
+  /^\.\.\/public\/samples\/samples\.json$/,
 ];
 
 it("imports only the package, Base UI, React and its own folder", () => {

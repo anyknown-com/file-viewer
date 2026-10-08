@@ -1,0 +1,13 @@
+{
+  "name": "file-viewer",
+  "local": true,
+  "formats": [
+    { "view": "image", "ext": ["jpg", "png", "svg"] },
+    { "view": "video", "ext": ["mp4", "webm"] },
+    { "view": "text", "ext": ["txt", "json"] }
+  ],
+  "matrix": [
+    [1, 2],
+    [3, 4]
+  ]
+}

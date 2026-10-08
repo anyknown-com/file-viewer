@@ -1,0 +1,51 @@
+[
+  {
+    "file": "image.jpg",
+    "mime": "image/jpeg",
+    "view": "image",
+    "expect": "img",
+    "label": { "en": "Image", "zh-TW": "圖片" }
+  },
+  {
+    "file": "vector.svg",
+    "mime": "image/svg+xml",
+    "view": "image",
+    "expect": "img",
+    "label": { "en": "SVG", "zh-TW": "SVG" }
+  },
+  {
+    "file": "clip.mp4",
+    "mime": "video/mp4",
+    "view": "video",
+    "expect": "video",
+    "label": { "en": "Video", "zh-TW": "影片" }
+  },
+  {
+    "file": "tone.m4a",
+    "mime": "audio/mp4",
+    "view": "audio",
+    "expect": "audio",
+    "label": { "en": "Audio", "zh-TW": "音訊" }
+  },
+  {
+    "file": "sample.pdf",
+    "mime": "application/pdf",
+    "view": "pdf",
+    "expect": "iframe",
+    "label": { "en": "PDF", "zh-TW": "PDF" }
+  },
+  {
+    "file": "notes.txt",
+    "mime": "text/plain",
+    "view": "text",
+    "expect": "pre",
+    "label": { "en": "Text", "zh-TW": "文字" }
+  },
+  {
+    "file": "data.json",
+    "mime": "application/json",
+    "view": "text",
+    "expect": "pre",
+    "label": { "en": "JSON", "zh-TW": "JSON" }
+  }
+]

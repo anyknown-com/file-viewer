@@ -1,7 +1,13 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { afterEach, expect, it, vi } from "vitest";
 import { Playground } from "./playground";
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 function input(container: HTMLElement): HTMLInputElement {
   return container.querySelector<HTMLInputElement>("[data-playground-input]")!;
@@ -27,4 +33,19 @@ it("opens a file dropped on the drop area", async () => {
   const file = new File(["dropped text"], "drop.txt", { type: "text/plain" });
   fireEvent.drop(container.querySelector(".pg-drop")!, { dataTransfer: { files: [file] } });
   expect(await screen.findByText("dropped text")).toBeTruthy();
+});
+
+it("opens a sample with the same open as a picked file", async () => {
+  const text = readFileSync(join(process.cwd(), "site/public/samples/notes.txt"), "utf8");
+  const fetch = vi.fn<(url: string) => Promise<{ blob: () => Promise<Blob> }>>(async () => ({
+    blob: async () => new Blob([text]),
+  }));
+  vi.stubGlobal("fetch", fetch);
+  const user = userEvent.setup();
+  const { container } = render(<Playground locale="en" />);
+  await user.click(container.querySelector<HTMLButtonElement>('[data-sample="notes.txt"]')!);
+  expect(
+    await screen.findByText(/Nothing is uploaded; the bytes stay on your device\./),
+  ).toBeTruthy();
+  expect(fetch).toHaveBeenCalledWith("/samples/notes.txt");
 });
