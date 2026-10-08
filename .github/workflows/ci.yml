@@ -1,0 +1,28 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# apiUrl and teamSlug live in turbo.json; only the token is a secret.
+env:
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm turbo run build typecheck lint fmt:check check:entry test test:browser check:licenses
+      # Not cached: it packs a tarball and resolves the exports map from
+      # outside the package, which is exactly what must not go stale.
+      - run: pnpm verify:pack

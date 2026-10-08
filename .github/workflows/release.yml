@@ -1,0 +1,52 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+env:
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write # npm trusted publishing (OIDC),見下面的 publish step
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          # 不要設 registry-url:setup-node 會寫一份 .npmrc 塞
+          # `_authToken=${NODE_AUTH_TOKEN}`,沒有那個 env 就變成空 token,
+          # npm 拿空憑證去認證 → E404 "you do not have permission",OIDC 接不到手。
+      # Node 22 ships npm 10.x; trusted publishing needs >= 11.5.1.
+      - run: npm install --global npm@latest
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+
+      # The tag names the release. Refuse to publish if package.json disagrees,
+      # otherwise the tag and the published version drift apart silently.
+      - name: tag matches package.json version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg=$(node -p "require('./package.json').version")
+          test "$tag" = "$pkg" || { echo "tag v$tag != package.json $pkg"; exit 1; }
+
+      - run: pnpm turbo run typecheck lint fmt:check check:entry test test:browser check:licenses
+      - run: pnpm verify:pack
+
+      # verify:pack already built dist and packed it; prepublishOnly would only
+      # repeat the steps above. pnpm publish is skipped here because its OIDC
+      # support is still open (pnpm/pnpm#9812).
+      #
+      # 認證走 OIDC:trusted publisher 綁在 npmjs.com 的 @anyknown/file-viewer →
+      # anyknown-com/file-viewer / release.yml,repo 裡不存任何 npm 憑證。
+      # (v0.0.1 是本機手動發的 —— npm 的 trusted publisher 只能綁在已存在的套件上。)
+      #
+      # provenance 會比對 package.json 的 repository.url 與簽章裡的 repo,對不上就 E422。
+      - run: npm publish --ignore-scripts
