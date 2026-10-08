@@ -8,3 +8,4 @@ site/generated
 .turbo
 .env
 *.log
+.vitest/
