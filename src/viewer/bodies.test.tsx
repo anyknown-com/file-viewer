@@ -58,6 +58,5 @@ describe("bodies", () => {
     expect(new Set(Object.keys(bodies))).toEqual(
       new Set(["audio", "excalidraw", "image", "markdown", "pdf", "text", "video"]),
     );
-    expect(bodies.markdown).toBe(bodies.text);
   });
 });

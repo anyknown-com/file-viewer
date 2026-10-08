@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from "react";
+import { createContext, use, useMemo, type ComponentProps, type ReactNode } from "react";
 import Markdown, { defaultUrlTransform, type Components } from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
@@ -38,56 +38,68 @@ function diagramIndex(node: HastNode | undefined): number | null {
   return Number.isInteger(n) ? n : null;
 }
 
+type Ctx = {
+  fences: Fence[];
+  resolveImage?: ImageResolver;
+  renderDiagram?: (fence: Fence) => ReactNode;
+};
+const MarkdownContext = createContext<Ctx>({ fences: [] });
+
+function MdLink({ href, children }: ComponentProps<"a">): React.JSX.Element {
+  if (!href) return <span>{children}</span>;
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer">
+      <InLinkContext value={true}>{children}</InLinkContext>
+    </a>
+  );
+}
+
+function MdImage({ src, alt }: ComponentProps<"img">): React.JSX.Element {
+  const { resolveImage } = use(MarkdownContext);
+  return (
+    <MarkdownImage src={String(src ?? "")} alt={String(alt ?? "")} resolveImage={resolveImage} />
+  );
+}
+
+function MdPre({ node, children }: ComponentProps<"pre"> & { node?: unknown }): React.JSX.Element {
+  const { fences, renderDiagram } = use(MarkdownContext);
+  const i = diagramIndex(node as HastNode | undefined);
+  const fence = i === null ? undefined : fences[i];
+  if (!fence) return <pre>{children}</pre>;
+  if (renderDiagram) return <>{renderDiagram(fence)}</>;
+  return (
+    <pre className="fv-md-diagram-raw">
+      <code>{fence.json}</code>
+    </pre>
+  );
+}
+
+const components: Components = { a: MdLink, img: MdImage, pre: MdPre };
+
 function MarkdownContent({ source, resolveImage, renderDiagram }: ContentProps): React.JSX.Element {
   const fences = useMemo(() => findFences(source), [source]);
   const masked = useMemo(() => maskFences(source, fences), [source, fences]);
-
-  const components = useMemo<Components>(
-    () => ({
-      a: ({ href, children }) =>
-        href ? (
-          <a href={href} target="_blank" rel="noopener noreferrer">
-            <InLinkContext value={true}>{children}</InLinkContext>
-          </a>
-        ) : (
-          <span>{children}</span>
-        ),
-      img: ({ src, alt }) => (
-        <MarkdownImage
-          src={String(src ?? "")}
-          alt={String(alt ?? "")}
-          resolveImage={resolveImage}
-        />
-      ),
-      pre: ({ node, children }) => {
-        const i = diagramIndex(node as HastNode | undefined);
-        const fence = i === null ? undefined : fences[i];
-        if (!fence) return <pre>{children}</pre>;
-        if (renderDiagram) return <>{renderDiagram(fence)}</>;
-        return (
-          <pre className="fv-md-diagram-raw">
-            <code>{fence.json}</code>
-          </pre>
-        );
-      },
-    }),
+  const ctx = useMemo(
+    () => ({ fences, resolveImage, renderDiagram }),
     [fences, resolveImage, renderDiagram],
   );
 
   return (
-    <div className="fv-md">
-      <article className="fv-prose">
-        <Markdown
-          remarkPlugins={[remarkGfm]}
-          rehypePlugins={[[rehypeSanitize, markdownSchema]]}
-          skipHtml
-          urlTransform={(url, key) => (key === "src" ? url : defaultUrlTransform(url))}
-          components={components}
-        >
-          {masked}
-        </Markdown>
-      </article>
-    </div>
+    <MarkdownContext value={ctx}>
+      <div className="fv-md">
+        <article className="fv-prose">
+          <Markdown
+            remarkPlugins={[remarkGfm]}
+            rehypePlugins={[[rehypeSanitize, markdownSchema]]}
+            skipHtml
+            urlTransform={(url, key) => (key === "src" ? url : defaultUrlTransform(url))}
+            components={components}
+          >
+            {masked}
+          </Markdown>
+        </article>
+      </div>
+    </MarkdownContext>
   );
 }
 

@@ -55,7 +55,7 @@ describe("MarkdownImage", () => {
 
   it("passes src and alt through untouched", () => {
     for (const src of ["data:image/png;base64,AAA", "blob:https://h/1", "//host/x"]) {
-      const spy = vi.fn(() => null);
+      const spy = vi.fn<ImageResolver>(() => null);
       setup(spy, "Alt", false, src);
       expect(spy).toHaveBeenCalledWith(src, "Alt");
       cleanup();

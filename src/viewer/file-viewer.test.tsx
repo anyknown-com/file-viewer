@@ -154,9 +154,9 @@ describe("FileViewer", () => {
     expect(root.getAttribute("data-theme")).toBe("dark");
   });
 
-  it("shows markdown as plain text for now", async () => {
+  it("renders markdown", async () => {
     const { container } = render(<FileViewer file={{ name: "notes.md", source: enc("# hi") }} />);
-    await waitFor(() => expect(container.querySelector("pre")!.textContent).toBe("# hi"));
+    await waitFor(() => expect(container.querySelector("h1")!.textContent).toBe("hi"));
   });
 
   it("a throwing body becomes render_failed", async () => {

@@ -1,5 +1,5 @@
 /* oxlint-disable jsx-a11y/media-has-caption -- user files have no caption tracks. */
-import type { ComponentType } from "react";
+import { lazy, type ComponentType } from "react";
 import type { FileRef } from "../contract/byte-source";
 import { ViewerError } from "../contract/errors";
 import type { ViewKind } from "../contract/formats";
@@ -66,12 +66,14 @@ function TextBody({ loaded }: BodyProps) {
   return <pre className="fv-text">{loaded.text}</pre>;
 }
 
+const MarkdownBody = lazy(() => import("./markdown-body"));
+
 export const bodies: Record<ViewKind, ComponentType<BodyProps>> = {
   image: ImageBody,
   video: VideoBody,
   audio: AudioBody,
   pdf: PdfBody,
   text: TextBody,
-  markdown: TextBody, // 04 P01-4 swaps in the Markdown body
+  markdown: MarkdownBody,
   excalidraw: TextBody, // 04 P02-3 swaps in the Excalidraw body
 };
