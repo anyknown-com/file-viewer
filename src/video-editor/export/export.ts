@@ -4,7 +4,7 @@
  */
 import { AudioBufferSource, CanvasSource, Mp4OutputFormat, Output, StreamTarget } from "mediabunny";
 import { isAbortError } from "../../contract/errors";
-import { createBlobSink, toMediaError } from "../../media";
+import { createBlobSink, keepFirstError, toMediaError } from "../../media";
 import type { AssetStore } from "../engine/assets";
 import { audioSegments } from "../engine/audio-plan";
 import { FrameCache } from "../engine/frame-cache";
@@ -46,9 +46,10 @@ export async function runExport(o: {
   };
 
   const sink = createBlobSink({ maxBytes: o.maxOutputBytes });
+  const stream = keepFirstError(sink.writable);
   const output = new Output({
     format: new Mp4OutputFormat({ fastStart: "fragmented" }),
-    target: new StreamTarget(sink.writable),
+    target: new StreamTarget(stream.writable),
   });
   const videoSource = new CanvasSource(canvas, { codec: "avc", bitrate: preset.videoBitrate });
   output.addVideoTrack(videoSource, { frameRate: preset.fps });
@@ -87,10 +88,11 @@ export async function runExport(o: {
     }
     await output.finalize();
   } catch (e) {
-    await output.cancel();
+    // Closing a stream that has already errored throws; the first error is the one to report.
+    await output.cancel().catch(() => undefined);
     frames.dispose();
     if (isAbortError(e)) throw new DOMException("aborted", "AbortError");
-    throw toMediaError(e, "decode_failed");
+    throw toMediaError(stream.error() ?? e, "decode_failed");
   }
   frames.dispose();
   return sink.toBlob("video/mp4");

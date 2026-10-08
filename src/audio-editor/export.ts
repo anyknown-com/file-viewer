@@ -10,7 +10,7 @@ import {
   WavOutputFormat,
 } from "mediabunny";
 import { ViewerError } from "../contract/errors";
-import { createBlobSink, toMediaError } from "../media";
+import { createBlobSink, keepFirstError, toMediaError } from "../media";
 import { type AudioEdit, outputDuration } from "./edit";
 import {
   estimateBytes,
@@ -52,9 +52,10 @@ export async function exportAudio(o: {
   }
   const format = FORMATS[choice.format];
   const sink = createBlobSink({ maxBytes: o.maxOutputBytes });
+  const stream = keepFirstError(sink.writable);
   const output = new Output({
     format: container(choice.format),
-    target: new StreamTarget(sink.writable),
+    target: new StreamTarget(stream.writable),
   });
   try {
     signal.throwIfAborted();
@@ -84,7 +85,7 @@ export async function exportAudio(o: {
   } catch (e) {
     await output.cancel().catch(() => undefined);
     if (signal.aborted) throw signal.reason;
-    throw toMediaError(e, "decode_failed");
+    throw toMediaError(stream.error() ?? e, "decode_failed");
   }
 }
 
