@@ -10,10 +10,15 @@ import {
   newFolder,
   newLayer,
   redo,
+  run,
   ungroupFolder,
   undo,
 } from "./layer-ops";
-import { menuItems, registerMenuItem } from "./registry";
+import { flipCanvas, rotateCanvas } from "./doc/commands/index";
+import { menuItems, registerMenuItem, registerTool } from "./registry";
+import { handTool } from "./tools/hand-tool";
+import { transformTool } from "./tools/transform-tool";
+import { actualSize, fitToWindow, zoomBy, zoomTool } from "./tools/zoom-tool";
 
 const hasActive = (api: EditorApi): boolean => activeLayer(api) !== undefined;
 
@@ -94,4 +99,32 @@ export function registerCore(): void {
     enabled: hasActive,
     run: onActive(deleteLayer),
   });
+  registerTool(transformTool);
+  registerTool(handTool);
+  registerTool(zoomTool);
+  registerMenuItem({
+    id: "edit.transform",
+    menu: "edit",
+    label: "image.transform.label",
+    shortcut: "Mod+T",
+    run: (api) => api.setSession({ tool: transformTool.id }),
+  });
+  const canvas = [
+    ["image.flipH", "image.canvas.flipCanvasH", flipCanvas("x")],
+    ["image.flipV", "image.canvas.flipCanvasV", flipCanvas("y")],
+    ["image.rotateCw", "image.canvas.rotateCw", rotateCanvas(90)],
+    ["image.rotateCcw", "image.canvas.rotateCcw", rotateCanvas(-90)],
+  ] as const;
+  for (const [id, label, command] of canvas)
+    registerMenuItem({ id, menu: "image", label, run: (api) => run(api, command, label) });
+  const view = [
+    ["view.fit", "image.view.fit", "Mod+0", fitToWindow],
+    ["view.actual", "image.view.actual", "Mod+1", actualSize],
+    ["view.zoomIn", "image.zoom", "+", (api: EditorApi) => zoomBy(api, 2)],
+    // "+" needs Shift on most layouts.
+    ["view.zoomIn.shift", "image.zoom", "Shift++", (api: EditorApi) => zoomBy(api, 2)],
+    ["view.zoomOut", "image.zoom", "-", (api: EditorApi) => zoomBy(api, 0.5)],
+  ] as const;
+  for (const [id, label, shortcut, fn] of view)
+    registerMenuItem({ id, menu: "hidden", label, shortcut, run: fn });
 }

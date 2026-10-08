@@ -106,3 +106,31 @@ export function ClipArrowIcon(props: GlyphProps): React.JSX.Element {
     </Icon>
   );
 }
+
+/** Move / transform: a four-way arrow. */
+export function MoveIcon(props: GlyphProps): React.JSX.Element {
+  return (
+    <Icon {...props}>
+      <path d="M12 3v18M3 12h18" />
+      <path d="M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3" />
+    </Icon>
+  );
+}
+
+export function HandIcon(props: GlyphProps): React.JSX.Element {
+  return (
+    <Icon {...props}>
+      <path d="M8 13V5.5a1.5 1.5 0 013 0V11M11 10.5v-7a1.5 1.5 0 013 0V11M14 10.5V5a1.5 1.5 0 013 0v6" />
+      <path d="M17 8.5a1.5 1.5 0 013 0V15a6 6 0 01-6 6h-1.5a6 6 0 01-4.6-2.2L4.6 15a1.5 1.5 0 012.3-2l1.1 1.2" />
+    </Icon>
+  );
+}
+
+export function ZoomIcon(props: GlyphProps): React.JSX.Element {
+  return (
+    <Icon {...props}>
+      <circle cx="10.5" cy="10.5" r="6.5" />
+      <path d="M15.5 15.5L21 21M10.5 7.5v6M7.5 10.5h6" />
+    </Icon>
+  );
+}

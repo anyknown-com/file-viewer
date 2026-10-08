@@ -23,8 +23,23 @@ type Live = {
   schedule: (() => void) | null;
 };
 
+/** The mounted canvas's view, for the hand and zoom tools and the view menu items. */
+export type Viewport = {
+  view(): View;
+  /** The canvas in CSS px. */
+  size(): Size;
+  /** Zoom is clamped to 1/64–64. */
+  setView(view: View): void;
+};
+
 const MIN_ZOOM = 1 / 64;
 const MAX_ZOOM = 64;
+const viewports = new WeakMap<EditorApi, Viewport>();
+
+/** The viewport of the EditorCanvas mounted for `api`; undefined when none is. */
+export function viewportOf(api: EditorApi): Viewport | undefined {
+  return viewports.get(api);
+}
 
 const clampZoom = (z: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
 const apply = (m: Mat2D, x: number, y: number): Point => ({
@@ -133,6 +148,11 @@ function attach(container: HTMLDivElement, overlay: HTMLCanvasElement, api: Edit
   }
   live.schedule = schedule;
   internalsOf(api).onFrame(schedule);
+  viewports.set(api, {
+    view: () => live.view,
+    size: () => size,
+    setView: (v) => setView({ zoom: clampZoom(v.zoom), center: v.center }),
+  });
 
   const ro = new ResizeObserver(() => {
     size = { width: container.clientWidth, height: container.clientHeight };
@@ -221,6 +241,7 @@ function attach(container: HTMLDivElement, overlay: HTMLCanvasElement, api: Edit
     window.removeEventListener("keydown", onKey);
     window.removeEventListener("keyup", onKey);
     internalsOf(api).onFrame(null);
+    viewports.delete(api);
     live.schedule = null;
     renderer.dispose();
     renderer.pool.dispose();
