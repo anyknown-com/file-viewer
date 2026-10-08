@@ -31,3 +31,37 @@ jobs:
       # Not cached: it packs a tarball and resolves the exports map from
       # outside the package, which is exactly what must not go stale.
       - run: pnpm verify:pack
+
+  # Linux Chrome has no AAC encoder, so the AAC tests skip in `check`. macOS Chrome has one:
+  # run the codec tests here and fail if any of them skips.
+  codecs-macos:
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: npx playwright install chrome
+      - run: >-
+          pnpm exec vitest run --project browser
+          --reporter=default --reporter=json --outputFile.json="$RUNNER_TEMP/codecs.json"
+          src/media/ src/audio-editor/export src/video-editor/export/
+          -t '^(?!.*20 minutes)'
+      - name: No codec test may skip
+        run: |
+          node - <<'EOF'
+          const r = JSON.parse(require("fs").readFileSync(process.env.RUNNER_TEMP + "/codecs.json", "utf8"));
+          // The 20-minute heap check is not a codec test and is filtered out by -t above.
+          const all = r.testResults
+            .flatMap((f) => f.assertionResults.map((a) => ({ ...a, file: f.name })))
+            .filter((a) => !a.fullName.includes("20 minutes"));
+          const aac = all.filter((a) => a.status === "passed" && /aac/i.test(a.fullName + a.file));
+          const bad = all.filter((a) => a.status !== "passed");
+          console.log(`passed ${all.length - bad.length}, aac passed ${aac.length}, not passed ${bad.length}`);
+          for (const a of bad) console.log("NOT PASSED:", a.status, a.file, a.fullName);
+          if (bad.length || aac.length < 5) process.exit(1);
+          EOF
