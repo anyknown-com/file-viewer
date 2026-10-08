@@ -17,17 +17,19 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-const RED = [255, 0, 0, 255];
+const RED: [number, number, number, number] = [255, 0, 0, 255];
 
 async function setup(opts: { select: boolean; mask?: boolean } = { select: true }) {
-  const doc = makeDoc({
+  const made = makeDoc({
     width: 64,
     height: 64,
     layers: [opts.mask ? { maskFile: "m.png" } : {}, {}],
   });
-  const [bottom, top] = doc.manifest.layers;
-  if (opts.mask) doc.pixels.set(bottom.id, { image: { kind: "gpu" }, mask: { kind: "gpu" } });
-  const m = await mountCanvas(doc, { [bottom.id]: RED as never, [top.id]: [0, 0, 255, 255] });
+  const [bottom, top] = made.manifest.layers;
+  const pixels = new Map(made.pixels);
+  if (opts.mask) pixels.set(bottom.id, { image: { kind: "gpu" }, mask: { kind: "gpu" } });
+  const doc = { ...made, pixels };
+  const m = await mountCanvas(doc, { [bottom.id]: RED, [top.id]: [0, 0, 255, 255] });
   mounted.push(m.unmount);
   const id = opts.mask ? bottom.id : top.id;
   m.api.setSession({ active: id, target: opts.mask ? "mask" : "image" });
