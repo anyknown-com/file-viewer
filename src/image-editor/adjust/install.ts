@@ -1,3 +1,4 @@
+import { registerLayerEffects } from "../effects/register";
 import { registerMessages } from "../registry";
 import { adjustMessages } from "./messages";
 import { registerBlurAdjustments } from "./register-blur";
@@ -9,4 +10,5 @@ export function registerAdjust(): void {
   registerLutAdjustments();
   registerNoiseAdjustments();
   registerBlurAdjustments();
+  registerLayerEffects();
 }
