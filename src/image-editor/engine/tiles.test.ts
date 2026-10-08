@@ -6,9 +6,16 @@ import { exportTiles, totalReach } from "./tiles";
 
 afterEach(resetRegistry);
 
+// Only the canvas size matters here. makeDoc goes through 09's fromImage, which allocates and
+// PNG-encodes width × height pixels: at 5000 × 3000 that alone ran past CI's 5 s test timeout.
+function canvasOf(width: number, height: number) {
+  const doc = makeDoc({ width: 1, height: 1, layers: [] });
+  return { ...doc, manifest: { ...doc.manifest, width, height } };
+}
+
 describe("exportTiles", () => {
   it("covers 5000 × 3000 in 2048 tiles with smaller right and bottom edges", () => {
-    const doc = makeDoc({ width: 5000, height: 3000, layers: [] });
+    const doc = canvasOf(5000, 3000);
     const tiles = exportTiles(doc, 2048, 0, 16384);
     expect(tiles).toHaveLength(6);
     expect(tiles[0]).toEqual({ x: 0, y: 0, width: 2048, height: 2048 });
@@ -18,7 +25,7 @@ describe("exportTiles", () => {
   });
 
   it("returns one whole tile when a tile plus reach exceeds maxTexture", () => {
-    const doc = makeDoc({ width: 5000, height: 3000, layers: [] });
+    const doc = canvasOf(5000, 3000);
     expect(exportTiles(doc, 2048, 1100, 4096)).toEqual([{ x: 0, y: 0, width: 5000, height: 3000 }]);
   });
 });
