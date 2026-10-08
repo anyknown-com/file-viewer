@@ -61,6 +61,7 @@
     "check": "turbo run typecheck typecheck:site lint fmt:check check:entry",
     "test": "vitest run --project jsdom",
     "test:browser": "vitest run --project browser",
+    "test:csp": "pnpm build && node scripts/csp-smoke.mjs",
     "verify:pack": "pnpm build && node scripts/verify-pack.mjs",
     "prepublishOnly": "pnpm check && pnpm test && pnpm test:browser && pnpm verify:pack && pnpm check:licenses",
     "check:licenses": "node scripts/check-licenses.mjs",

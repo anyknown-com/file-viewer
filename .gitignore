@@ -8,4 +8,5 @@ site/generated
 .turbo
 .env
 *.log
+test/csp/dist
 .vitest/
