@@ -27,6 +27,7 @@ export type AssetProvider = {
 export type FileViewerProps = CommonProps & {
   onSave?: SaveHandler;
   onDirtyChange?: (dirty: boolean) => void;
+  onEditingChange?: (editing: boolean) => void; // 按「編輯」時 true；編輯器 onClose 時 false
   markdown?: { resolveImage?: (src: string, alt: string) => string | null };
   excalidraw?: { assetPath?: string };
   editor?: { maxOutputBytes?: number; assets?: AssetProvider };

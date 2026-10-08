@@ -18,6 +18,7 @@ import {
   type EditKind,
   type ViewKind,
 } from "./formats";
+import { editors } from "../viewer/editors";
 import { resolveLimits, type Limits } from "./limits";
 
 export type { ViewKind, EditKind } from "./formats";
@@ -106,7 +107,8 @@ function limitFor(kind: ViewKind, limits: Limits): number {
 
 export function kindOf(file: FileInfo, limits?: Partial<Limits>): KindResult {
   const resolved = resolveLimits(limits);
-  const edit = editKindOf(file, resolved);
+  const kind = editKindOf(file, resolved);
+  const edit = kind && editors[kind] ? kind : null;
   const format = formatOf(file);
   if (!format) return { view: null, edit, tooLarge: false };
   if (file.size > limitFor(format, resolved)) return { view: null, edit, tooLarge: true };

@@ -1,6 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { DEFAULT_LIMITS } from "./limits";
 import { editKindOf, kindOf, mimeOf } from "./kinds";
+
+// The too-large video case needs a registered video editor; kinds-editors*.test.ts cover the gate.
+vi.mock("../viewer/editors", () => ({ editors: { video: () => null } }));
 
 const Mi = 1024 * 1024;
 const Gi = 1024 * Mi;

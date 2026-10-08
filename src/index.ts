@@ -17,3 +17,4 @@ export type {
   AssetProvider,
 } from "./contract/props";
 export { FileViewer } from "./viewer/file-viewer";
+export type { EditorProps } from "./contract/editor";
