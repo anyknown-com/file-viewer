@@ -11,7 +11,9 @@ const CHROME_PATHS: Partial<Record<NodeJS.Platform, string>> = {
 };
 const useChrome = Boolean(process.env.CI) || existsSync(CHROME_PATHS[process.platform] ?? "");
 if (!useChrome) {
-  console.warn("Google Chrome not found: browser tests run in Chromium; AAC/H.264 tests may skip.");
+  process.stderr.write(
+    "Google Chrome not found: browser tests run in Chromium; AAC/H.264 tests may skip.\n",
+  );
 }
 
 export default defineConfig({
@@ -35,13 +37,23 @@ export default defineConfig({
         test: {
           name: "browser",
           include: ["src/**/*.browser.test.{ts,tsx}"],
+          // One file at a time: every page's WebGL runs in the browser's one software GL (SwiftShader)
+          // process, so parallel files only queue behind each other there and push single tests
+          // past the timeout. The whole run takes about as long either way.
+          fileParallelism: false,
           browser: {
             enabled: true,
             headless: true,
             provider: playwright({
               launchOptions: {
                 channel: useChrome ? "chrome" : undefined,
-                args: ["--enable-unsafe-swiftshader", "--use-angle=swiftshader"],
+                // No GPU compositing: headless Chrome would composite every frame on SwiftShader,
+                // slowing each GL test by a factor of ten or more.
+                args: [
+                  "--enable-unsafe-swiftshader",
+                  "--use-angle=swiftshader",
+                  "--disable-gpu-compositing",
+                ],
               },
             }),
             instances: [{ browser: "chromium" }],

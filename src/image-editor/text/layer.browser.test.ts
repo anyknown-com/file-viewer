@@ -36,10 +36,16 @@ const undo = (api: EditorApi, store: DocStore) =>
   applyUndo(api, store.undo() as NonNullable<ReturnType<DocStore["undo"]>>);
 const redo = (api: EditorApi, store: DocStore) =>
   applyUndo(api, store.redo() as NonNullable<ReturnType<DocStore["redo"]>>);
+// 16 px, not the 48 px default: every raster is ~9× smaller to upload, read back and compare,
+// which keeps this file within the timeout on CI's software GL.
 const style = (content: string, patch: Partial<LayerTextStyle> = {}): LayerTextStyle => ({
   ...defaultTextStyle(content),
+  fontSize: 16,
   ...patch,
 });
+/** Index of the first byte that differs, or -1. `toEqual` walks a raster byte by byte, far slower. */
+const firstDiff = (a: Uint8Array, b: Uint8Array) =>
+  a.length === b.length ? a.findIndex((v, i) => v !== b[i]) : Math.min(a.length, b.length);
 
 describe("text layers", () => {
   it("creates a text layer that validates and undoes in one step", async () => {
@@ -52,7 +58,7 @@ describe("text layers", () => {
     expect(layerOf(api, id).transform.origin).toEqual([20, 30]);
     expect(api.session().active).toBe(id);
     expect(validateLikeCompositor(api.doc().manifest)).toEqual([]);
-    expect(all(api, id)).toEqual(renderText(s).data);
+    expect(firstDiff(all(api, id), renderText(s).data)).toBe(-1);
     undo(api, store);
     expect(api.doc().manifest.layers.some((l) => l.id === id)).toBe(false);
     redo(api, store);
@@ -80,14 +86,14 @@ describe("text layers", () => {
     expect(api.pixelSize(id, "image")).toEqual({ width: r.width, height: r.height });
     expect(layerOf(api, id).transform.size).toEqual([r.width, r.height]);
     expect(layerOf(api, id).name).toBe("Hello there, wider");
-    expect(all(api, id)).toEqual(r.data);
+    expect(firstDiff(all(api, id), r.data)).toBe(-1);
     undo(api, store);
     expect(api.pixelSize(id, "image")).toEqual(before.size);
     expect(layerOf(api, id).transform.size).toEqual([before.size.width, before.size.height]);
-    expect(all(api, id)).toEqual(before.data);
+    expect(firstDiff(all(api, id), before.data)).toBe(-1);
     redo(api, store);
     expect(api.pixelSize(id, "image")).toEqual({ width: r.width, height: r.height });
-    expect(all(api, id)).toEqual(r.data);
+    expect(firstDiff(all(api, id), r.data)).toBe(-1);
   });
 
   it("writes in place when only the color changes", async () => {
@@ -98,7 +104,7 @@ describe("text layers", () => {
     await updateTextLayer(api, id, s, "image.text.edit");
     expect(spy).not.toHaveBeenCalled();
     expect(layerOf(api, id).text?.red).toBe(1);
-    expect(all(api, id)).toEqual(renderText(s).data);
+    expect(firstDiff(all(api, id), renderText(s).data)).toBe(-1);
   });
 
   it("pins a mask that covered the old transform", async () => {
@@ -113,24 +119,24 @@ describe("text layers", () => {
     await updateTextLayer(api, id, style("Hi there, wider"), "image.text.edit");
     expect(layerOf(api, id).maskPlacement).toEqual(old);
     expect(layerOf(api, id).transform.size).not.toEqual(old.size);
-    expect(api.readRegion(id, "mask", rect)).toEqual(mask);
+    expect(firstDiff(api.readRegion(id, "mask", rect), mask)).toBe(-1);
   });
 
   it("reflows a paragraph box without changing the font size", async () => {
     const { api } = await mount();
-    const s = style("Hello world again and again", { boxSize: [700, 200], fontSize: 32 });
+    const s = style("Hello world again and again", { boxSize: [360, 60] });
     const id = await createTextLayer(api, { style: s, origin: [0, 0] });
     const lines = () => {
       const ctx = new OffscreenCanvas(1, 1).getContext("2d") as OffscreenCanvasRenderingContext2D;
       return layoutText(layerOf(api, id).text as LayerTextStyle, canvasMeasure(ctx)).lines.length;
     };
     expect(lines()).toBe(1);
-    await resizeTextBox(api, id, [150, 200], [10, 20]);
+    await resizeTextBox(api, id, [80, 60], [10, 20]);
     expect(lines()).toBeGreaterThan(1);
     const layer = layerOf(api, id);
-    expect(layer.text?.fontSize).toBe(32);
-    expect(layer.text?.boxSize).toEqual([150, 200]);
-    expect(layer.transform.size).toEqual([150, 200]);
+    expect(layer.text?.fontSize).toBe(16);
+    expect(layer.text?.boxSize).toEqual([80, 60]);
+    expect(layer.transform.size).toEqual([80, 60]);
     expect(layer.transform.origin).toEqual([10, 20]);
   });
 
@@ -174,6 +180,6 @@ describe("text layers", () => {
     const data = all(api, id);
     await expect(updateTextLayer(api, id, s, "image.text.edit")).rejects.toThrow("missing fonts");
     expect(api.doc()).toBe(doc);
-    expect(all(api, id)).toEqual(data);
+    expect(firstDiff(all(api, id), data)).toBe(-1);
   });
 });
