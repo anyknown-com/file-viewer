@@ -13,9 +13,12 @@ export default defineConfig({
         },
       },
       {
-        // Pre-bundle deps first imported lazily by browser tests; a cold run (CI) would
-        // otherwise discover them mid-run, re-optimize and reload the page.
-        optimizeDeps: { include: ["fflate", "zod"] },
+        // Crawl every browser test up front so a cold run (CI) finds all deps in one pass
+        // instead of discovering them mid-run, re-optimizing and reloading the page.
+        optimizeDeps: {
+          entries: ["src/**/*.browser.test.{ts,tsx}"],
+          include: ["fflate", "zod"],
+        },
         test: {
           name: "browser",
           include: ["src/**/*.browser.test.{ts,tsx}"],
