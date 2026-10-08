@@ -1906,6 +1906,39 @@ button.fv-diagram {
   gap: var(--ak-space-xs);
 }
 
+.fv-ie-crop {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ak-space-xs);
+  padding: var(--ak-space-sm);
+  border-block-end: 1px solid var(--ak-border);
+}
+
+.fv-ie-crop .fv-toggle-group {
+  flex-wrap: wrap;
+}
+
+.fv-ie-crop-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--ak-space-xs);
+}
+
+.fv-ie-anchor .fv-toggle-group {
+  display: inline-grid;
+  grid-template-columns: repeat(3, 2rem);
+}
+
+.fv-ie-anchor .fv-toggle-group-item {
+  justify-content: center;
+  padding: 0;
+}
+
+.fv-ie-dialog-error {
+  margin: 0;
+  color: var(--ak-danger);
+}
+
 /* image-adjust */
 .fv-ie-adj-panel {
   display: flex;
@@ -1948,4 +1981,47 @@ button.fv-diagram {
 
 .fv-ie-adj-badge {
   flex: none;
+}
+
+.fv-ie-adj-histogram {
+  width: 100%;
+  height: 64px;
+  background: var(--ak-surface);
+  border: 1px solid var(--ak-border);
+}
+
+.fv-ie-adj-histogram path {
+  stroke: var(--ak-text-muted);
+  stroke-width: 1;
+  fill: none;
+  vector-effect: non-scaling-stroke;
+}
+
+.fv-ie-adj-curve {
+  width: 100%;
+  aspect-ratio: 1;
+  overflow: visible;
+  touch-action: none;
+}
+
+.fv-ie-adj-curve-bg {
+  fill: none;
+  stroke: var(--ak-border);
+  vector-effect: non-scaling-stroke;
+}
+
+.fv-ie-adj-curve-line {
+  fill: none;
+  stroke: var(--ak-text);
+  vector-effect: non-scaling-stroke;
+}
+
+.fv-ie-adj-curve-point {
+  fill: var(--ak-surface);
+  stroke: var(--ak-text);
+  cursor: grab;
+}
+
+.fv-ie-adj-curve-point[data-selected="true"] {
+  fill: var(--ak-text);
 }
