@@ -107,6 +107,7 @@ export function renderEffects(
     dst.height,
     view.docFromPx,
     layer.transform,
+    layer.maskFile,
     layer.maskPlacement,
     layer.maskEnabled,
   ]);

@@ -80,7 +80,11 @@ describe("render", () => {
     const doc = makeDoc({
       width: 4,
       height: 2,
-      layers: [{ id: "F", isGroup: true }, { parentID: "F" }, { parentID: "F" }],
+      layers: [
+        { id: "F", isGroup: true, maskFile: "F.mask.png" },
+        { parentID: "F" },
+        { parentID: "F" },
+      ],
     });
     const { api } = await mount(doc);
     api.writeRegion(
@@ -111,14 +115,18 @@ describe("render", () => {
   );
 
   it("ignores a disabled mask", async () => {
-    const doc = makeDoc({ width: 2, height: 2, layers: [{ maskEnabled: false }] });
+    const doc = makeDoc({
+      width: 2,
+      height: 2,
+      layers: [{ maskFile: "M.mask.png", maskEnabled: false }],
+    });
     const { api } = await mount(doc);
     api.writeRegion(doc.manifest.layers[0].id, "mask", full(doc), new Uint8Array(4));
     expect(at(api.readComposite(full(doc)), 2, 1, 1)[3]).toBe(255);
   });
 
   it.each([255, 0])("shows the mask's edge majority (%s) outside maskPlacement", async (value) => {
-    const doc = makeDoc({ width: 4, height: 2, layers: [{}] });
+    const doc = makeDoc({ width: 4, height: 2, layers: [{ maskFile: "M.mask.png" }] });
     const layer = doc.manifest.layers[0];
     layer.maskPlacement = half(4, 2).transform;
     const { api } = await mount(doc);

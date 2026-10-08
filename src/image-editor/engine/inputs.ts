@@ -32,7 +32,8 @@ export function createLayerInputs(gl: WebGL2RenderingContext, textures: TextureS
   }
 
   function maskOf(layer: Layer): MaskRef | null {
-    if (layer.maskEnabled === false) return null;
+    // A deleted mask keeps its texture for undo (layer-ops `addLayerMask`); the manifest decides.
+    if (layer.maskFile === undefined || layer.maskEnabled === false) return null;
     const texture = textures.get(layer.id, "mask");
     const size = textures.size(layer.id, "mask");
     if (!texture || !size) return null;
