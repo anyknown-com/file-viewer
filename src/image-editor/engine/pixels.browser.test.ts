@@ -142,4 +142,23 @@ describe("pixels", () => {
       expect.objectContaining({ code: "too_large" }),
     );
   });
+
+  it("creates a missing mask at its maskPlacement, pixel (0, 0) at the placement's corner", async () => {
+    const doc = makeDoc({ width: 8, height: 8, layers: [{}] });
+    const layer = doc.manifest.layers[0];
+    layer.maskFile = `${layer.id}.mask.png`;
+    layer.maskPlacement = { ...layer.transform, origin: [-2, -1], size: [12, 10] };
+    const { api } = await mount(doc);
+    // Mask pixel (2, 1) lies on document pixel (0, 0).
+    api.writeRegion(layer.id, "mask", { x: 2, y: 1, width: 1, height: 1 }, Uint8Array.of(0));
+    expect(api.pixelSize(layer.id, "mask")).toEqual({ width: 12, height: 10 });
+    expect([...api.readRegion(layer.id, "mask", { x: 1, y: 1, width: 2, height: 1 })]).toEqual([
+      255, 0,
+    ]);
+    expect([...api.readRegion(layer.id, "mask", { x: 11, y: 9, width: 1, height: 1 })]).toEqual([
+      255,
+    ]);
+    const out = api.readComposite({ x: 0, y: 0, width: 2, height: 1 });
+    expect([out[3], out[7]]).toEqual([0, 255]);
+  });
 });

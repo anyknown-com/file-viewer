@@ -174,9 +174,10 @@ export function linkMask(api: EditorApi, id: LayerId, linked: boolean): void {
 export function invertMask(api: EditorApi, id: LayerId): void {
   const layer = layerOf(api, id);
   if (layer?.maskFile === undefined) return;
+  const placed = layer.maskPlacement ?? layer.transform;
   const size = api.pixelSize(id, "mask") ?? {
-    width: Math.max(1, Math.round(layer.transform.size[0])),
-    height: Math.max(1, Math.round(layer.transform.size[1])),
+    width: Math.max(1, Math.round(placed.size[0])),
+    height: Math.max(1, Math.round(placed.size[1])),
   };
   const rect = { x: 0, y: 0, ...size };
   const tiles = api.snapshotTiles(id, "mask", rect);

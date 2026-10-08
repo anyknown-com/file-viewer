@@ -42,21 +42,26 @@ function place(
 
 export function createPixels(gl: WebGL2RenderingContext, textures: TextureStore, doc: () => Doc) {
   const layerOf = (id: LayerId) => doc().manifest.layers.find((l) => l.id === id);
-  const transformSize = (id: LayerId): Size => {
-    const t = layerOf(id)?.transform;
+  /**
+   * The size a missing texture starts at: one pixel per document unit of the layer's transform, or
+   * for a mask of its `maskPlacement` when it has one (LayerMask.swift places the mask grid there).
+   */
+  const transformSize = (id: LayerId, target: PixelTarget): Size => {
+    const layer = layerOf(id);
+    const t = (target === "mask" ? layer?.maskPlacement : undefined) ?? layer?.transform;
     return {
       width: Math.max(1, Math.round(t?.size[0] ?? 1)),
       height: Math.max(1, Math.round(t?.size[1] ?? 1)),
     };
   };
   const sizeOf = (id: LayerId, target: PixelTarget) =>
-    textures.size(id, target) ?? transformSize(id);
+    textures.size(id, target) ?? transformSize(id, target);
 
-  /** The texture, created at the transform's size (transparent, mask all white) when missing. */
+  /** The texture, created at transformSize (transparent, mask all white) when missing. */
   function ensure(id: LayerId, target: PixelTarget): WebGLTexture {
     const existing = textures.get(id, target);
     if (existing) return existing;
-    const size = transformSize(id);
+    const size = transformSize(id, target);
     textures.upload(
       id,
       target,
