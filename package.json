@@ -45,6 +45,10 @@
       "types": "./dist/video-editor/index.d.ts",
       "default": "./dist/video-editor/index.js"
     },
+    "./image-editor": {
+      "types": "./dist/image-editor/index.d.ts",
+      "default": "./dist/image-editor/index.js"
+    },
     "./styles.css": "./dist/styles.css"
   },
   "publishConfig": {

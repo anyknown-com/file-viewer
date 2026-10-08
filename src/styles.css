@@ -1557,6 +1557,23 @@ button.fv-diagram {
 
 /* == image editor (10) == */
 
+.fv-ie,
+.fv-ie-session {
+  display: grid;
+  flex: 1;
+  inline-size: 100%;
+  block-size: 100%;
+  min-block-size: 0;
+}
+
+.fv-ie-session[hidden] {
+  display: none;
+}
+
+.fv-ie-status {
+  place-self: center;
+}
+
 .fv-ie-shell {
   display: grid;
   grid-template-rows: auto auto auto minmax(0, 1fr);

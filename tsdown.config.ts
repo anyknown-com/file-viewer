@@ -23,6 +23,7 @@ export default defineConfig({
     "audio-editor/index": "src/audio-editor/index.ts",
     "excalidraw/index": "src/excalidraw/index.ts",
     "video-editor/index": "src/video-editor/index.ts",
+    "image-editor/index": "src/image-editor/index.ts",
   },
   format: ["esm"],
   platform: "neutral",
