@@ -25,6 +25,10 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./comp": {
+      "types": "./dist/comp/index.d.ts",
+      "default": "./dist/comp/index.js"
+    },
     "./styles.css": "./dist/styles.css"
   },
   "publishConfig": {
@@ -43,6 +47,10 @@
     "verify:pack": "pnpm build && node scripts/verify-pack.mjs",
     "prepublishOnly": "pnpm check && pnpm test && pnpm test:browser && pnpm verify:pack && pnpm check:licenses",
     "check:licenses": "node scripts/check-licenses.mjs"
+  },
+  "dependencies": {
+    "fflate": "^0.8.3",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",

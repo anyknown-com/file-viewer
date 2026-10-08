@@ -1,2 +1,2 @@
-// Not a published subpath yet. Replaced by 09 comp-format P01-1, which adds the "./comp" export.
-export {};
+export { ProjectError } from "./errors";
+export type { ProjectErrorCode } from "./errors";

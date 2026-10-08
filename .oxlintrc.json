@@ -82,6 +82,57 @@
           }
         ]
       }
+    },
+    {
+      "files": ["src/comp/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              { "name": "react", "message": "./comp is DOM-free and React-free" },
+              { "name": "react-dom", "message": "./comp is DOM-free and React-free" }
+            ],
+            "patterns": [
+              {
+                "group": ["react/*", "react-dom/*"],
+                "message": "./comp is DOM-free and React-free"
+              },
+              {
+                "group": ["node:*"],
+                "message": "./comp runs in Node and browsers: no node:* imports"
+              },
+              {
+                "group": ["../*"],
+                "message": "./comp imports only fflate, zod and files in src/comp"
+              },
+              {
+                "group": ["@anyknown/*"],
+                "message": "file-viewer imports no @anyknown package; hosts import tokens.css (00-overview §2)"
+              }
+            ]
+          }
+        ],
+        "no-restricted-globals": [
+          "error",
+          "window",
+          "document",
+          "self",
+          "Buffer",
+          "process",
+          "createImageBitmap",
+          "OffscreenCanvas",
+          "Image",
+          "ImageData"
+        ]
+      }
+    },
+    {
+      "files": ["src/comp/**/*.test.ts"],
+      "rules": {
+        "no-restricted-imports": "off",
+        "no-restricted-globals": "off"
+      }
     }
   ],
   "settings": {
