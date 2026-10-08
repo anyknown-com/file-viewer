@@ -223,3 +223,54 @@
   outline: var(--ak-focus-ring-width) solid var(--ak-focus-ring);
   outline-offset: 2px;
 }
+
+.fv-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: var(--ak-scrim);
+  z-index: var(--ak-z-index-dialog-backdrop);
+  transition: opacity var(--ak-motion-quick) var(--ak-motion-ease-out);
+}
+
+.fv-dialog {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  width: min(420px, calc(100vw - 32px));
+  height: fit-content;
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  padding: var(--ak-space-lg);
+  border-radius: var(--ak-corner-modal);
+  background: var(--ak-surface);
+  color: var(--ak-text);
+  box-shadow: var(--ak-shadow-modal);
+  z-index: var(--ak-z-index-dialog);
+  transition: opacity var(--ak-motion-quick) var(--ak-motion-ease-out);
+}
+
+.fv-dialog-backdrop[data-starting-style],
+.fv-dialog-backdrop[data-ending-style],
+.fv-dialog[data-starting-style],
+.fv-dialog[data-ending-style] {
+  opacity: 0;
+}
+
+.fv-dialog-title {
+  margin: 0;
+  font-size: var(--ak-type-t4);
+  font-weight: 600;
+}
+
+.fv-dialog-description {
+  margin: var(--ak-space-xs) 0 0;
+  color: var(--ak-text-muted);
+  font-size: var(--ak-type-t2);
+}
+
+.fv-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--ak-space-sm);
+  margin-top: var(--ak-space-lg);
+}
