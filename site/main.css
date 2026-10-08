@@ -118,6 +118,28 @@ a {
   padding: var(--ak-space-xl) var(--ak-space-lg);
 }
 
+.site-install {
+  margin-top: var(--ak-space-xl);
+}
+
+.site-code {
+  margin: 0;
+  padding: var(--ak-space-sm) var(--ak-space-md);
+  overflow-x: auto;
+  background: var(--ak-surface);
+  border: 1px solid var(--ak-border);
+  border-radius: var(--ak-radius-md);
+  font-family: var(--ak-font-mono);
+  font-size: 0.875rem;
+}
+
+.site-next {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ak-space-lg);
+  margin-top: var(--ak-space-md);
+}
+
 .site-not-found h1 {
   font-family: var(--ak-font-display);
 }
