@@ -1,8 +1,10 @@
 import { useT } from "../../../i18n/use-t";
 import { Button } from "../../../primitives/button";
+import { Popover } from "../../../primitives/popover";
 import type { EditorApi } from "../../api";
 import { selectPaintMessages } from "../messages";
 import { setToolState, toolState, useToolState, type RGBA } from "../state";
+import { ColorPicker } from "./color-picker";
 
 export function swapColors(api: EditorApi): void {
   const { fg, bg } = toolState(api);
@@ -30,14 +32,36 @@ function Chip({ color }: { color: RGBA }): React.JSX.Element {
   );
 }
 
-/** Foreground and background chips, swap and default. The chips open the picker in step 4. */
+/** Foreground and background chips that open the color picker, swap and default. */
 export function ColorSwatches({ api }: { api: EditorApi }): React.JSX.Element {
   const t = useT(selectPaintMessages);
   const { fg, bg } = useToolState(api);
   return (
     <>
-      <Button variant="ghost" aria-label={t("image.paint.foreground")} icon={<Chip color={fg} />} />
-      <Button variant="ghost" aria-label={t("image.paint.background")} icon={<Chip color={bg} />} />
+      <Popover
+        label={t("image.paint.foreground")}
+        trigger={
+          <Button
+            variant="ghost"
+            aria-label={t("image.paint.foreground")}
+            icon={<Chip color={fg} />}
+          />
+        }
+      >
+        <ColorPicker value={fg} onChange={(v) => setToolState(api, { fg: v })} />
+      </Popover>
+      <Popover
+        label={t("image.paint.background")}
+        trigger={
+          <Button
+            variant="ghost"
+            aria-label={t("image.paint.background")}
+            icon={<Chip color={bg} />}
+          />
+        }
+      >
+        <ColorPicker value={bg} onChange={(v) => setToolState(api, { bg: v })} />
+      </Popover>
       <Button variant="ghost" onClick={() => swapColors(api)}>
         {t("image.paint.swap")}
       </Button>
